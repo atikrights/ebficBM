@@ -105,7 +105,7 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           tag_name: v${{ env.NEW_VERSION }}
-          name: BizOS Pro Update v${{ env.NEW_VERSION }}
+          name: ebficBM v${{ env.NEW_VERSION }}
           body: |
             ## What's New in v${{ env.NEW_VERSION }}
             ${{ env.COMMIT_MSG }}
@@ -115,6 +115,7 @@ jobs:
             - `BizOS_Windows_v${{ env.NEW_VERSION }}.zip` for Windows Desktop
           draft: false
           prerelease: false
+          make_latest: true
           files: |
             build/app/outputs/flutter-apk/app-release.apk
             BizOS_Windows_v${{ env.NEW_VERSION }}.zip
