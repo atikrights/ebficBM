@@ -1,5 +1,5 @@
 {
-  "version": "1.0.10",
+  "version": "1.0.11",
   "url": "https://github.com/atikrights/ebficBM/releases/latest",
-  "notes": "feat: rebrand to ebfic Business Manager by Atik Islam - ebfic Group Limited"
+  "notes": "fix: crash-proof update screen - no hang, no blank, Android safe rendering"
 }
