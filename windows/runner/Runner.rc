@@ -89,13 +89,13 @@ BEGIN
     BEGIN
         BLOCK "040904e4"
         BEGIN
-            VALUE "CompanyName", "com.bizos" "\0"
-            VALUE "FileDescription", "bizos_x_pro" "\0"
+            VALUE "CompanyName", "atik islam" "\0"
+            VALUE "FileDescription", "ebfic business manager" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
-            VALUE "InternalName", "bizos_x_pro" "\0"
-            VALUE "LegalCopyright", "Copyright (C) 2026 com.bizos. All rights reserved." "\0"
-            VALUE "OriginalFilename", "bizos_x_pro.exe" "\0"
-            VALUE "ProductName", "bizos_x_pro" "\0"
+            VALUE "InternalName", "ebficBM" "\0"
+            VALUE "LegalCopyright", "Copyright (C) 2026 atik islam. All rights reserved." "\0"
+            VALUE "OriginalFilename", "ebficBM.exe" "\0"
+            VALUE "ProductName", "ebficBM" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END
