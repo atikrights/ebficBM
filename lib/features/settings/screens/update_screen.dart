@@ -83,7 +83,14 @@ class _UpdateScreenState extends State<UpdateScreen> {
                           children: [
                             const Icon(Icons.info_outline, color: Colors.green),
                             const SizedBox(width: 12),
-                            Expanded(child: Text('Version ${_onlineInfo!['version']} is available!', style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold))),
+                            Expanded(child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('Version ${_onlineInfo!['version']} is available!', style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold)),
+                                if (_onlineInfo!['sizeMb'] != null && _onlineInfo!['sizeMb'] != '0.0')
+                                  Text('Update Size: ${_onlineInfo!['sizeMb']} MB', style: const TextStyle(color: Colors.green, fontSize: 13)),
+                              ],
+                            )),
                           ],
                         ),
                       ),
@@ -123,12 +130,19 @@ class _UpdateScreenState extends State<UpdateScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    if (_onlineInfo != null) ...[
-                      _buildUpdateItem('Latest Release', _onlineInfo!['notes'] ?? 'General improvements and bug fixes.'),
-                      const Divider(height: 32),
-                    ],
-                    _buildUpdateItem('v1.0.1', 'Core dashboard and project management modules.'),
-                    _buildUpdateItem('v1.0.2', 'Added automated update engine.'),
+                    if (_onlineInfo != null && _onlineInfo!['all_releases'] != null)
+                      ...(_onlineInfo!['all_releases'] as List).map((release) {
+                        String vName = release['tag_name'] ?? '';
+                        String body = release['body'] ?? '';
+                        return Column(
+                          children: [
+                            _buildUpdateItem(vName, body.isEmpty ? 'General improvements.' : body),
+                            const Divider(height: 32),
+                          ],
+                        );
+                      }),
+                    if (_onlineInfo == null)
+                      const Text("No recent activity or checking...", style: TextStyle(color: Colors.grey)),
                   ],
                 ),
               ),
