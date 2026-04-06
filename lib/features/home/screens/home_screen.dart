@@ -10,6 +10,8 @@ import 'package:bizos_x_pro/features/reports/screens/reports_screen.dart';
 import 'package:bizos_x_pro/features/notes/screens/notes_screen.dart';
 import 'package:bizos_x_pro/core/services/refresh_service.dart';
 import 'package:bizos_x_pro/features/projects/screens/project_workspace_screen.dart';
+import 'package:bizos_x_pro/core/services/update_service.dart';
+import 'package:bizos_x_pro/features/settings/screens/update_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -25,6 +27,11 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     _loadNavigationState();
+    
+    // Check for updates on startup
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      UpdateService().checkForUpdate(context);
+    });
   }
 
   Future<void> _loadNavigationState() async {
@@ -62,6 +69,7 @@ class _HomeScreenState extends State<HomeScreen> {
     const FinanceScreen(),
     const ReportsScreen(),
     const NotesScreen(),
+    const UpdateScreen(),
   ];
 
   final List<String> _titles = [
@@ -72,6 +80,7 @@ class _HomeScreenState extends State<HomeScreen> {
     'Finance',
     'Reports',
     'Notes',
+    'Software Update',
   ];
 
   @override

@@ -82,6 +82,7 @@ class ResponsiveLayout extends StatelessWidget {
                 BottomNavigationBarItem(icon: Icon(IconsaxPlusLinear.category), label: 'Tasks'),
                 BottomNavigationBarItem(icon: Icon(IconsaxPlusLinear.wallet), label: 'Finance'),
                 BottomNavigationBarItem(icon: Icon(IconsaxPlusLinear.notification), label: 'Alerts'),
+                BottomNavigationBarItem(icon: Icon(IconsaxPlusLinear.refresh), label: 'Update'),
               ],
             )
           : null,
@@ -173,6 +174,14 @@ class _Sidebar extends StatelessWidget {
                   isSelected: selectedIndex == 6,
                   isCollapsed: isCollapsed,
                   onTap: () => onNavigationChanged(6),
+                  isDark: isDark,
+                ),
+                _NavItem(
+                  icon: IconsaxPlusLinear.refresh,
+                  label: 'Software Update',
+                  isSelected: selectedIndex == 7,
+                  isCollapsed: isCollapsed,
+                  onTap: () => onNavigationChanged(7),
                   isDark: isDark,
                 ),
               ],
