@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:bizos_x_pro/features/tasks/models/system_task.dart';
+import 'package:ebficBM/features/tasks/models/system_task.dart';
 import 'package:archive/archive.dart';
 import 'package:universal_html/html.dart' as html;
 

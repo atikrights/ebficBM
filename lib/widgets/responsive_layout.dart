@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:responsive_framework/responsive_framework.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
-import 'package:bizos_x_pro/core/theme/colors.dart';
+import 'package:ebficBM/core/theme/colors.dart';
 import 'package:provider/provider.dart';
-import 'package:bizos_x_pro/core/providers/theme_provider.dart';
-import 'package:bizos_x_pro/features/notifications/screens/notifications_panel.dart';
+import 'package:ebficBM/core/providers/theme_provider.dart';
+import 'package:ebficBM/features/notifications/screens/notifications_panel.dart';
 
 class ResponsiveLayout extends StatelessWidget {
   final Widget body;
@@ -72,23 +72,46 @@ class ResponsiveLayout extends StatelessWidget {
       ),
       bottomNavigationBar: (isMobile)
           ? BottomNavigationBar(
-              currentIndex: selectedIndex,
-              onTap: onNavigationChanged,
+              currentIndex: _mobileNavIndex(selectedIndex),
+              onTap: (i) => onNavigationChanged(_mobileNavToScreenIndex(i)),
               type: BottomNavigationBarType.fixed,
               selectedItemColor: AppColors.primary,
               unselectedItemColor: Colors.grey,
               items: const [
                 BottomNavigationBarItem(icon: Icon(IconsaxPlusLinear.element_3), label: 'Home'),
-                BottomNavigationBarItem(icon: Icon(IconsaxPlusLinear.category), label: 'Tasks'),
-                BottomNavigationBarItem(icon: Icon(IconsaxPlusLinear.wallet), label: 'Finance'),
+                BottomNavigationBarItem(icon: Icon(IconsaxPlusLinear.task_square), label: 'Tasks'),
+                BottomNavigationBarItem(icon: Icon(IconsaxPlusLinear.card), label: 'Finance'),
                 BottomNavigationBarItem(icon: Icon(IconsaxPlusLinear.notification), label: 'Alerts'),
                 BottomNavigationBarItem(icon: Icon(IconsaxPlusLinear.refresh), label: 'Update'),
               ],
             )
-          : null,
     );
   }
 }
+
+// Map screen index → mobile bottom nav index (only 5 visible items)
+int _mobileNavIndex(int screenIndex) {
+  switch (screenIndex) {
+    case 0: return 0;  // Dashboard
+    case 3: return 1;  // Tasks
+    case 4: return 2;  // Finance
+    case 7: return 4;  // Update
+    default: return 0;
+  }
+}
+
+// Map mobile nav tap → actual screen index
+int _mobileNavToScreenIndex(int navIndex) {
+  switch (navIndex) {
+    case 0: return 0;  // Dashboard
+    case 1: return 3;  // Tasks
+    case 2: return 4;  // Finance
+    case 3: return 0;  // Alerts
+    case 4: return 7;  // Update
+    default: return 0;
+  }
+}
+
 
 class _Sidebar extends StatelessWidget {
   final int selectedIndex;

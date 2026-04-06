@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
-import 'package:bizos_x_pro/core/services/update_service.dart';
+import 'package:ebficBM/core/services/update_service.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class UpdateScreen extends StatefulWidget {

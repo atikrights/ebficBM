@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:responsive_framework/responsive_framework.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:bizos_x_pro/core/theme/colors.dart';
-import 'package:bizos_x_pro/features/home/screens/home_screen.dart';
+import 'package:ebficBM/core/theme/colors.dart';
+import 'package:ebficBM/features/home/screens/home_screen.dart';
 import 'package:provider/provider.dart';
-import 'package:bizos_x_pro/core/providers/theme_provider.dart';
-import 'package:bizos_x_pro/features/companies/providers/company_provider.dart';
-import 'package:bizos_x_pro/features/projects/providers/project_provider.dart';
-import 'package:bizos_x_pro/features/tasks/providers/task_provider.dart';
-import 'package:bizos_x_pro/core/services/refresh_service.dart';
+import 'package:ebficBM/core/providers/theme_provider.dart';
+import 'package:ebficBM/features/companies/providers/company_provider.dart';
+import 'package:ebficBM/features/projects/providers/project_provider.dart';
+import 'package:ebficBM/features/tasks/providers/task_provider.dart';
+import 'package:ebficBM/core/services/refresh_service.dart';
 
 class BizOSApp extends StatelessWidget {
   const BizOSApp({super.key});

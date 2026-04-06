@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import 'package:bizos_x_pro/features/companies/providers/company_provider.dart';
-import 'package:bizos_x_pro/features/projects/providers/project_provider.dart';
-import 'package:bizos_x_pro/features/tasks/providers/task_provider.dart';
+import 'package:ebficBM/features/companies/providers/company_provider.dart';
+import 'package:ebficBM/features/projects/providers/project_provider.dart';
+import 'package:ebficBM/features/tasks/providers/task_provider.dart';
 
 /// GlobalRefreshWrapper — wraps the entire app with:
 /// • Ctrl+R / F5 keyboard shortcuts
