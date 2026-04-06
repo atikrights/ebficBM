@@ -1,5 +1,5 @@
 {
-  "version": "1.0.12",
+  "version": "1.0.13",
   "url": "https://github.com/atikrights/ebficBM/releases/latest",
-  "notes": "fix: update package imports to match new app name ebficBM"
+  "notes": "fix: update test imports and complete rebranding"
 }
