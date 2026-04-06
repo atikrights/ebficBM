@@ -1,4 +1,4 @@
-Analyzing bizos_x_pro...                                        
+Analyzing ebficBM...                                        
 
    info - 'background' is deprecated and shouldn't be used. Use surface instead. This feature was deprecated after v3.18.0-0.1.pre - lib\core\app.dart:42:17 - deprecated_member_use
    info - 'background' is deprecated and shouldn't be used. Use surface instead. This feature was deprecated after v3.18.0-0.1.pre - lib\core\app.dart:55:17 - deprecated_member_use
@@ -37,7 +37,7 @@ warning - Unused import: 'package:iconsax_plus/iconsax_plus.dart' - lib\features
    info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\features\reports\screens\reports_screen.dart:161:81 - deprecated_member_use
    info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\features\reports\screens\reports_screen.dart:162:85 - deprecated_member_use
    info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\features\tasks\screens\task_list_screen.dart:80:44 - deprecated_member_use
-warning - Unused import: 'package:bizos_x_pro/core/theme/colors.dart' - lib\widgets\glass_container.dart:3:8 - unused_import
+warning - Unused import: 'package:ebficBM/core/theme/colors.dart' - lib\widgets\glass_container.dart:3:8 - unused_import
    info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\widgets\glass_container.dart:38:42 - deprecated_member_use
    info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\widgets\glass_container.dart:38:74 - deprecated_member_use
    info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\widgets\glass_container.dart:55:45 - deprecated_member_use
