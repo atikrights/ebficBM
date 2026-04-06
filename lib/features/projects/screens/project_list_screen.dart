@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
-import 'package:bizos_x_pro/core/theme/colors.dart';
-import 'package:bizos_x_pro/widgets/glass_container.dart';
+import 'package:ebficBM/core/theme/colors.dart';
+import 'package:ebficBM/widgets/glass_container.dart';
 import 'package:responsive_framework/responsive_framework.dart';
 import 'package:provider/provider.dart';
-import 'package:bizos_x_pro/features/projects/providers/project_provider.dart';
-import 'package:bizos_x_pro/features/projects/screens/project_workspace_screen.dart';
-import 'package:bizos_x_pro/features/tasks/models/system_task.dart';
-import 'package:bizos_x_pro/features/tasks/providers/task_provider.dart';
+import 'package:ebficBM/features/projects/providers/project_provider.dart';
+import 'package:ebficBM/features/projects/screens/project_workspace_screen.dart';
+import 'package:ebficBM/features/tasks/models/system_task.dart';
+import 'package:ebficBM/features/tasks/providers/task_provider.dart';
 
 class ProjectListScreen extends StatelessWidget {
   const ProjectListScreen({super.key});

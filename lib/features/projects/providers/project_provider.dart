@@ -2,7 +2,7 @@ import 'dart:math';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:bizos_x_pro/features/projects/models/project.dart';
+import 'package:ebficBM/features/projects/models/project.dart';
 
 class ProjectProvider with ChangeNotifier {
   List<Project> _projects = [];

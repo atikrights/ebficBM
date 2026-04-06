@@ -3,14 +3,14 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:responsive_framework/responsive_framework.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
-import 'package:bizos_x_pro/core/theme/colors.dart';
-import 'package:bizos_x_pro/widgets/glass_container.dart';
-import 'package:bizos_x_pro/features/tasks/models/system_task.dart';
-import 'package:bizos_x_pro/features/tasks/providers/task_provider.dart';
-import 'package:bizos_x_pro/features/projects/providers/project_provider.dart';
-import 'package:bizos_x_pro/features/projects/models/project.dart';
+import 'package:ebficBM/core/theme/colors.dart';
+import 'package:ebficBM/widgets/glass_container.dart';
+import 'package:ebficBM/features/tasks/models/system_task.dart';
+import 'package:ebficBM/features/tasks/providers/task_provider.dart';
+import 'package:ebficBM/features/projects/providers/project_provider.dart';
+import 'package:ebficBM/features/projects/models/project.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:bizos_x_pro/features/tasks/screens/task_workspace_screen.dart';
+import 'package:ebficBM/features/tasks/screens/task_workspace_screen.dart';
 
 class TaskListScreen extends StatefulWidget {
   const TaskListScreen({super.key});

@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
-import 'package:bizos_x_pro/features/projects/models/project.dart';
+import 'package:ebficBM/features/projects/models/project.dart';
 import 'package:universal_html/html.dart' as html;
 
 class ProjectExporter {

@@ -1,17 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:bizos_x_pro/widgets/responsive_layout.dart';
-import 'package:bizos_x_pro/features/dashboard/widgets/dashboard_content.dart';
-import 'package:bizos_x_pro/features/companies/screens/company_list_screen.dart';
-import 'package:bizos_x_pro/features/projects/screens/project_list_screen.dart';
-import 'package:bizos_x_pro/features/tasks/screens/task_list_screen.dart';
-import 'package:bizos_x_pro/features/finance/screens/finance_screen.dart';
-import 'package:bizos_x_pro/features/reports/screens/reports_screen.dart';
-import 'package:bizos_x_pro/features/notes/screens/notes_screen.dart';
-import 'package:bizos_x_pro/core/services/refresh_service.dart';
-import 'package:bizos_x_pro/features/projects/screens/project_workspace_screen.dart';
-import 'package:bizos_x_pro/core/services/update_service.dart';
-import 'package:bizos_x_pro/features/settings/screens/update_screen.dart';
+import 'package:ebficBM/widgets/responsive_layout.dart';
+import 'package:ebficBM/features/dashboard/widgets/dashboard_content.dart';
+import 'package:ebficBM/features/companies/screens/company_list_screen.dart';
+import 'package:ebficBM/features/projects/screens/project_list_screen.dart';
+import 'package:ebficBM/features/tasks/screens/task_list_screen.dart';
+import 'package:ebficBM/features/finance/screens/finance_screen.dart';
+import 'package:ebficBM/features/reports/screens/reports_screen.dart';
+import 'package:ebficBM/features/notes/screens/notes_screen.dart';
+import 'package:ebficBM/core/services/refresh_service.dart';
+import 'package:ebficBM/features/projects/screens/project_workspace_screen.dart';
+import 'package:ebficBM/core/services/update_service.dart';
+import 'package:ebficBM/features/settings/screens/update_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
