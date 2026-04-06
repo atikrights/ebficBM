@@ -32,7 +32,6 @@ class UpdateService {
       String tagName = latest['tag_name'] ?? '';
       if (tagName.startsWith('v')) tagName = tagName.substring(1);
       
-      // Calculate size for mb (using assets size)
       double totalSizeMb = 0.0;
       if (latest['assets'] != null) {
         for (var asset in latest['assets']) {
@@ -53,56 +52,72 @@ class UpdateService {
   }
 
   Future<void> checkForUpdate(BuildContext context, {bool showNoUpdate = false}) async {
-    final info = await getLatestVersionInfo();
-    if (info != null) {
-      final latestVersion = info['version'] as String;
-      final downloadUrl = info['url'] as String;
-      final releaseNotes = info['notes'] as String;
-      final sizeMb = info['sizeMb'] as String? ?? 'Unknown';
-      final assets = info['assets'] as List<dynamic>? ?? [];
+    try {
+      final info = await getLatestVersionInfo();
+      if (info != null) {
+        final latestVersion = info['version'] as String;
+        final downloadUrl = info['url'] as String;
+        final releaseNotes = info['notes'] as String;
+        final sizeMb = info['sizeMb'] as String? ?? 'Unknown';
+        final assets = info['assets'] as List<dynamic>? ?? [];
 
-      final packageInfo = await PackageInfo.fromPlatform();
-      final currentVersion = packageInfo.version;
+        final packageInfo = await PackageInfo.fromPlatform();
+        final currentVersion = packageInfo.version;
 
-      if (_isVersionNewer(currentVersion, latestVersion)) {
-        _showUpdateDialog(context, latestVersion, downloadUrl, releaseNotes, sizeMb, assets);
-      } else if (showNoUpdate) {
+        if (_isVersionNewer(currentVersion, latestVersion)) {
+          if (context.mounted) {
+            _showUpdateDialog(context, latestVersion, downloadUrl, releaseNotes, sizeMb, assets);
+          }
+        } else if (showNoUpdate) {
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Your app is up to date!')),
+            );
+          }
+        }
+      }
+    } catch (e) {
+      if (showNoUpdate && context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Your app is up to date!')),
+          SnackBar(content: Text('Error checking updates: $e')),
         );
       }
     }
   }
 
   bool _isVersionNewer(String current, String latest) {
-    List<int> currentParts = current.split('.').map(int.parse).toList();
-    List<int> latestParts = latest.split('.').map(int.parse).toList();
+    try {
+      List<int> currentParts = current.split('.').map((s) => int.tryParse(s) ?? 0).toList();
+      List<int> latestParts = latest.split('.').map((s) => int.tryParse(s) ?? 0).toList();
 
-    for (int i = 0; i < latestParts.length; i++) {
-      int currentPart = i < currentParts.length ? currentParts[i] : 0;
-      if (latestParts[i] > currentPart) return true;
-      if (latestParts[i] < currentPart) return false;
+      for (int i = 0; i < latestParts.length; i++) {
+        int currentPart = i < currentParts.length ? currentParts[i] : 0;
+        if (latestParts[i] > currentPart) return true;
+        if (latestParts[i] < currentPart) return false;
+      }
+    } catch (e) {
+      return false;
     }
     return false;
   }
 
   void _showUpdateDialog(BuildContext context, String version, String url, String notes, String sizeMb, List<dynamic> assets) {
-    bool isDownloading = false;
-    double progress = 0.0;
-    String status = "Ready to update";
-
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (context) => StatefulBuilder(
         builder: (context, setState) {
+          bool isDownloading = false;
+          double progress = 0.0;
+          String status = "Ready to update";
+
           return AlertDialog(
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-            title: Row(
+            title: const Row(
               children: [
-                const Icon(Icons.system_update, color: Colors.blueAccent),
-                const SizedBox(width: 10),
-                const Text('New Update Available!'),
+                Icon(Icons.system_update, color: Colors.blueAccent),
+                SizedBox(width: 10),
+                Text('New Update Available!'),
               ],
             ),
             content: Column(
@@ -112,12 +127,17 @@ class UpdateService {
                 Text('Version $version ($sizeMb MB) is now available.', style: const TextStyle(fontWeight: FontWeight.bold)),
                 const SizedBox(height: 10),
                 const Text('What\'s new:'),
-                Text(notes, style: const TextStyle(fontStyle: FontStyle.italic)),
+                SizedBox(
+                  maxHeight: 100,
+                  child: SingleChildScrollView(
+                    child: Text(notes, style: const TextStyle(fontStyle: FontStyle.italic, fontSize: 12)),
+                  ),
+                ),
                 if (isDownloading) ...[
                   const SizedBox(height: 20),
-                  LinearProgressIndicator(value: progress, color: Colors.blueAccent),
+                  LinearProgressIndicator(value: progress, color: Colors.blueAccent, backgroundColor: Colors.grey[200]),
                   const SizedBox(height: 8),
-                  Text(status, style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                  Text(status, style: const TextStyle(fontSize: 12, color: Colors.blueGrey)),
                 ]
               ],
             ),
@@ -157,7 +177,6 @@ class UpdateService {
                   }
 
                   if (downloadUrl == null) {
-                    // Fallback to browser if no asset found
                      final uri = Uri.parse(url);
                      if (await canLaunchUrl(uri)) {
                        await launchUrl(uri, mode: LaunchMode.externalApplication);
@@ -178,32 +197,39 @@ class UpdateService {
                       savePath,
                       onReceiveProgress: (received, total) {
                         if (total != -1) {
-                          setState(() {
-                            progress = received / total;
-                            status = "Downloading ${(received / (1024 * 1024)).toStringAsFixed(1)} MB / ${(total / (1024 * 1024)).toStringAsFixed(1)} MB";
-                          });
+                          if (context.mounted) {
+                            setState(() {
+                              progress = received / total;
+                              status = "Downloading ${(received / (1024 * 1024)).toStringAsFixed(1)} MB / ${(total / (1024 * 1024)).toStringAsFixed(1)} MB";
+                            });
+                          }
                         }
                       },
                     );
 
-                    setState(() => status = "Installing...");
+                    if (context.mounted) setState(() => status = "Installing...");
+                    
                     final result = await OpenFilex.open(savePath);
                     if (result.type != ResultType.done) {
-                        setState(() {
-                          isDownloading = false;
-                          status = "Failed to open file";
-                        });
+                        if (context.mounted) {
+                          setState(() {
+                            isDownloading = false;
+                            status = "Error: ${result.message}";
+                          });
+                        }
                     } else {
                        if (context.mounted) Navigator.pop(context);
                     }
                   } catch (e) {
-                    setState(() {
-                      isDownloading = false;
-                      status = "Download failed!";
-                    });
+                    if (context.mounted) {
+                      setState(() {
+                        isDownloading = false;
+                        status = "Download failed: $e";
+                      });
+                    }
                   }
                 },
-                child: Text(isDownloading ? 'Please wait...' : 'Update Now'),
+                child: Text(isDownloading ? 'Downloading...' : 'Update Now'),
               ),
             ],
           );
