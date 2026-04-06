@@ -1,5 +1,5 @@
 {
-  "version": "1.0.8",
+  "version": "1.0.9",
   "url": "https://github.com/atikrights/ebficBM/releases/latest",
-  "notes": "feat: added in-app updater with download progress and automatic installer"
+  "notes": "fix: bypass GitHub API cache by adding timestamp"
 }
