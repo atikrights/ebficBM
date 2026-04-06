@@ -1,4 +1,4 @@
-Analyzing bizos_x_pro...                                        
+Analyzing ebficBM...                                        
 
    info - String literals shouldn't be concatenated by the '+' operator - lib\features\companies\screens\company_list_screen.dart:133:25 - prefer_adjacent_string_concatenation
    info - String literals shouldn't be concatenated by the '+' operator - lib\features\dashboard\widgets\dashboard_content.dart:128:145 - prefer_adjacent_string_concatenation
@@ -8,6 +8,6 @@ Analyzing bizos_x_pro...
    info - String literals shouldn't be concatenated by the '+' operator - lib\features\finance\screens\finance_screen.dart:138:54 - prefer_adjacent_string_concatenation
 warning - Unused import: 'package:iconsax_plus/iconsax_plus.dart' - lib\features\reports\screens\reports_screen.dart:3:8 - unused_import
    info - String literals shouldn't be concatenated by the '+' operator - lib\features\tasks\screens\task_list_screen.dart:110:22 - prefer_adjacent_string_concatenation
-warning - Unused import: 'package:bizos_x_pro/core/theme/colors.dart' - lib\widgets\glass_container.dart:3:8 - unused_import
+warning - Unused import: 'package:ebficBM/core/theme/colors.dart' - lib\widgets\glass_container.dart:3:8 - unused_import
   error - The name 'BizOSApp' isn't a class - test\widget_test.dart:16:35 - creation_with_non_type
 

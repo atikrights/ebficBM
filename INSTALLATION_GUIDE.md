@@ -14,7 +14,7 @@ The Windows application is provided as a **portable folder**. You do not need a 
     > [!IMPORTANT]
     > You **must** copy the entire folder, not just the `.exe` file. The application requires the DLL files and the `data` subfolder to run.
 3.  **Create a Shortcut**:
-    Right-click `bizos_x_pro.exe` and select **Show more options > Send to > Desktop (create shortcut)**.
+    Right-click `ebficBM.exe` and select **Show more options > Send to > Desktop (create shortcut)**.
 4.  **Run the App**: 
     Double-click the shortcut on your desktop or the `.exe` file in the folder.
 
