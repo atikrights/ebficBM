@@ -1,0 +1,24 @@
+Launching lib\main.dart on Chrome in debug mode...
+Waiting for connection from debug service on Chrome...          
+lib/features/dashboard/widgets/dashboard_content.dart:33:18: Error: The method 'GlassContainer' isn't defined for the type 'DashboardContent'.
+ - 'DashboardContent' is from 'package:bizos_x_pro/features/dashboard/widgets/dashboard_content.dart' ('lib/features/dashboard/widgets/dashboard_content.dart').
+Try correcting the name to the name of an existing method, or defining a method named 'GlassContainer'.
+          child: GlassContainer(
+                 ^^^^^^^^^^^^^^
+lib/features/dashboard/widgets/dashboard_content.dart:72:18: Error: The method 'GlassContainer' isn't defined for the type 'DashboardContent'.
+ - 'DashboardContent' is from 'package:bizos_x_pro/features/dashboard/widgets/dashboard_content.dart' ('lib/features/dashboard/widgets/dashboard_content.dart').
+Try correcting the name to the name of an existing method, or defining a method named 'GlassContainer'.
+          child: GlassContainer(
+                 ^^^^^^^^^^^^^^
+lib/features/dashboard/widgets/dashboard_content.dart:94:12: Error: The method 'GlassContainer' isn't defined for the type 'DashboardContent'.
+ - 'DashboardContent' is from 'package:bizos_x_pro/features/dashboard/widgets/dashboard_content.dart' ('lib/features/dashboard/widgets/dashboard_content.dart').
+Try correcting the name to the name of an existing method, or defining a method named 'GlassContainer'.
+    return GlassContainer(
+           ^^^^^^^^^^^^^^
+lib/features/dashboard/widgets/dashboard_content.dart:165:22: Error: The method 'GlassContainer' isn't defined for the type 'DashboardContent'.
+ - 'DashboardContent' is from 'package:bizos_x_pro/features/dashboard/widgets/dashboard_content.dart' ('lib/features/dashboard/widgets/dashboard_content.dart').
+Try correcting the name to the name of an existing method, or defining a method named 'GlassContainer'.
+              child: GlassContainer(
+                     ^^^^^^^^^^^^^^
+Waiting for connection from debug service on Chrome...             34.4s
+Failed to compile application.
