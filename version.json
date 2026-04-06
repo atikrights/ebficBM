@@ -1,5 +1,5 @@
 {
-  "version": "1.0.11",
+  "version": "1.0.12",
   "url": "https://github.com/atikrights/ebficBM/releases/latest",
-  "notes": "fix: crash-proof update screen - no hang, no blank, Android safe rendering"
+  "notes": "fix: update package imports to match new app name ebficBM"
 }
