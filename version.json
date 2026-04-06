@@ -1,5 +1,5 @@
 {
-  "version": "1.0.2",
+  "version": "1.0.5",
   "url": "https://github.com/atikrights/ebficBM/releases/latest",
-  "notes": "Added new features and improved performance for both Windows and Android versions."
+  "notes": "Renamed to ebficBM and completed automation for deployment."
 }

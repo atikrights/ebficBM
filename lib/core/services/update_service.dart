@@ -10,7 +10,7 @@ class UpdateService {
 
   Future<Map<String, dynamic>?> getLatestVersionInfo() async {
     try {
-      final response = await http.get(Uri.parse(_updateUrl));
+      final response = await http.get(Uri.parse(_updateUrl)).timeout(const Duration(seconds: 10));
       if (response.statusCode == 200) {
         return json.decode(response.body);
       }
