@@ -13,7 +13,8 @@ class UpdateService {
 
   Future<List<Map<String, dynamic>>?> getReleases() async {
     try {
-      final response = await http.get(Uri.parse(_updateUrl)).timeout(const Duration(seconds: 15));
+      final String noCacheUrl = '$_updateUrl?t=${DateTime.now().millisecondsSinceEpoch}';
+      final response = await http.get(Uri.parse(noCacheUrl)).timeout(const Duration(seconds: 15));
       if (response.statusCode == 200) {
         List<dynamic> data = json.decode(response.body);
         return data.map((e) => e as Map<String, dynamic>).toList();
