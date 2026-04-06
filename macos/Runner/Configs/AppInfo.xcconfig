@@ -8,7 +8,7 @@
 PRODUCT_NAME = ebficBM
 
 // The application's bundle identifier
-PRODUCT_BUNDLE_IDENTIFIER = com.bizos.bizosXPro
+PRODUCT_BUNDLE_IDENTIFIER = com.ebfic.bizosXPro
 
 // The copyright displayed in application information
-PRODUCT_COPYRIGHT = Copyright © 2026 com.bizos. All rights reserved.
+PRODUCT_COPYRIGHT = Copyright © 2026 com.ebfic. All rights reserved.
