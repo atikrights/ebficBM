@@ -85,6 +85,7 @@ class ResponsiveLayout extends StatelessWidget {
                 BottomNavigationBarItem(icon: Icon(IconsaxPlusLinear.refresh), label: 'Update'),
               ],
             )
+          : null,
     );
   }
 }
