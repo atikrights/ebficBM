@@ -127,8 +127,8 @@ class UpdateService {
                 Text('Version $version ($sizeMb MB) is now available.', style: const TextStyle(fontWeight: FontWeight.bold)),
                 const SizedBox(height: 10),
                 const Text('What\'s new:'),
-                SizedBox(
-                  maxHeight: 100,
+                ConstrainedBox(
+                  constraints: const BoxConstraints(maxHeight: 100),
                   child: SingleChildScrollView(
                     child: Text(notes, style: const TextStyle(fontStyle: FontStyle.italic, fontSize: 12)),
                   ),
