@@ -1,5 +1,5 @@
 {
-  "version": "1.0.5",
+  "version": "1.0.6",
   "url": "https://github.com/atikrights/ebficBM/releases/latest",
-  "notes": "Renamed to ebficBM and completed automation for deployment."
+  "notes": "chore: initial v1.0.5 and rename to ebficBM"
 }
