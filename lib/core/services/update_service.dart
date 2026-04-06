@@ -8,24 +8,35 @@ class UpdateService {
   // Replace this with your actual GitHub raw URL for version.json
   static const String _updateUrl = 'https://raw.githubusercontent.com/atikrights/ebficBM/main/version.json';
 
-  Future<void> checkForUpdate(BuildContext context) async {
+  Future<Map<String, dynamic>?> getLatestVersionInfo() async {
     try {
       final response = await http.get(Uri.parse(_updateUrl));
       if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        final latestVersion = data['version'] as String;
-        final downloadUrl = data['url'] as String;
-        final releaseNotes = data['notes'] as String;
-
-        final packageInfo = await PackageInfo.fromPlatform();
-        final currentVersion = packageInfo.version;
-
-        if (_isVersionNewer(currentVersion, latestVersion)) {
-          _showUpdateDialog(context, latestVersion, downloadUrl, releaseNotes);
-        }
+        return json.decode(response.body);
       }
     } catch (e) {
-      debugPrint('Error checking for updates: $e');
+      debugPrint('Error fetching version info: $e');
+    }
+    return null;
+  }
+
+  Future<void> checkForUpdate(BuildContext context, {bool showNoUpdate = false}) async {
+    final info = await getLatestVersionInfo();
+    if (info != null) {
+      final latestVersion = info['version'] as String;
+      final downloadUrl = info['url'] as String;
+      final releaseNotes = info['notes'] as String;
+
+      final packageInfo = await PackageInfo.fromPlatform();
+      final currentVersion = packageInfo.version;
+
+      if (_isVersionNewer(currentVersion, latestVersion)) {
+        _showUpdateDialog(context, latestVersion, downloadUrl, releaseNotes);
+      } else if (showNoUpdate) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Your app is up to date!')),
+        );
+      }
     }
   }
 
