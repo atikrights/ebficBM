@@ -1,0 +1,35 @@
+# Flutter/Dart
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
+build/
+
+# Android
+android/**/build/
+android/.gradle/
+android/app/build/
+android/local.properties
+android/GeneratedPluginRegistrant.java
+*.keystore
+*.jks
+
+# Windows
+build/windows/
+build/windows/x64/
+*.exe
+*.dll
+*.pdb
+
+# IDE
+.idea/
+.vscode/
+*.iml
+*.swp
+*.bak
+
+# Others
+.DS_Store
+node_modules/
