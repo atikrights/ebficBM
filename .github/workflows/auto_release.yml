@@ -105,14 +105,19 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           tag_name: v${{ env.NEW_VERSION }}
-          name: ebficBM v${{ env.NEW_VERSION }}
+          name: "ebfic Business Manager v${{ env.NEW_VERSION }}"
           body: |
-            ## What's New in v${{ env.NEW_VERSION }}
+            ## 🚀 ebfic Business Manager v${{ env.NEW_VERSION }}
+            > by **Atik Islam** | **ebfic Group Limited**
+
+            ### 📝 What's New:
             ${{ env.COMMIT_MSG }}
             
-            **Downloads:**
-            - `app-release.apk` for Android
-            - `BizOS_Windows_v${{ env.NEW_VERSION }}.zip` for Windows Desktop
+            ### 📥 Downloads:
+            | Platform | File |
+            |----------|------|
+            | 🧑‍💻 Windows | `BizOS_Windows_v${{ env.NEW_VERSION }}.zip` |
+            | 📱 Android | `app-release.apk` |
           draft: false
           prerelease: false
           make_latest: true

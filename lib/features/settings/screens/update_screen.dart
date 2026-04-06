@@ -151,14 +151,28 @@ class _UpdateScreenState extends State<UpdateScreen> {
               
               // Footer
               Center(
-                child: Text(
-                  'Thanks for Atik Islam',
-                  style: GoogleFonts.outfit(
-                    fontSize: 14,
-                    color: Colors.grey.withOpacity(0.7),
-                    letterSpacing: 2,
-                    fontWeight: FontWeight.w500,
-                  ),
+                child: Column(
+                  children: [
+                    Text(
+                      'ebfic Business Manager',
+                      style: GoogleFonts.outfit(
+                        fontSize: 15,
+                        color: Colors.grey.withOpacity(0.8),
+                        letterSpacing: 1.5,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'by Atik Islam  •  ebfic Group Limited',
+                      style: GoogleFonts.outfit(
+                        fontSize: 12,
+                        color: Colors.grey.withOpacity(0.5),
+                        letterSpacing: 1,
+                        fontWeight: FontWeight.w400,
+                      ),
+                    ),
+                  ],
                 ),
               ),
               const SizedBox(height: 40),
