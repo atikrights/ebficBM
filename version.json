@@ -1,6 +1,6 @@
 {
-  "version": "1.0.16",
+  "version": "1.0.17",
   "build_number": 10,
-  "notes": "chore: release v1.0.20 and optimize auto-updater",
+  "notes": "feat: integrate automatic CI/CD Github releases and Private API fetch headers",
   "url": "https://github.com/atikrights/ebficBM/releases/latest"
 }
