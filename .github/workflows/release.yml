@@ -126,14 +126,20 @@ jobs:
             --build-name=${{ needs.tag-version.outputs.version }} `
             --build-number=${{ github.run_number }}
 
+      - name: Create Portable Windows ZIP
+        run: |
+          Compress-Archive -Path "build\windows\x64\runner\Release\*" -DestinationPath "build\ebficBM-windows-portable.zip"
+
       - name: Create MSIX Package
         run: flutter pub run msix:create
 
-      - name: Upload MSIX Artifact
+      - name: Upload Windows Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: windows-msix
-          path: build\windows\x64\runner\Release\ebficBM.msix
+          name: windows-release
+          path: |
+            build\windows\x64\runner\Release\ebficBM.msix
+            build\ebficBM-windows-portable.zip
 
   # ─────────────────────────────────────────────────────────────────────────────
   # JOB 4 — Build macOS App
@@ -211,18 +217,19 @@ jobs:
 
             | Platform | File | How to Install |
             |----------|------|----------------|
-            | 🤖 **Android** | `ebficBM-*.apk` | Download → Enable "Unknown Sources" → Tap to install |
-            | 🪟 **Windows** | `ebficBM.msix` | Download → Double-click → Install |
-            | 🍎 **macOS** | `ebficBM-*-macos.zip` | Download → Extract → Drag to Applications |
+            | 🤖 **Android** | `ebficBM-*.apk` | Download → Open/Tap to install |
+            | 🪟 **Windows** | `ebficBM-*-portable.zip` | **(Recommended)** Unzip -> Run `ebficBM.exe` |
+            | 🪟 **Windows (MSIX)** | `ebficBM.msix` | Install via App Installer (MSIX) |
+            | 🍎 **macOS** | `ebficBM-*-macos.zip` | Extract → Drag to Applications |
 
             ---
 
             ### ✅ Changelog
-            - Fixed `class UpdateService` missing declaration
-            - Removed `printing` package (fixes Windows CMake pdfium crash)
-            - PDF export now uses system viewer (path_provider + open_filex)
-            - Secure private repo update fetching with GitHub PAT
-            - Auto CI/CD — push to main = auto release
+            - Added **Portable Windows (ZIP)** version (No installation/certificate needed)
+            - Improved **Real-time Download Progress** UI
+            - Robust update downloader (Fixes connection interruptions)
+            - **Automatic System Transition**: App closes itself after starting update for a clean installation.
+            - Security: Private repository update fetching with restricted PAT.
 
             ---
             *Commit: `${{ github.sha }}` | Run: #${{ github.run_number }}*
