@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:ebficBM/core/services/update_service.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:iconsax_plus/iconsax_plus.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 
 class UpdateScreen extends StatefulWidget {
   const UpdateScreen({super.key});
@@ -44,7 +46,7 @@ class _UpdateScreenState extends State<UpdateScreen> {
       if (mounted) {
         setState(() {
           _isLoading = false;
-          _errorMessage = 'Could not connect. Check your internet.';
+          _errorMessage = 'Connection Error: Check your internet and retry.';
         });
       }
     }
@@ -52,312 +54,403 @@ class _UpdateScreenState extends State<UpdateScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final primaryColor = Colors.blueAccent;
+
     return Scaffold(
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
-        title: const Text('Software Update'),
+        title: Text('System Update', style: GoogleFonts.outfit(fontWeight: FontWeight.w600)),
         centerTitle: true,
         elevation: 0,
         backgroundColor: Colors.transparent,
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : RefreshIndicator(
-              onRefresh: _initialFetch,
-              child: ListView(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                physics: const AlwaysScrollableScrollPhysics(),
-                children: [
-                  const SizedBox(height: 16),
-
-                  // Version header
-                  Center(
-                    child: Column(
-                      children: [
-                        const Icon(Icons.system_update_rounded,
-                            size: 80, color: Colors.blueAccent),
-                        const SizedBox(height: 12),
-                        Text(
-                          _currentVersion.isNotEmpty
-                              ? 'v$_currentVersion'
-                              : 'ebficBM',
-                          style: GoogleFonts.outfit(
-                              fontSize: 22, fontWeight: FontWeight.bold),
-                        ),
-                        const Text('Current Installed Version',
-                            style: TextStyle(color: Colors.grey)),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 32),
-
-                  // Error banner
-                  if (_errorMessage != null)
-                    Container(
-                      margin: const EdgeInsets.only(bottom: 20),
-                      padding: const EdgeInsets.all(14),
-                      decoration: BoxDecoration(
-                        color: Colors.orange.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(12),
-                        border:
-                            Border.all(color: Colors.orange.withOpacity(0.4)),
-                      ),
-                      child: Row(
-                        children: [
-                          const Icon(Icons.wifi_off, color: Colors.orange),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Text(_errorMessage!,
-                                style:
-                                    const TextStyle(color: Colors.orange)),
-                          ),
-                        ],
-                      ),
-                    ),
-
-                  // Update available banner
-                  if (_onlineInfo != null &&
-                      _onlineInfo!['version'] != null &&
-                      _currentVersion.isNotEmpty &&
-                      _onlineInfo!['version'] != _currentVersion)
-                    Container(
-                      padding: const EdgeInsets.all(14),
-                      margin: const EdgeInsets.only(bottom: 20),
-                      decoration: BoxDecoration(
-                        color: Colors.green.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(12),
-                        border:
-                            Border.all(color: Colors.green.withOpacity(0.3)),
-                      ),
-                      child: Row(
-                        children: [
-                          const Icon(Icons.new_releases, color: Colors.green),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'v${_onlineInfo!['version']} is available!',
-                                  style: const TextStyle(
-                                      color: Colors.green,
-                                      fontWeight: FontWeight.bold),
-                                ),
-                                if ((_onlineInfo!['sizeMb'] ?? '0.0') != '0.0')
-                                  Text(
-                                    'Size: ${_onlineInfo!['sizeMb']} MB',
-                                    style: const TextStyle(
-                                        color: Colors.green, fontSize: 12),
-                                  ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-
-                  // Check for update section
-                  _buildSection(
-                    title: 'Check for Updates',
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Keep your app up to date for the latest features and security patches.',
-                          style: TextStyle(color: Colors.grey, fontSize: 13),
-                        ),
-                        const SizedBox(height: 20),
-                        SizedBox(
-                          width: double.infinity,
-                          height: 50,
-                          child: ElevatedButton.icon(
-                            onPressed: _isChecking
-                                ? null
-                                : () async {
-                                    if (!mounted) return;
-                                    setState(() => _isChecking = true);
-                                    try {
-                                      await UpdateService().checkForUpdate(
-                                          context,
-                                          showNoUpdate: true);
-                                      await _initialFetch();
-                                    } catch (_) {}
-                                    if (mounted) {
-                                      setState(() => _isChecking = false);
-                                    }
-                                  },
-                            icon: _isChecking
-                                ? const SizedBox(
-                                    width: 18,
-                                    height: 18,
-                                    child: CircularProgressIndicator(
-                                        strokeWidth: 2, color: Colors.white))
-                                : const Icon(Icons.sync_rounded),
-                            label:
-                                Text(_isChecking ? 'Checking...' : 'Check Now'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.blueAccent,
-                              foregroundColor: Colors.white,
-                              shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12)),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  const SizedBox(height: 24),
-
-                  // Update Activity
-                  _buildSection(
-                    title: 'Update Activity',
-                    child: _buildActivityList(),
-                  ),
-
-                  const SizedBox(height: 48),
-
-                  // Footer
-                  Center(
-                    child: Column(
-                      children: [
-                        Text(
-                          'ebfic Business Manager',
-                          style: GoogleFonts.outfit(
-                            fontSize: 14,
-                            color: Colors.grey.withOpacity(0.8),
-                            letterSpacing: 1.2,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          'by Atik Islam  \u2022  ebfic Group Limited',
-                          style: GoogleFonts.outfit(
-                            fontSize: 11,
-                            color: Colors.grey.withOpacity(0.5),
-                            letterSpacing: 0.8,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 32),
-                ],
+      body: Stack(
+        children: [
+          // Background Gradient
+          Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: isDark 
+                  ? [const Color(0xFF0F172A), const Color(0xFF1E293B)]
+                  : [const Color(0xFFF8FAFC), const Color(0xFFF1F5F9)],
               ),
             ),
+          ),
+          
+          _isLoading
+              ? const Center(child: CircularProgressIndicator())
+              : RefreshIndicator(
+                  onRefresh: _initialFetch,
+                  displacement: 100,
+                  color: primaryColor,
+                  child: CustomScrollView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    slivers: [
+                      SliverToBoxAdapter(child: SizedBox(height: MediaQuery.of(context).padding.top + 60)),
+                      
+                      // Hero Header Section
+                      SliverToBoxAdapter(
+                        child: _buildHeroHeader(primaryColor, isDark),
+                      ),
+
+                      // Real-time Progress Section (Sticky if updating)
+                      SliverToBoxAdapter(
+                        child: ValueListenableBuilder<bool>(
+                          valueListenable: isUpdatingNotifier,
+                          builder: (context, isUpdating, _) {
+                            if (!isUpdating) return const SizedBox.shrink();
+                            return _buildLiveUpdateProgress(primaryColor, isDark).animate().fadeIn().slideY(begin: 0.1);
+                          },
+                        ),
+                      ),
+
+                      // Update Status Banner
+                      SliverToBoxAdapter(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                          child: _buildStatusBanner(primaryColor, isDark),
+                        ),
+                      ),
+
+                      // Actions Section
+                      SliverToBoxAdapter(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 20),
+                          child: _buildActionCard(primaryColor, isDark),
+                        ),
+                      ),
+
+                      // Changelog/Activity Section
+                      SliverPadding(
+                        padding: const EdgeInsets.fromLTRB(20, 24, 20, 40),
+                        sliver: SliverToBoxAdapter(
+                          child: _buildActivitySection(primaryColor, isDark),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+        ],
+      ),
     );
   }
 
-  Widget _buildActivityList() {
-    try {
-      final releases = _onlineInfo?['all_releases'] as List?;
-
-      if (releases == null || releases.isEmpty) {
-        return const Padding(
-          padding: EdgeInsets.symmetric(vertical: 8),
-          child: Text(
-            'No release activity found.\nPull down to refresh.',
-            style: TextStyle(color: Colors.grey, fontSize: 13),
-          ),
-        );
-      }
-
-      return Column(
-        children: releases.take(10).map((release) {
-          final vName = (release['tag_name'] ?? '').toString();
-          final rawBody = (release['body'] ?? '').toString();
-          // Clean markdown special characters that cause Android rendering issues
-          final body = rawBody
-              .replaceAll('\r\n', ' ')
-              .replaceAll('\n', ' ')
-              .replaceAll('**', '')
-              .replaceAll('##', '')
-              .replaceAll('`', '')
-              .replaceAll('|', '')
-              .trim();
-
-          return Column(
-            children: [
-              _buildUpdateItem(
-                vName.isEmpty ? 'Release' : vName,
-                body.isEmpty ? 'General improvements and bug fixes.' : body,
-              ),
-              const Divider(height: 24),
+  Widget _buildHeroHeader(Color primary, bool isDark) {
+    return Column(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(30),
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: primary.withOpacity(0.1),
+            boxShadow: [
+              BoxShadow(
+                color: primary.withOpacity(0.1),
+                blurRadius: 40,
+                spreadRadius: 5,
+              )
             ],
-          );
-        }).toList(),
-      );
-    } catch (e) {
-      return const Text(
-        'Could not load activity.',
-        style: TextStyle(color: Colors.grey),
-      );
-    }
+          ),
+          child: Icon(IconsaxPlusLinear.refresh_circle, size: 80, color: primary),
+        ).animate(onPlay: (c) => c.repeat(reverse: true)).shimmer(duration: 2000.ms),
+        const SizedBox(height: 16),
+        Text(
+          'v$_currentVersion',
+          style: GoogleFonts.outfit(
+            fontSize: 28,
+            fontWeight: FontWeight.bold,
+            color: isDark ? Colors.white : Colors.black87,
+          ),
+        ),
+        Text(
+          'Current System Version',
+          style: GoogleFonts.outfit(
+            color: Colors.grey,
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        const SizedBox(height: 30),
+      ],
+    );
   }
 
-  Widget _buildSection({required String title, required Widget child}) {
+  Widget _buildLiveUpdateProgress(Color primary, bool isDark) {
     return Container(
-      width: double.infinity,
+      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Theme.of(context).cardColor,
-        borderRadius: BorderRadius.circular(18),
+        color: isDark ? const Color(0xFF1E293B) : Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: primary.withOpacity(0.3)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 12,
-            offset: const Offset(0, 6),
-          ),
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          )
         ],
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title,
-              style: GoogleFonts.outfit(
-                  fontSize: 17, fontWeight: FontWeight.w700)),
-          const SizedBox(height: 16),
-          child,
+          Row(
+            children: [
+              const Icon(IconsaxPlusLinear.cloud_download, color: Colors.blueAccent),
+              const SizedBox(width: 12),
+              Expanded(
+                child: ValueListenableBuilder<String>(
+                  valueListenable: updateStatusNotifier,
+                  builder: (context, status, _) {
+                    return Text(
+                      status,
+                      style: GoogleFonts.outfit(fontWeight: FontWeight.w600, fontSize: 14),
+                    );
+                  },
+                ),
+              ),
+              ValueListenableBuilder<double>(
+                valueListenable: updateProgressNotifier,
+                builder: (context, progress, _) {
+                  return Text(
+                    '${(progress * 100).toStringAsFixed(0)}%',
+                    style: GoogleFonts.outfit(fontWeight: FontWeight.w800, color: primary),
+                  );
+                },
+              ),
+            ],
+          ),
+          const SizedBox(height: 15),
+          ValueListenableBuilder<double>(
+            valueListenable: updateProgressNotifier,
+            builder: (context, progress, _) {
+              return ClipRRect(
+                borderRadius: BorderRadius.circular(10),
+                child: LinearProgressIndicator(
+                  value: progress,
+                  minHeight: 8,
+                  backgroundColor: primary.withOpacity(0.1),
+                  valueColor: AlwaysStoppedAnimation<Color>(primary),
+                ),
+              );
+            },
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildUpdateItem(String title, String description) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
+  Widget _buildStatusBanner(Color primary, bool isDark) {
+    if (_errorMessage != null) {
+      return _banner(
+        label: _errorMessage!,
+        icon: IconsaxPlusLinear.info_circle,
+        color: Colors.redAccent,
+        isDark: isDark,
+      );
+    }
+
+    final isUpdateAvailable = _onlineInfo != null &&
+        _onlineInfo!['version'] != null &&
+        _currentVersion.isNotEmpty &&
+        _onlineInfo!['version'] != _currentVersion;
+
+    if (isUpdateAvailable) {
+      return _banner(
+        label: 'Version v${_onlineInfo!['version']} is available for download',
+        detail: 'Package size: ${_onlineInfo!['sizeMb']} MB',
+        icon: IconsaxPlusLinear.info_circle,
+        color: Colors.greenAccent,
+        isDark: isDark,
+      );
+    }
+
+    return _banner(
+      label: 'Your system is up to date',
+      detail: 'Last checked: just now',
+      icon: IconsaxPlusLinear.tick_circle,
+      color: primary,
+      isDark: isDark,
+    );
+  }
+
+  Widget _banner({required String label, String? detail, required IconData icon, required Color color, required bool isDark}) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: color.withOpacity(0.2)),
+      ),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            padding: const EdgeInsets.all(6),
-            decoration: BoxDecoration(
-                color: Colors.blueAccent.withOpacity(0.1),
-                shape: BoxShape.circle),
-            child: const Icon(Icons.check, size: 12, color: Colors.blueAccent),
-          ),
-          const SizedBox(width: 12),
+          Icon(icon, color: color),
+          const SizedBox(width: 14),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title,
-                    style: const TextStyle(
-                        fontWeight: FontWeight.bold, fontSize: 14)),
-                const SizedBox(height: 3),
-                Text(
-                  description,
-                  style: const TextStyle(
-                      fontSize: 12, color: Colors.grey, height: 1.4),
-                  maxLines: 4,
-                  overflow: TextOverflow.ellipsis,
-                ),
+                Text(label, style: GoogleFonts.outfit(fontWeight: FontWeight.w600, color: isDark ? Colors.white : Colors.black87, fontSize: 13)),
+                if (detail != null)
+                  Text(detail, style: GoogleFonts.outfit(color: isDark ? Colors.white70 : Colors.black54, fontSize: 11)),
               ],
             ),
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildActionCard(Color primary, bool isDark) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1E293B) : Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
+          )
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('System Controls', style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 4),
+          Text('Check manually or start installation if available.', style: GoogleFonts.outfit(color: Colors.grey, fontSize: 13)),
+          const SizedBox(height: 20),
+          SizedBox(
+            width: double.infinity,
+            height: 54,
+            child: ElevatedButton.icon(
+              onPressed: _isChecking
+                  ? null
+                  : () async {
+                      if (!mounted) return;
+                      setState(() => _isChecking = true);
+                      try {
+                        await UpdateService().checkForUpdate(context, showNoUpdate: true);
+                        await _initialFetch();
+                      } catch (_) {}
+                      if (mounted) {
+                        setState(() => _isChecking = false);
+                      }
+                    },
+              icon: _isChecking
+                  ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                  : const Icon(IconsaxPlusLinear.refresh),
+              label: Text(_isChecking ? 'Verifying...' : 'Check System Updates'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: primary,
+                foregroundColor: Colors.white,
+                elevation: 0,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildActivitySection(Color primary, bool isDark) {
+    final releases = _onlineInfo?['all_releases'] as List?;
+    
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text('Update History', style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.bold)),
+            const Icon(IconsaxPlusLinear.status, size: 18, color: Colors.grey),
+          ],
+        ),
+        const SizedBox(height: 16),
+        if (releases == null || releases.isEmpty)
+          const Center(child: Text('No activity data.', style: TextStyle(color: Colors.grey)))
+        else
+          ListView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            padding: EdgeInsets.zero,
+            itemCount: releases.length.clamp(0, 8),
+            itemBuilder: (context, index) {
+              final release = releases[index];
+              final tag = (release['tag_name'] ?? '').toString();
+              final isCurrent = tag == 'v$_currentVersion' || tag == _currentVersion;
+              
+              String notes = (release['body'] ?? '').toString();
+              // Format notes for preview
+              notes = notes
+                  .replaceAll('**', '')
+                  .replaceAll('##', '')
+                  .replaceAll('`', '')
+                  .replaceAll('|', '')
+                  .replaceAll('\n', ' ')
+                  .trim();
+
+              return Container(
+                margin: const EdgeInsets.only(bottom: 12),
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: isDark ? const Color(0xFF1E293B).withOpacity(0.5) : Colors.white,
+                  borderRadius: BorderRadius.circular(18),
+                  border: isCurrent ? Border.all(color: primary.withOpacity(0.5), width: 1) : null,
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: isCurrent ? primary.withOpacity(0.1) : Colors.grey.withOpacity(0.1),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        isCurrent ? IconsaxPlusBold.tick_circle : IconsaxPlusLinear.clock, 
+                        size: 16, 
+                        color: isCurrent ? primary : Colors.grey
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(tag, style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 15)),
+                              if (isCurrent)
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                  decoration: BoxDecoration(color: primary, borderRadius: BorderRadius.circular(6)),
+                                  child: Text('Active', style: GoogleFonts.outfit(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+                                ),
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            notes.isEmpty ? 'Performance improvements and security patches.' : notes,
+                            style: GoogleFonts.outfit(fontSize: 12, color: Colors.grey, height: 1.4),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ).animate().fadeIn(delay: (index * 100).ms).slideX(begin: 0.05);
+            },
+          ),
+      ],
     );
   }
 }
