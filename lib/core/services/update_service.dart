@@ -342,12 +342,14 @@ class _UpdateDialogState extends State<_UpdateDialog>
           setState(() {
             _isDone = true;
             _isDownloading = false;
-            _statusText = 'Install launched! Closing...';
+            _statusText = 'Relaunching System...';
           });
-          updateStatusNotifier.value = 'Install launched!';
+          updateStatusNotifier.value = 'Relaunching System...';
           isUpdatingNotifier.value = false;
+          
+          // Give user a moment to see the success, then exit to let the installer finish
           await Future.delayed(const Duration(seconds: 2));
-          if (mounted) Navigator.pop(context);
+          exit(0); 
         }
       } else {
         _setError('Install failed: ${result.message}\nPath: $savePath');
