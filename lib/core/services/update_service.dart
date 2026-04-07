@@ -280,7 +280,12 @@ class _UpdateDialogState extends State<_UpdateDialog>
       final dir = await getTemporaryDirectory();
       final savePath = '${dir.path}/$fileName';
 
-      final dio = Dio();
+      // Use a more robust Dio configuration
+      final dio = Dio(BaseOptions(
+        connectTimeout: const Duration(seconds: 30),
+        receiveTimeout: const Duration(minutes: 10),
+      ));
+      
       final headers = widget.privateToken.isNotEmpty
           ? {
               'Authorization': 'Bearer ${widget.privateToken}',
@@ -288,31 +293,48 @@ class _UpdateDialogState extends State<_UpdateDialog>
             }
           : <String, String>{};
 
-      await dio.download(
-        downloadUrl,
-        savePath,
-        options: Options(headers: headers),
-        onReceiveProgress: (received, total) {
-          if (total > 0 && mounted) {
-            final pct = received / total;
-            final rec = (received / (1024 * 1024)).toStringAsFixed(1);
-            final tot = (total / (1024 * 1024)).toStringAsFixed(1);
-            setState(() {
-              _progress = pct;
-              _receivedMb = rec;
-              _totalMb = tot;
-              _statusText =
-                  'Downloading... $rec MB / $tot MB (${(pct * 100).toStringAsFixed(0)}%)';
-            });
-            updateProgressNotifier.value = pct;
-            updateStatusNotifier.value =
-                'Downloading $rec MB / $tot MB (${(pct * 100).toStringAsFixed(0)}%)';
-          }
-        },
-      );
+      // Internal helper for retry logic
+      Future<void> performDownload() async {
+        await dio.download(
+          downloadUrl!,
+          savePath,
+          deleteOnError: true,
+          options: Options(
+            headers: headers,
+            followRedirects: true,
+            validateStatus: (status) => status != null && status < 500,
+          ),
+          onReceiveProgress: (received, total) {
+            if (total > 0 && mounted) {
+              final pct = received / total;
+              final rec = (received / (1024 * 1024)).toStringAsFixed(1);
+              final tot = (total / (1024 * 1024)).toStringAsFixed(1);
+              setState(() {
+                _progress = pct;
+                _receivedMb = rec;
+                _totalMb = tot;
+                _statusText =
+                    'Downloading... $rec MB / $tot MB (${(pct * 100).toStringAsFixed(0)}%)';
+              });
+              updateProgressNotifier.value = pct;
+              updateStatusNotifier.value =
+                  'Downloading $rec MB / $tot MB (${(pct * 100).toStringAsFixed(0)}%)';
+            }
+          },
+        );
+      }
+
+      // Execute with a single automatic retry on connection reset
+      try {
+        await performDownload();
+      } catch (e) {
+        debugPrint('First download attempt failed, retrying once... $e');
+        await Future.delayed(const Duration(seconds: 2));
+        await performDownload();
+      }
 
       _updateStatus('Download complete! Installing...', 1.0);
-      await Future.delayed(const Duration(milliseconds: 400));
+      await Future.delayed(const Duration(milliseconds: 600));
 
       final result = await OpenFilex.open(savePath);
       if (result.type == ResultType.done) {
@@ -328,10 +350,15 @@ class _UpdateDialogState extends State<_UpdateDialog>
           if (mounted) Navigator.pop(context);
         }
       } else {
-        _setError('Install failed: ${result.message}');
+        _setError('Install failed: ${result.message}\nPath: $savePath');
       }
     } catch (e) {
-      _setError('Download failed: ${e.toString().substring(0, e.toString().length.clamp(0, 80))}');
+      String errStr = e.toString();
+      if (errStr.contains('Connection closed')) {
+        _setError('Connection was interrupted. Please check your internet and click Retry.');
+      } else {
+        _setError('Download failed: $errStr');
+      }
     }
   }
 
