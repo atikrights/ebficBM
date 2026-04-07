@@ -1,0 +1,106 @@
+name: ebficBM CI/CD Auto-Builder
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-windows-android:
+    name: Build Windows (MSIX) & Android (APK)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Java
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+          
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          
+      - name: Install dependencies
+        run: flutter pub get
+        
+      - name: Build Android APK
+        run: flutter build apk --release
+        
+      - name: Build Windows Executable
+        run: flutter build windows --release
+        
+      - name: Build MSIX Package
+        run: flutter pub run msix:create
+        
+      - name: Upload Windows MSIX Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-msix
+          path: build\windows\x64\runner\Release\ebficBM.msix
+          
+      - name: Upload Android APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-apk
+          path: build\app\outputs\flutter-apk\app-release.apk
+
+  build-macos:
+    name: Build MacOS
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          
+      - name: Install dependencies
+        run: flutter pub get
+        
+      - name: Build MacOS App
+        run: flutter build macos --release
+        
+      # Compress the Mac app into a zip (simulating a dmg or distributable)
+      - name: Compress App
+        run: ditto -c -k --sequesterRsrc --keepParent build/macos/Build/Products/Release/ebficBM.app ebficBM-macos.zip
+        
+      - name: Upload MacOS Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-zip
+          path: ebficBM-macos.zip
+
+  create-release:
+    name: Create GitHub Release
+    needs: [build-windows-android, build-macos]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: output-artifacts/
+
+      - name: Display structure of downloaded files
+        run: ls -R output-artifacts/
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            output-artifacts/windows-msix/ebficBM.msix
+            output-artifacts/android-apk/app-release.apk
+            output-artifacts/macos-zip/ebficBM-macos.zip
+          name: "Latest Auto Build"
+          body: "Automated Production Release for Windows, Android, and MacOS."
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

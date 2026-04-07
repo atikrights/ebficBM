@@ -8,13 +8,18 @@ import 'package:dio/dio.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:open_filex/open_filex.dart';
 
-class UpdateService {
   static const String _updateUrl = 'https://api.github.com/repos/atikrights/ebficBM/releases';
+  // TODO(Developer): To fetch updates from your PRIVATE repo, put your Fine-Grained GitHub Token (Read-Only) here.
+  static const String _privateRepoToken = '';
 
   Future<List<Map<String, dynamic>>?> getReleases() async {
     try {
       final String noCacheUrl = '$_updateUrl?t=${DateTime.now().millisecondsSinceEpoch}';
-      final response = await http.get(Uri.parse(noCacheUrl)).timeout(const Duration(seconds: 15));
+      final headers = _privateRepoToken.isNotEmpty 
+          ? {'Authorization': 'Bearer $_privateRepoToken', 'Accept': 'application/vnd.github.v3+json'} 
+          : {'Accept': 'application/vnd.github.v3+json'};
+          
+      final response = await http.get(Uri.parse(noCacheUrl), headers: headers).timeout(const Duration(seconds: 15));
       if (response.statusCode == 200) {
         List<dynamic> data = json.decode(response.body);
         return data.map((e) => e as Map<String, dynamic>).toList();
@@ -166,19 +171,19 @@ class UpdateService {
                   if (Platform.isAndroid) {
                     final apkAsset = assets.firstWhere((a) => a['name'].toString().endsWith('.apk'), orElse: () => null);
                     if (apkAsset != null) {
-                      downloadUrl = apkAsset['browser_download_url'];
+                      downloadUrl = _privateRepoToken.isNotEmpty ? apkAsset['url'] : apkAsset['browser_download_url'];
                       fileName = apkAsset['name'];
                     }
                   } else if (Platform.isWindows) {
                     final installAsset = assets.firstWhere((a) => a['name'].toString().endsWith('.msix') || a['name'].toString().endsWith('.exe') || a['name'].toString().endsWith('.zip'), orElse: () => null);
                     if (installAsset != null) {
-                      downloadUrl = installAsset['browser_download_url'];
+                      downloadUrl = _privateRepoToken.isNotEmpty ? installAsset['url'] : installAsset['browser_download_url'];
                       fileName = installAsset['name'];
                     }
                   } else if (Platform.isMacOS) {
                     final macAsset = assets.firstWhere((a) => a['name'].toString().endsWith('.dmg') || a['name'].toString().endsWith('.pkg'), orElse: () => null);
                     if (macAsset != null) {
-                      downloadUrl = macAsset['browser_download_url'];
+                      downloadUrl = _privateRepoToken.isNotEmpty ? macAsset['url'] : macAsset['browser_download_url'];
                       fileName = macAsset['name'];
                     }
                   } else if (Platform.isIOS) {
@@ -202,9 +207,14 @@ class UpdateService {
                     final savePath = '${dir.path}/$fileName';
                     
                     final dio = Dio();
+                    final headers = _privateRepoToken.isNotEmpty 
+                        ? {'Authorization': 'Bearer $_privateRepoToken', 'Accept': 'application/octet-stream'}
+                        : <String, String>{};
+
                     await dio.download(
                       downloadUrl,
                       savePath,
+                      options: Options(headers: headers),
                       onReceiveProgress: (received, total) {
                         if (total != -1) {
                           if (context.mounted) {
