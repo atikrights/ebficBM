@@ -9,6 +9,12 @@ import 'package:ebficBM/features/companies/providers/company_provider.dart';
 import 'package:ebficBM/features/projects/providers/project_provider.dart';
 import 'package:ebficBM/features/tasks/providers/task_provider.dart';
 import 'package:ebficBM/core/services/refresh_service.dart';
+import 'package:ebficBM/core/services/storage_service.dart';
+import 'package:ebficBM/features/onboarding/screens/onboarding_screen.dart';
+
+import 'package:ebficBM/widgets/custom_title_bar.dart';
+
+import 'package:flutter/foundation.dart';
 
 class BizOSApp extends StatelessWidget {
   const BizOSApp({super.key});
@@ -22,14 +28,42 @@ class BizOSApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => ProjectProvider()),
         ChangeNotifierProvider(create: (_) => TaskProvider()),
       ],
-      child: Consumer<ThemeProvider>(
-        builder: (context, themeProvider, child) {
+      child: Consumer2<ThemeProvider, StorageService>(
+        builder: (context, themeProvider, storageService, child) {
+          final bool isDark = themeProvider.themeMode == ThemeMode.dark;
+          
+          // Cross-platform safe desktop check
+          final bool isDesktop = !kIsWeb && (
+            defaultTargetPlatform == TargetPlatform.windows || 
+            defaultTargetPlatform == TargetPlatform.linux || 
+            defaultTargetPlatform == TargetPlatform.macOS
+          );
+
+          
           return MaterialApp(
             title: 'ebficBM',
             debugShowCheckedModeBanner: false,
-            // REMOVED: ResponsiveBreakpoints.builder constraint
             builder: (context, child) => ResponsiveBreakpoints.builder(
-              child: child!,
+              child: isDesktop 
+                ? Material(
+                    child: Stack(
+                      children: [
+                        // Main App Content (Below)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 33),
+                          child: ClipRect(child: child!),
+                        ),
+                        // Fixed Title Bar (Always on Top)
+                        Positioned(
+                          top: 0,
+                          left: 0,
+                          right: 0,
+                          child: CustomTitleBar(isDark: isDark),
+                        ),
+                      ],
+                    ),
+                  )
+                : child!,
               breakpoints: [
                 const Breakpoint(start: 0, end: 450, name: MOBILE),
                 const Breakpoint(start: 451, end: 800, name: TABLET),
@@ -38,6 +72,7 @@ class BizOSApp extends StatelessWidget {
               ],
             ),
             themeMode: themeProvider.themeMode,
+            // ... themes stay same ...
             theme: ThemeData(
               useMaterial3: true,
               brightness: Brightness.light,
@@ -47,6 +82,15 @@ class BizOSApp extends StatelessWidget {
               colorScheme: ColorScheme.fromSeed(
                 seedColor: AppColors.primary,
                 brightness: Brightness.light,
+              ),
+              scrollbarTheme: ScrollbarThemeData(
+                thumbColor: WidgetStateProperty.all(AppColors.primary.withOpacity(0.2)),
+                trackColor: WidgetStateProperty.all(Colors.transparent),
+                thickness: WidgetStateProperty.all(4.0),
+                radius: const Radius.circular(10),
+                interactive: true,
+                mainAxisMargin: 2,
+                crossAxisMargin: 2,
               ),
             ),
             darkTheme: ThemeData(
@@ -59,8 +103,19 @@ class BizOSApp extends StatelessWidget {
                 seedColor: AppColors.primary,
                 brightness: Brightness.dark,
               ),
+              scrollbarTheme: ScrollbarThemeData(
+                thumbColor: WidgetStateProperty.all(AppColors.primary.withOpacity(0.3)),
+                trackColor: WidgetStateProperty.all(Colors.transparent),
+                thickness: WidgetStateProperty.all(4.0),
+                radius: const Radius.circular(10),
+                interactive: true,
+                mainAxisMargin: 2,
+                crossAxisMargin: 2,
+              ),
             ),
-            home: const GlobalRefreshWrapper(child: HomeScreen()),
+            home: storageService.isSetupComplete 
+                ? const GlobalRefreshWrapper(child: HomeScreen())
+                : const OnboardingScreen(),
           );
         },
       ),
