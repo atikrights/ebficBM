@@ -1,5 +1,4 @@
 {
-  "version": "1.0.14",
-  "url": "https://github.com/atikrights/ebficBM/releases/latest",
-  "notes": "fix: fix syntax error in ResponsiveLayout bottomNavigationBar"
+  "version": "1.0.15",
+  "build_number": 10
 }
