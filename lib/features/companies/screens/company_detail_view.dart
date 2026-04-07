@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 import 'package:ebficBM/core/theme/colors.dart';
@@ -80,7 +81,39 @@ class CompanyDetailView extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 8),
-                Text(company.categories.isNotEmpty ? company.categories.first.toUpperCase() : "UNCATEGORIZED", style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold, letterSpacing: 1.2)),
+                Row(
+                  children: [
+                    Flexible(
+                      child: Text(company.categories.isNotEmpty ? company.categories.first.toUpperCase() : "UNCATEGORIZED", 
+                        style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold, letterSpacing: 1.2),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Tooltip(
+                      message: 'Copy CID',
+                      child: InkWell(
+                        onTap: () {
+                          Clipboard.setData(ClipboardData(text: company.id));
+                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('CID Copied!'), behavior: SnackBarBehavior.floating));
+                        },
+                        borderRadius: BorderRadius.circular(6),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(color: isDark ? Colors.white10 : Colors.black12, borderRadius: BorderRadius.circular(6)),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(IconsaxPlusLinear.copy, size: 12, color: Colors.grey),
+                              const SizedBox(width: 4),
+                              Text(company.id, style: const TextStyle(color: Colors.grey, fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 1)),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
                 const SizedBox(height: 12),
                 Row(
                   children: [

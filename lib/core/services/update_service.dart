@@ -170,11 +170,20 @@ class UpdateService {
                       fileName = apkAsset['name'];
                     }
                   } else if (Platform.isWindows) {
-                    final zipAsset = assets.firstWhere((a) => a['name'].toString().endsWith('.zip') || a['name'].toString().endsWith('.exe'), orElse: () => null);
-                    if (zipAsset != null) {
-                      downloadUrl = zipAsset['browser_download_url'];
-                      fileName = zipAsset['name'];
+                    final installAsset = assets.firstWhere((a) => a['name'].toString().endsWith('.msix') || a['name'].toString().endsWith('.exe') || a['name'].toString().endsWith('.zip'), orElse: () => null);
+                    if (installAsset != null) {
+                      downloadUrl = installAsset['browser_download_url'];
+                      fileName = installAsset['name'];
                     }
+                  } else if (Platform.isMacOS) {
+                    final macAsset = assets.firstWhere((a) => a['name'].toString().endsWith('.dmg') || a['name'].toString().endsWith('.pkg'), orElse: () => null);
+                    if (macAsset != null) {
+                      downloadUrl = macAsset['browser_download_url'];
+                      fileName = macAsset['name'];
+                    }
+                  } else if (Platform.isIOS) {
+                    // Apple strictly forbids in-app sideloading. Fallback to browser/AppStore immediately.
+                    downloadUrl = null;
                   }
 
                   if (downloadUrl == null) {

@@ -1,4 +1,6 @@
 import 'dart:ui';
+import 'dart:math';
+import 'package:flutter/services.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:responsive_framework/responsive_framework.dart';
@@ -554,7 +556,7 @@ class CompanyListScreen extends StatelessWidget {
                              if (nameController.text.trim().isEmpty) return;
                              
                              final newCompany = Company(
-                               id: 'comp_${DateTime.now().millisecondsSinceEpoch}',
+                               id: 'CID-${100000 + Random().nextInt(900000)}',
                                name: nameController.text.trim(),
                                website: websiteController.text.trim(),
                                categories: [selectedCategory!],
@@ -648,6 +650,30 @@ class _PremiumCompanyCard extends StatelessWidget {
                   ],
                 ),
                 child: const Icon(IconsaxPlusLinear.building_3, color: Colors.white),
+              ),
+              const SizedBox(width: 12),
+              Tooltip(
+                message: 'Copy CID',
+                child: InkWell(
+                  onTap: () {
+                    Clipboard.setData(ClipboardData(text: company.id));
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('CID Copied to Clipboard!'), behavior: SnackBarBehavior.floating));
+                  },
+                  borderRadius: BorderRadius.circular(8),
+                  child: Container(
+                    margin: const EdgeInsets.only(top: 8),
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(color: AppColors.primary.withOpacity(0.1), borderRadius: BorderRadius.circular(8), border: Border.all(color: AppColors.primary.withOpacity(0.3))),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(IconsaxPlusLinear.copy, size: 10, color: AppColors.primary),
+                        const SizedBox(width: 4),
+                        Text(company.id, style: const TextStyle(color: AppColors.primary, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1)),
+                      ],
+                    ),
+                  ),
+                ),
               ),
               const Spacer(),
               _buildStatusBadge(),

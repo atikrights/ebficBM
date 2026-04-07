@@ -24,11 +24,11 @@ class ResponsiveLayout extends StatelessWidget {
   Widget build(BuildContext context) {
     final isMobile = ResponsiveBreakpoints.of(context).isMobile;
     final isTablet = ResponsiveBreakpoints.of(context).isTablet;
-    final isDesktop = ResponsiveBreakpoints.of(context).isDesktop;
+    final isDesktop = ResponsiveBreakpoints.of(context).largerThan(TABLET);
     
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      drawer: (isMobile || isTablet)
+      drawer: (!isDesktop)
           ? Drawer(
               width: 280,
               backgroundColor: Theme.of(context).cardColor,
@@ -52,7 +52,7 @@ class ResponsiveLayout extends StatelessWidget {
               _Sidebar(
                 selectedIndex: selectedIndex,
                 onNavigationChanged: onNavigationChanged,
-                isCollapsed: isTablet,
+                isCollapsed: ResponsiveBreakpoints.of(context).isTablet,
               ),
             
             Expanded(
@@ -61,7 +61,7 @@ class ResponsiveLayout extends StatelessWidget {
                 children: [
                   _AppBar(
                     title: title,
-                    showMenu: isMobile || isTablet,
+                    showMenu: !isDesktop,
                   ),
                   Expanded(child: body),
                 ],
@@ -324,10 +324,13 @@ class _AppBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final double screenWidth = MediaQuery.of(context).size.width;
+    final bool isNarrow = screenWidth < 400;
+
     return SizedBox(
       width: double.infinity,
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(24, 16, 16, 16),
+        padding: EdgeInsets.fromLTRB(isNarrow ? 12 : 24, 16, 12, 16),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
@@ -338,14 +341,16 @@ class _AppBar extends StatelessWidget {
                     IconButton(
                       onPressed: () => Scaffold.of(context).openDrawer(),
                       icon: const Icon(IconsaxPlusLinear.menu_1),
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
                     ),
-                    const SizedBox(width: 4),
+                    const SizedBox(width: 8),
                   ],
                   Expanded(
                     child: Text(
                       title,
                       style: TextStyle(
-                        fontSize: 22, 
+                        fontSize: isNarrow ? 18 : 22, 
                         fontWeight: FontWeight.bold,
                         color: isDark ? Colors.white : AppColors.textDark,
                       ),
@@ -363,20 +368,32 @@ class _AppBar extends StatelessWidget {
                   icon: Provider.of<ThemeProvider>(context).isDarkMode ? IconsaxPlusLinear.sun_1 : IconsaxPlusLinear.moon,
                   onTap: () => Provider.of<ThemeProvider>(context, listen: false).toggleTheme(),
                   isDark: isDark,
+                  size: isNarrow ? 18 : 20,
                 ),
-                const SizedBox(width: 8),
-                _AppBarIcon(icon: IconsaxPlusLinear.search_normal, onTap: () {}, isDark: isDark),
-                _AppBarIcon(icon: IconsaxPlusLinear.notification, onTap: () => Scaffold.of(context).openEndDrawer(), isDark: isDark),
+                if (!isNarrow) const SizedBox(width: 4),
+                _AppBarIcon(
+                  icon: IconsaxPlusLinear.search_normal, 
+                  onTap: () {}, 
+                  isDark: isDark,
+                  size: isNarrow ? 18 : 20,
+                ),
+                if (!isNarrow) const SizedBox(width: 4),
+                _AppBarIcon(
+                  icon: IconsaxPlusLinear.notification, 
+                  onTap: () => Scaffold.of(context).openEndDrawer(), 
+                  isDark: isDark,
+                  size: isNarrow ? 18 : 20,
+                ),
                 const SizedBox(width: 8),
                 Container(
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    border: Border.all(color: AppColors.primary.withValues(alpha: 0.2), width: 2),
+                    border: Border.all(color: AppColors.primary.withValues(alpha: 0.2), width: 1.5),
                   ),
-                  child: const CircleAvatar(
-                    radius: 16,
+                  child: CircleAvatar(
+                    radius: isNarrow ? 14 : 16,
                     backgroundColor: AppColors.primary,
-                    child: Icon(IconsaxPlusLinear.user, color: Colors.white, size: 16),
+                    child: Icon(IconsaxPlusLinear.user, color: Colors.white, size: isNarrow ? 14 : 16),
                   ),
                 ),
               ],
@@ -392,14 +409,17 @@ class _AppBarIcon extends StatelessWidget {
   final IconData icon;
   final VoidCallback onTap;
   final bool isDark;
-  const _AppBarIcon({required this.icon, required this.onTap, required this.isDark});
+  final double size;
+  const _AppBarIcon({required this.icon, required this.onTap, required this.isDark, this.size = 20});
 
   @override
   Widget build(BuildContext context) {
     return IconButton(
       onPressed: onTap,
-      icon: Icon(icon, color: isDark ? Colors.white70 : Colors.black54, size: 20),
+      icon: Icon(icon, color: isDark ? Colors.white70 : Colors.black54, size: size),
       visualDensity: VisualDensity.compact,
+      padding: EdgeInsets.zero,
+      constraints: const BoxConstraints(),
     );
   }
 }

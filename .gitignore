@@ -33,3 +33,7 @@ build/windows/x64/
 # Others
 .DS_Store
 node_modules/
+
+pub_error.txt
+outdated.txt
+build_app.bat

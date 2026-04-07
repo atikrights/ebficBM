@@ -86,48 +86,60 @@ class DashboardContent extends StatelessWidget {
   }
 
   Widget _buildResponsiveStats(BuildContext context, bool isDark, Color textColor, Color subTextColor) {
-    final isMobile = ResponsiveBreakpoints.of(context).isMobile;
-
-    final stats = [
-      _StatCard(
-        title: 'Net Balance',
-        value: r'$1,248k',
-        trend: '+12.5%',
-        icon: IconsaxPlusLinear.wallet,
-        color: AppColors.primary,
-        isDark: isDark,
-        textColor: textColor,
-      ),
-      _StatCard(
-        title: 'Active Projects',
-        value: '24',
-        trend: '+3',
-        icon: IconsaxPlusLinear.activity,
-        color: AppColors.secondary,
-        isDark: isDark,
-        textColor: textColor,
-      ),
-      _StatCard(
-        title: 'Tasks Done',
-        value: '182',
-        trend: '+18',
-        icon: IconsaxPlusLinear.task,
-        color: AppColors.success,
-        isDark: isDark,
-        textColor: textColor,
-      ),
-    ];
-
-    return Row(
-      children: stats.asMap().entries.map((entry) {
-        return Expanded(
-          child: Padding(
-            padding: EdgeInsets.only(right: entry.key == stats.length - 1 ? 0 : (isMobile ? 12 : 16)),
-            child: entry.value,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final stats = [
+          _StatCard(
+            title: 'Net Balance',
+            value: r'$1,248k',
+            trend: '+12.5%',
+            icon: IconsaxPlusLinear.wallet,
+            color: AppColors.primary,
+            isDark: isDark,
+            textColor: textColor,
           ),
-        );
-      }).toList(),
-    ).animate().fade().slideX(begin: -0.05, end: 0);
+          _StatCard(
+            title: 'Active Projects',
+            value: '24',
+            trend: '+3',
+            icon: IconsaxPlusLinear.activity,
+            color: AppColors.secondary,
+            isDark: isDark,
+            textColor: textColor,
+          ),
+          _StatCard(
+            title: 'Tasks Done',
+            value: '182',
+            trend: '+18',
+            icon: IconsaxPlusLinear.task,
+            color: AppColors.success,
+            isDark: isDark,
+            textColor: textColor,
+          ),
+        ];
+
+        // If width is too small, stack them vertically (Increased threshold to 600)
+        if (constraints.maxWidth < 600) {
+          return Column(
+            children: stats.map((stat) => Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: stat,
+            )).toList(),
+          ).animate().fade().slideY(begin: 0.1, end: 0);
+        }
+
+        return Row(
+          children: stats.asMap().entries.map((entry) {
+            return Expanded(
+              child: Padding(
+                padding: EdgeInsets.only(right: entry.key == stats.length - 1 ? 0 : 16),
+                child: entry.value,
+              ),
+            );
+          }).toList(),
+        ).animate().fade().slideX(begin: -0.05, end: 0);
+      }
+    );
   }
 
   Widget _buildMainAnalytics(BuildContext context, bool isDark, Color textColor, Color subTextColor) {
@@ -137,32 +149,42 @@ class DashboardContent extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final bool narrow = constraints.maxWidth < 350;
+              return Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text('Revenue Insights', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: textColor)),
-                  const SizedBox(height: 4),
-                  Text('Monthly performance overview', style: TextStyle(fontSize: 12, color: subTextColor)),
-                ],
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: AppColors.primary.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: const Row(
-                  children: [
-                    Text('This Year', style: TextStyle(fontSize: 12, color: AppColors.primary, fontWeight: FontWeight.bold)),
-                    SizedBox(width: 4),
-                    Icon(IconsaxPlusLinear.arrow_down_1, size: 14, color: AppColors.primary),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Revenue Insights', style: TextStyle(fontSize: narrow ? 16 : 18, fontWeight: FontWeight.bold, color: textColor)),
+                        const SizedBox(height: 4),
+                        Text('Monthly performance overview', style: TextStyle(fontSize: 11, color: subTextColor), overflow: TextOverflow.ellipsis),
+                      ],
+                    ),
+                  ),
+                  if (constraints.maxWidth > 300) ...[
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Row(
+                        children: [
+                          Text('This Year', style: TextStyle(fontSize: narrow ? 10 : 12, color: AppColors.primary, fontWeight: FontWeight.bold)),
+                          const SizedBox(width: 4),
+                          Icon(IconsaxPlusLinear.arrow_down_1, size: narrow ? 12 : 14, color: AppColors.primary),
+                        ],
+                      ),
+                    ),
                   ],
-                ),
-              ),
-            ],
+                ],
+              );
+            },
           ),
           const SizedBox(height: 32),
           Expanded(

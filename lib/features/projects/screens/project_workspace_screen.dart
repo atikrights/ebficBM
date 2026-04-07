@@ -19,6 +19,7 @@ import 'package:ebficBM/core/utils/pdf_generator.dart';
 import 'package:ebficBM/features/tasks/screens/task_list_screen.dart';
 import 'package:ebficBM/features/tasks/screens/task_workspace_screen.dart';
 import 'package:ebficBM/core/services/refresh_service.dart';
+import 'package:ebficBM/features/settings/screens/settings_screen.dart';
 
 class ProjectWorkspaceScreen extends StatefulWidget {
   final String projectId;
@@ -74,7 +75,7 @@ class _ProjectWorkspaceScreenState extends State<ProjectWorkspaceScreen> {
     }
   }
 
-  final List<String> _tabNames = ['The Radar', 'Overview', 'Blueprint', 'Plans', 'Console Log', 'Financial Ledger', 'Data Vault'];
+  final List<String> _tabNames = ['The Radar', 'Overview', 'Blueprint', 'Plans', 'Console Log', 'Financial Ledger', 'Data Vault', 'Settings'];
   final List<IconData> _tabIcons = [
     IconsaxPlusLinear.radar,
     IconsaxPlusLinear.personalcard,
@@ -83,6 +84,7 @@ class _ProjectWorkspaceScreenState extends State<ProjectWorkspaceScreen> {
     IconsaxPlusLinear.setting_4,
     IconsaxPlusLinear.wallet_1,
     IconsaxPlusLinear.data,
+    IconsaxPlusLinear.setting_3,
   ];
 
   @override
@@ -419,6 +421,9 @@ class _ProjectWorkspaceScreenState extends State<ProjectWorkspaceScreen> {
         break;
       case 6:
         content = _buildDataVault(project, isDark);
+        break;
+      case 7:
+        content = SettingsScreen(currentProjectId: project.id);
         break;
       default:
         content = const SizedBox();
