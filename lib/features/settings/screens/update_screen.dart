@@ -198,7 +198,7 @@ class _UpdateScreenState extends State<UpdateScreen> {
         children: [
           Row(
             children: [
-              const Icon(IconsaxPlusLinear.cloud_download, color: Colors.blueAccent),
+              const Icon(IconsaxPlusLinear.document_download, color: Colors.blueAccent),
               const SizedBox(width: 12),
               Expanded(
                 child: ValueListenableBuilder<String>(
