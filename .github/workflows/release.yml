@@ -126,8 +126,8 @@ jobs:
             --build-name=${{ needs.tag-version.outputs.version }} `
             --build-number=${{ github.run_number }}
 
-      - name: Create MSIX Package
-        run: flutter pub run msix:create
+      - name: Create MSIX Package (no certificate prompt)
+        run: flutter pub run msix:create --no-signing
 
       - name: Upload MSIX Artifact
         uses: actions/upload-artifact@v4
