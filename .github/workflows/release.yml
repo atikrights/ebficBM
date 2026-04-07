@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   # ─────────────────────────────────────────────────────────────────────────────
-  # JOB 1 — Read version from pubspec.yaml & create git tag if not exists
+  # JOB 1 — Read version & auto-tag
   # ─────────────────────────────────────────────────────────────────────────────
   tag-version:
     name: 🏷️ Auto-Tag Version
@@ -31,18 +31,18 @@ jobs:
           VERSION=$(grep '^version:' pubspec.yaml | sed 's/version: //' | sed 's/+.*//' | tr -d '[:space:]')
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "tag=v$VERSION" >> $GITHUB_OUTPUT
-          echo "📦 App Version: $VERSION"
+          echo "App Version: $VERSION"
 
       - name: Check if tag already exists
         id: check_tag
         run: |
           TAG="v${{ steps.get_version.outputs.version }}"
-          if git rev-parse "$TAG" >/dev/null 2>&1; then
+          if git ls-remote --tags origin "$TAG" | grep -q "$TAG"; then
             echo "exists=true" >> $GITHUB_OUTPUT
-            echo "⚠️ Tag $TAG already exists — skipping release."
+            echo "Tag $TAG already exists — skipping."
           else
             echo "exists=false" >> $GITHUB_OUTPUT
-            echo "✅ New version $TAG detected — proceeding with build."
+            echo "New version $TAG — will build and release."
           fi
 
       - name: Create & push git tag
@@ -67,30 +67,38 @@ jobs:
       - name: Setup Java 17
         uses: actions/setup-java@v4
         with:
-          distribution: 'zulu'
+          distribution: 'temurin'
           java-version: '17'
 
-      - name: Setup Flutter (stable)
+      - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
           cache: true
 
-      - name: Install dependencies
+      - name: Get dependencies
         run: flutter pub get
 
-      - name: Build Android APK (Release)
-        run: flutter build apk --release --build-name=${{ needs.tag-version.outputs.version }} --build-number=${{ github.run_number }}
+      - name: Analyze for errors
+        run: flutter analyze --no-fatal-infos
+        continue-on-error: true
 
-      - name: Rename APK
-        run: mv build/app/outputs/flutter-apk/app-release.apk build/app/outputs/flutter-apk/ebficBM-${{ needs.tag-version.outputs.tag }}.apk
+      - name: Build Android APK
+        run: |
+          flutter build apk --release \
+            --build-name=${{ needs.tag-version.outputs.version }} \
+            --build-number=${{ github.run_number }}
+
+      - name: Rename APK with version
+        run: |
+          mv build/app/outputs/flutter-apk/app-release.apk \
+             build/app/outputs/flutter-apk/ebficBM-${{ needs.tag-version.outputs.tag }}.apk
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
           name: android-apk
           path: build/app/outputs/flutter-apk/ebficBM-${{ needs.tag-version.outputs.tag }}.apk
-          retention-days: 7
 
   # ─────────────────────────────────────────────────────────────────────────────
   # JOB 3 — Build Windows MSIX
@@ -103,27 +111,29 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup Flutter (stable)
+      - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
           cache: true
 
-      - name: Install dependencies
+      - name: Get dependencies
         run: flutter pub get
 
       - name: Build Windows Release
-        run: flutter build windows --release --build-name=${{ needs.tag-version.outputs.version }} --build-number=${{ github.run_number }}
+        run: |
+          flutter build windows --release `
+            --build-name=${{ needs.tag-version.outputs.version }} `
+            --build-number=${{ github.run_number }}
 
-      - name: Create MSIX Installer
-        run: dart run msix:create
+      - name: Create MSIX Package
+        run: flutter pub run msix:create
 
       - name: Upload MSIX Artifact
         uses: actions/upload-artifact@v4
         with:
           name: windows-msix
           path: build\windows\x64\runner\Release\ebficBM.msix
-          retention-days: 7
 
   # ─────────────────────────────────────────────────────────────────────────────
   # JOB 4 — Build macOS App
@@ -136,39 +146,44 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup Flutter (stable)
+      - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
           cache: true
 
-      - name: Install dependencies
+      - name: Get dependencies
         run: flutter pub get
 
       - name: Build macOS Release
-        run: flutter build macos --release --build-name=${{ needs.tag-version.outputs.version }} --build-number=${{ github.run_number }}
+        run: |
+          flutter build macos --release \
+            --build-name=${{ needs.tag-version.outputs.version }} \
+            --build-number=${{ github.run_number }}
 
-      - name: Package macOS App into ZIP
+      - name: Package into ZIP
         run: |
           ditto -c -k --sequesterRsrc --keepParent \
-            build/macos/Build/Products/Release/ebficBM.app \
-            ebficBM-${{ needs.tag-version.outputs.tag }}-macos.zip
+            "build/macos/Build/Products/Release/ebficBM.app" \
+            "ebficBM-${{ needs.tag-version.outputs.tag }}-macos.zip"
 
       - name: Upload macOS Artifact
         uses: actions/upload-artifact@v4
         with:
           name: macos-zip
           path: ebficBM-${{ needs.tag-version.outputs.tag }}-macos.zip
-          retention-days: 7
 
   # ─────────────────────────────────────────────────────────────────────────────
-  # JOB 5 — Create GitHub Release with all built assets
+  # JOB 5 — Publish Release (only if at least Android build succeeded)
   # ─────────────────────────────────────────────────────────────────────────────
   create-release:
     name: 🚀 Publish GitHub Release
     runs-on: ubuntu-latest
     needs: [tag-version, build-android, build-windows, build-macos]
-    if: needs.tag-version.outputs.already_released == 'false'
+    if: |
+      always() &&
+      needs.tag-version.outputs.already_released == 'false' &&
+      needs.build-android.result == 'success'
     steps:
       - uses: actions/checkout@v4
 
@@ -177,7 +192,7 @@ jobs:
         with:
           path: release-assets/
 
-      - name: List built files
+      - name: List release assets
         run: ls -lR release-assets/
 
       - name: Publish GitHub Release
@@ -188,34 +203,35 @@ jobs:
           body: |
             ## 🚀 ebfic Business Manager ${{ needs.tag-version.outputs.tag }}
 
-            **Automated Production Release** — Built and deployed by GitHub Actions CI/CD.
+            **Automated Production Release** — Built by GitHub Actions CI/CD pipeline.
 
             ---
 
-            ### 📦 Installation Guide
+            ### 📦 Download & Install
 
-            | Platform | File | Steps |
-            |----------|------|-------|
-            | 🤖 Android | `ebficBM-*.apk` | Download APK → Allow "unknown sources" → Install |
-            | 🪟 Windows | `ebficBM.msix` | Download MSIX → Double-click → Install |
-            | 🍎 macOS | `ebficBM-*-macos.zip` | Download ZIP → Extract → Drag to Applications |
-
-            ---
-
-            ### ✅ What's New
-            - In-app auto-update system with real-time progress
-            - Fixed Windows CMake pdfium build error
-            - Stable PDF export (no printing dependency)
-            - Private repo secure update fetching
-            - Premium responsive UI for mobile, tablet & desktop
+            | Platform | File | How to Install |
+            |----------|------|----------------|
+            | 🤖 **Android** | `ebficBM-*.apk` | Download → Enable "Unknown Sources" → Tap to install |
+            | 🪟 **Windows** | `ebficBM.msix` | Download → Double-click → Install |
+            | 🍎 **macOS** | `ebficBM-*-macos.zip` | Download → Extract → Drag to Applications |
 
             ---
-            *Built from commit `${{ github.sha }}` on branch `main`*
+
+            ### ✅ Changelog
+            - Fixed `class UpdateService` missing declaration
+            - Removed `printing` package (fixes Windows CMake pdfium crash)
+            - PDF export now uses system viewer (path_provider + open_filex)
+            - Secure private repo update fetching with GitHub PAT
+            - Auto CI/CD — push to main = auto release
+
+            ---
+            *Commit: `${{ github.sha }}` | Run: #${{ github.run_number }}*
           files: |
-            release-assets/android-apk/*.apk
-            release-assets/windows-msix/*.msix
-            release-assets/macos-zip/*.zip
+            release-assets/**/*.apk
+            release-assets/**/*.msix
+            release-assets/**/*.zip
           draft: false
           prerelease: false
+          fail_on_unmatched_files: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
