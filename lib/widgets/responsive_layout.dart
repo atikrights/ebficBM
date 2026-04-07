@@ -202,7 +202,7 @@ class _Sidebar extends StatelessWidget {
                 ),
                 _NavItem(
                   icon: IconsaxPlusLinear.refresh,
-                  label: 'Software Update',
+                  label: 'Update',
                   isSelected: selectedIndex == 7,
                   isCollapsed: isCollapsed,
                   onTap: () => onNavigationChanged(7),
