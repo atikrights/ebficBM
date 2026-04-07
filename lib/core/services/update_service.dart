@@ -8,8 +8,9 @@ import 'package:dio/dio.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:open_filex/open_filex.dart';
 
+class UpdateService {
   static const String _updateUrl = 'https://api.github.com/repos/atikrights/ebficBM/releases';
-  // TODO(Developer): To fetch updates from your PRIVATE repo, put your Fine-Grained GitHub Token (Read-Only) here.
+  // Private repo token — Read-Only Fine-Grained GitHub PAT
   static const String _privateRepoToken = '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';
 
   Future<List<Map<String, dynamic>>?> getReleases() async {
