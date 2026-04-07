@@ -29,8 +29,9 @@ class UpdateService {
     final releases = await getReleases();
     if (releases != null && releases.isNotEmpty) {
       final latest = releases.first;
-      String tagName = latest['tag_name'] ?? '';
+      String tagName = (latest['tag_name'] ?? '').toString();
       if (tagName.startsWith('v')) tagName = tagName.substring(1);
+      tagName = tagName.trim();
       
       double totalSizeMb = 0.0;
       if (latest['assets'] != null) {
