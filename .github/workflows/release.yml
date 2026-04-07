@@ -1,105 +1,220 @@
-name: ebficBM CI/CD Auto-Builder
+name: ebficBM CI/CD — Auto Build & Release
 
 on:
   push:
-    tags:
-      - 'v*'
+    branches:
+      - main
   workflow_dispatch:
 
 permissions:
   contents: write
 
 jobs:
-  build-windows-android:
-    name: Build Windows (MSIX) & Android (APK)
-    runs-on: windows-latest
+  # ─────────────────────────────────────────────────────────────────────────────
+  # JOB 1 — Read version from pubspec.yaml & create git tag if not exists
+  # ─────────────────────────────────────────────────────────────────────────────
+  tag-version:
+    name: 🏷️ Auto-Tag Version
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.get_version.outputs.version }}
+      tag: ${{ steps.get_version.outputs.tag }}
+      already_released: ${{ steps.check_tag.outputs.exists }}
     steps:
       - uses: actions/checkout@v4
-      
-      - name: Setup Java
-        uses: actions/setup-java@v3
+        with:
+          fetch-depth: 0
+
+      - name: Extract version from pubspec.yaml
+        id: get_version
+        run: |
+          VERSION=$(grep '^version:' pubspec.yaml | sed 's/version: //' | sed 's/+.*//' | tr -d '[:space:]')
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "tag=v$VERSION" >> $GITHUB_OUTPUT
+          echo "📦 App Version: $VERSION"
+
+      - name: Check if tag already exists
+        id: check_tag
+        run: |
+          TAG="v${{ steps.get_version.outputs.version }}"
+          if git rev-parse "$TAG" >/dev/null 2>&1; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+            echo "⚠️ Tag $TAG already exists — skipping release."
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "✅ New version $TAG detected — proceeding with build."
+          fi
+
+      - name: Create & push git tag
+        if: steps.check_tag.outputs.exists == 'false'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag "v${{ steps.get_version.outputs.version }}"
+          git push origin "v${{ steps.get_version.outputs.version }}"
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # JOB 2 — Build Android APK
+  # ─────────────────────────────────────────────────────────────────────────────
+  build-android:
+    name: 🤖 Build Android APK
+    runs-on: ubuntu-latest
+    needs: tag-version
+    if: needs.tag-version.outputs.already_released == 'false'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
         with:
           distribution: 'zulu'
           java-version: '17'
-          
-      - name: Setup Flutter
+
+      - name: Setup Flutter (stable)
         uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
-          
+          cache: true
+
       - name: Install dependencies
         run: flutter pub get
-        
-      - name: Build Android APK
-        run: flutter build apk --release
-        
-      - name: Build Windows Executable
-        run: flutter build windows --release
-        
-      - name: Build MSIX Package
-        run: flutter pub run msix:create
-        
-      - name: Upload Windows MSIX Artifact
+
+      - name: Build Android APK (Release)
+        run: flutter build apk --release --build-name=${{ needs.tag-version.outputs.version }} --build-number=${{ github.run_number }}
+
+      - name: Rename APK
+        run: mv build/app/outputs/flutter-apk/app-release.apk build/app/outputs/flutter-apk/ebficBM-${{ needs.tag-version.outputs.tag }}.apk
+
+      - name: Upload APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-apk
+          path: build/app/outputs/flutter-apk/ebficBM-${{ needs.tag-version.outputs.tag }}.apk
+          retention-days: 7
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # JOB 3 — Build Windows MSIX
+  # ─────────────────────────────────────────────────────────────────────────────
+  build-windows:
+    name: 🪟 Build Windows MSIX
+    runs-on: windows-latest
+    needs: tag-version
+    if: needs.tag-version.outputs.already_released == 'false'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Flutter (stable)
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Build Windows Release
+        run: flutter build windows --release --build-name=${{ needs.tag-version.outputs.version }} --build-number=${{ github.run_number }}
+
+      - name: Create MSIX Installer
+        run: dart run msix:create
+
+      - name: Upload MSIX Artifact
         uses: actions/upload-artifact@v4
         with:
           name: windows-msix
           path: build\windows\x64\runner\Release\ebficBM.msix
-          
-      - name: Upload Android APK Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: android-apk
-          path: build\app\outputs\flutter-apk\app-release.apk
+          retention-days: 7
 
+  # ─────────────────────────────────────────────────────────────────────────────
+  # JOB 4 — Build macOS App
+  # ─────────────────────────────────────────────────────────────────────────────
   build-macos:
-    name: Build MacOS
+    name: 🍎 Build macOS App
     runs-on: macos-latest
+    needs: tag-version
+    if: needs.tag-version.outputs.already_released == 'false'
     steps:
       - uses: actions/checkout@v4
-      
-      - name: Setup Flutter
+
+      - name: Setup Flutter (stable)
         uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
-          
+          cache: true
+
       - name: Install dependencies
         run: flutter pub get
-        
-      - name: Build MacOS App
-        run: flutter build macos --release
-        
-      # Compress the Mac app into a zip (simulating a dmg or distributable)
-      - name: Compress App
-        run: ditto -c -k --sequesterRsrc --keepParent build/macos/Build/Products/Release/ebficBM.app ebficBM-macos.zip
-        
-      - name: Upload MacOS Artifact
+
+      - name: Build macOS Release
+        run: flutter build macos --release --build-name=${{ needs.tag-version.outputs.version }} --build-number=${{ github.run_number }}
+
+      - name: Package macOS App into ZIP
+        run: |
+          ditto -c -k --sequesterRsrc --keepParent \
+            build/macos/Build/Products/Release/ebficBM.app \
+            ebficBM-${{ needs.tag-version.outputs.tag }}-macos.zip
+
+      - name: Upload macOS Artifact
         uses: actions/upload-artifact@v4
         with:
           name: macos-zip
-          path: ebficBM-macos.zip
+          path: ebficBM-${{ needs.tag-version.outputs.tag }}-macos.zip
+          retention-days: 7
 
+  # ─────────────────────────────────────────────────────────────────────────────
+  # JOB 5 — Create GitHub Release with all built assets
+  # ─────────────────────────────────────────────────────────────────────────────
   create-release:
-    name: Create GitHub Release
-    needs: [build-windows-android, build-macos]
+    name: 🚀 Publish GitHub Release
     runs-on: ubuntu-latest
+    needs: [tag-version, build-android, build-windows, build-macos]
+    if: needs.tag-version.outputs.already_released == 'false'
     steps:
-      - name: Download all artifacts
+      - uses: actions/checkout@v4
+
+      - name: Download all build artifacts
         uses: actions/download-artifact@v4
         with:
-          path: output-artifacts/
+          path: release-assets/
 
-      - name: Display structure of downloaded files
-        run: ls -R output-artifacts/
+      - name: List built files
+        run: ls -lR release-assets/
 
-      - name: Create Release
-        uses: softprops/action-gh-release@v1
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ needs.tag-version.outputs.tag }}
+          name: "ebfic Business Manager ${{ needs.tag-version.outputs.tag }}"
+          body: |
+            ## 🚀 ebfic Business Manager ${{ needs.tag-version.outputs.tag }}
+
+            **Automated Production Release** — Built and deployed by GitHub Actions CI/CD.
+
+            ---
+
+            ### 📦 Installation Guide
+
+            | Platform | File | Steps |
+            |----------|------|-------|
+            | 🤖 Android | `ebficBM-*.apk` | Download APK → Allow "unknown sources" → Install |
+            | 🪟 Windows | `ebficBM.msix` | Download MSIX → Double-click → Install |
+            | 🍎 macOS | `ebficBM-*-macos.zip` | Download ZIP → Extract → Drag to Applications |
+
+            ---
+
+            ### ✅ What's New
+            - In-app auto-update system with real-time progress
+            - Fixed Windows CMake pdfium build error
+            - Stable PDF export (no printing dependency)
+            - Private repo secure update fetching
+            - Premium responsive UI for mobile, tablet & desktop
+
+            ---
+            *Built from commit `${{ github.sha }}` on branch `main`*
           files: |
-            output-artifacts/windows-msix/ebficBM.msix
-            output-artifacts/android-apk/app-release.apk
-            output-artifacts/macos-zip/ebficBM-macos.zip
-          name: "Latest Auto Build"
-          body: "Automated Production Release for Windows, Android, and MacOS."
+            release-assets/android-apk/*.apk
+            release-assets/windows-msix/*.msix
+            release-assets/macos-zip/*.zip
           draft: false
           prerelease: false
         env:

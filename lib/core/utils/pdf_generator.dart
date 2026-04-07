@@ -1,13 +1,15 @@
+import 'dart:io';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
-import 'package:printing/printing.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:open_filex/open_filex.dart';
 import 'package:ebficBM/features/projects/models/project.dart';
 import 'package:universal_html/html.dart' as html;
 
 class ProjectExporter {
-  static Future<void> exportToPdf(Project project) async {
+  static Future<void> exportToPdf(Project project, {BuildContext? context}) async {
     final pdf = pw.Document();
 
     pdf.addPage(
@@ -177,11 +179,15 @@ class ProjectExporter {
       html.document.body!.children.remove(anchor);
       html.Url.revokeObjectUrl(url);
     } else {
-      // Mobile / Desktop: print dialog
-      await Printing.layoutPdf(
-        onLayout: (_) async => bytes,
-        name: fileName,
-      );
+      // Mobile / Desktop: save to temp dir and open with system viewer
+      try {
+        final dir = await getTemporaryDirectory();
+        final file = File('${dir.path}/$fileName');
+        await file.writeAsBytes(bytes);
+        await OpenFilex.open(file.path);
+      } catch (e) {
+        debugPrint('PDF export error: $e');
+      }
     }
   }
 
