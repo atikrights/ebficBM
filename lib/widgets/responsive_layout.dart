@@ -94,9 +94,9 @@ class ResponsiveLayout extends StatelessWidget {
 int _mobileNavIndex(int screenIndex) {
   switch (screenIndex) {
     case 0: return 0;  // Dashboard
-    case 3: return 1;  // Tasks
-    case 4: return 2;  // Finance
-    case 7: return 4;  // Update
+    case 4: return 1;  // Tasks
+    case 5: return 2;  // Finance
+    case 8: return 4;  // Update
     default: return 0;
   }
 }
@@ -105,10 +105,10 @@ int _mobileNavIndex(int screenIndex) {
 int _mobileNavToScreenIndex(int navIndex) {
   switch (navIndex) {
     case 0: return 0;  // Dashboard
-    case 1: return 3;  // Tasks
-    case 2: return 4;  // Finance
+    case 1: return 4;  // Tasks
+    case 2: return 5;  // Finance
     case 3: return 0;  // Alerts
-    case 4: return 7;  // Update
+    case 4: return 8;  // Update
     default: return 0;
   }
 }
@@ -153,67 +153,75 @@ class _Sidebar extends StatelessWidget {
                   isDark: isDark,
                 ),
                 _NavItem(
-                  icon: IconsaxPlusLinear.building,
-                  label: 'Companies',
+                  icon: IconsaxPlusLinear.graph,
+                  label: 'Analysis',
                   isSelected: selectedIndex == 1,
                   isCollapsed: isCollapsed,
                   onTap: () => onNavigationChanged(1),
                   isDark: isDark,
                 ),
                 _NavItem(
-                  icon: IconsaxPlusLinear.category,
-                  label: 'Projects',
+                  icon: IconsaxPlusLinear.building,
+                  label: 'Companies',
                   isSelected: selectedIndex == 2,
                   isCollapsed: isCollapsed,
                   onTap: () => onNavigationChanged(2),
                   isDark: isDark,
                 ),
                 _NavItem(
-                  icon: IconsaxPlusLinear.task_square,
-                  label: 'Tasks',
+                  icon: IconsaxPlusLinear.category,
+                  label: 'Projects',
                   isSelected: selectedIndex == 3,
                   isCollapsed: isCollapsed,
                   onTap: () => onNavigationChanged(3),
                   isDark: isDark,
                 ),
                 _NavItem(
-                  icon: IconsaxPlusLinear.card,
-                  label: 'Finance',
+                  icon: IconsaxPlusLinear.task_square,
+                  label: 'Tasks',
                   isSelected: selectedIndex == 4,
                   isCollapsed: isCollapsed,
                   onTap: () => onNavigationChanged(4),
                   isDark: isDark,
                 ),
                 _NavItem(
-                  icon: IconsaxPlusLinear.graph,
-                  label: 'Reports',
+                  icon: IconsaxPlusLinear.card,
+                  label: 'Finance',
                   isSelected: selectedIndex == 5,
                   isCollapsed: isCollapsed,
                   onTap: () => onNavigationChanged(5),
                   isDark: isDark,
                 ),
                 _NavItem(
-                  icon: IconsaxPlusLinear.document_text,
-                  label: 'Notes',
+                  icon: IconsaxPlusLinear.graph,
+                  label: 'Reports',
                   isSelected: selectedIndex == 6,
                   isCollapsed: isCollapsed,
                   onTap: () => onNavigationChanged(6),
                   isDark: isDark,
                 ),
                 _NavItem(
-                  icon: IconsaxPlusLinear.refresh,
-                  label: 'Update',
+                  icon: IconsaxPlusLinear.document_text,
+                  label: 'Notes',
                   isSelected: selectedIndex == 7,
                   isCollapsed: isCollapsed,
                   onTap: () => onNavigationChanged(7),
                   isDark: isDark,
                 ),
                 _NavItem(
+                  icon: IconsaxPlusLinear.refresh,
+                  label: 'Update',
+                  isSelected: selectedIndex == 8,
+                  isCollapsed: isCollapsed,
+                  onTap: () => onNavigationChanged(8),
+                  isDark: isDark,
+                ),
+                _NavItem(
                   icon: IconsaxPlusLinear.category,
                   label: 'Modules',
-                  isSelected: selectedIndex == 9,
+                  isSelected: selectedIndex == 10,
                   isCollapsed: isCollapsed,
-                  onTap: () => onNavigationChanged(9),
+                  onTap: () => onNavigationChanged(10),
                   isDark: isDark,
                 ),
               ],

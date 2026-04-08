@@ -1,5 +1,5 @@
 #ifndef MyAppVersion
-  #define MyAppVersion "1.1.46"
+  #define MyAppVersion "1.1.47"
 #endif
 [Setup]
 AppName=ebfic Business Manager

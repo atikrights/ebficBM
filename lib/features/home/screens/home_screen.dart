@@ -14,6 +14,7 @@ import 'package:ebficBM/core/services/update_service.dart';
 import 'package:ebficBM/features/settings/screens/update_screen.dart';
 import 'package:ebficBM/features/guidelines/screens/guidelines_screen.dart';
 import 'package:ebficBM/features/modules/screens/module_screen.dart';
+import 'package:ebficBM/features/analysis/screens/analysis_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -65,6 +66,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   final List<Widget> _screens = [
     const DashboardContent(),
+    const AnalysisScreen(),
     const CompanyListScreen(),
     const ProjectListScreen(),
     const TaskListScreen(),
@@ -78,6 +80,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   final List<String> _titles = [
     'Dashboard',
+    'Analysis',
     'Companies',
     'Projects',
     'Tasks',
