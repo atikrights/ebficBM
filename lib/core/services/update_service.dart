@@ -210,5 +210,5 @@ class UpdateService {
     }
   }
 
-  String get _currentVersion => isUpdatingNotifier.value ? '0.0.0' : '1.1.41'; // fallback
+  String get _currentVersion => isUpdatingNotifier.value ? '0.0.0' : '1.1.43'; // fallback
 }

@@ -1,4 +1,6 @@
-#define MyAppVersion "1.0.0" ; This will be overridden by the command line
+#ifndef MyAppVersion
+  #define MyAppVersion "1.1.43"
+#endif
 [Setup]
 AppName=ebfic Business Manager
 AppVersion={#MyAppVersion}
