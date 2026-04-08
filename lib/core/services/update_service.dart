@@ -26,7 +26,8 @@ class UpdateService {
   Future<void> initializeBackgroundUpdate() async {
     try {
       final updateInfo = await checkForUpdateFlow();
-      if (updateInfo != null && _isVersionNewer(updateInfo['version'])) {
+      final current = await _currentVersion;
+      if (updateInfo != null && _isVersionNewer(current, updateInfo['version'])) {
         await startDirectUpdate(updateInfo);
       } else {
         await _cleanOldUpdates();
@@ -74,7 +75,8 @@ class UpdateService {
       'author_avatar': latest['author']['avatar_url'],
     };
 
-    updateStateNotifier.value = _isVersionNewer(version) ? UpdateState.available : UpdateState.idle;
+    final current = await _currentVersion;
+    updateStateNotifier.value = _isVersionNewer(current, version) ? UpdateState.available : UpdateState.idle;
     return info;
   }
 
@@ -195,20 +197,22 @@ class UpdateService {
     } catch (_) {}
   }
 
-  bool _isVersionNewer(String onlineVersion) {
-    try {
-      // Logic for 1.1.41 vs 1.1.40
-      List<int> current = _currentVersion.split('.').map(int.parse).toList();
-      List<int> online = onlineVersion.split('.').map(int.parse).toList();
-      for (int i = 0; i < current.length && i < online.length; i++) {
-        if (online[i] > current[i]) return true;
-        if (online[i] < current[i]) return false;
-      }
-      return online.length > current.length;
-    } catch (_) {
-      return onlineVersion != _currentVersion;
-    }
+  Future<String> get _currentVersion async {
+    final info = await PackageInfo.fromPlatform();
+    return info.version;
   }
 
-  String get _currentVersion => isUpdatingNotifier.value ? '0.0.0' : '1.1.43'; // fallback
+  bool _isVersionNewer(String current, String online) {
+    try {
+      List<int> curr = current.split('.').map(int.parse).toList();
+      List<int> next = online.split('.').map(int.parse).toList();
+      for (int i = 0; i < curr.length && i < next.length; i++) {
+        if (next[i] > curr[i]) return true;
+        if (next[i] < curr[i]) return false;
+      }
+      return next.length > curr.length;
+    } catch (_) {
+      return online != current;
+    }
+  }
 }

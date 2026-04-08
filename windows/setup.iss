@@ -1,9 +1,13 @@
 #ifndef MyAppVersion
-  #define MyAppVersion "1.1.43"
+  #define MyAppVersion "1.1.44"
 #endif
 [Setup]
 AppName=ebfic Business Manager
 AppVersion={#MyAppVersion}
+AppPublisher=atikrights (ebfic Group Limited)
+AppPublisherURL=https://github.com/atikrights/ebficBM
+AppSupportURL=https://github.com/atikrights/ebficBM/issues
+AppUpdatesURL=https://github.com/atikrights/ebficBM/releases
 DefaultDirName={autopf}\ebficBM
 ArchitecturesAllowed=x64
 ArchitecturesInstallIn64BitMode=x64
@@ -12,6 +16,7 @@ OutputBaseFilename=ebficBM-windows
 Compression=lzma
 SolidCompression=yes
 SetupIconFile=runner\resources\app_icon.ico
+UninstallDisplayIcon={app}\ebficBM.exe
 DisableProgramGroupPage=yes
 PrivilegesRequired=lowest
 
