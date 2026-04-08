@@ -70,8 +70,8 @@ class _HomeScreenState extends State<HomeScreen> {
     const FinanceScreen(),
     const ReportsScreen(),
     const NotesScreen(),
-    const GuidelinesScreen(),
     const UpdateScreen(),
+    const GuidelinesScreen(),
   ];
 
   final List<String> _titles = [
@@ -82,8 +82,8 @@ class _HomeScreenState extends State<HomeScreen> {
     'Finance',
     'Reports',
     'Notes',
-    'System Guidelines',
     'Software Update',
+    'System Guidelines',
   ];
 
   @override
