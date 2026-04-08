@@ -173,7 +173,7 @@ class UpdateService {
   Future<void> installUpdate(Map<String, dynamic> info) async {
     final tempDir = await getTemporaryDirectory();
     final filePath = '${tempDir.path}/updates/${info['name']}';
-    _installExecutingFile(filePath);
+    await _installExecutingFile(filePath);
   }
 
   Future<void> _installExecutingFile(String path) async {
@@ -183,28 +183,32 @@ class UpdateService {
 
     if (Platform.isWindows) {
       if (path.toLowerCase().endsWith('.exe')) {
-        await Process.start(path, ['/VERYSILENT', '/SUPPRESSMSGBOXES'], 
+        // Safe quoted path for Windows
+        await Process.start('cmd', ['/c', 'start', '""', '"$path"', '/VERYSILENT', '/SUPPRESSMSGBOXES'], 
           runInShell: true, mode: ProcessStartMode.detached);
       } else {
         await Process.start(path, [], runInShell: true, mode: ProcessStartMode.detached);
       }
+      
       updateStateNotifier.value = UpdateState.relaunching;
-      updateStatusNotifier.value = 'Success! App closing to replace files...';
-      await Future.delayed(const Duration(seconds: 3));
+      updateStatusNotifier.value = 'Success! App closing to apply update...';
+      await Future.delayed(const Duration(seconds: 2));
       exit(0);
-    } else {
+    }
+
+    if (Platform.isAndroid) {
       final result = await OpenFilex.open(path);
       if (result.type == ResultType.done) {
         updateStateNotifier.value = UpdateState.relaunching;
-        updateStatusNotifier.value = 'Success! Device relaunching...';
-        await Future.delayed(const Duration(seconds: 3));
-        exit(0);
+        updateStatusNotifier.value = 'Installer started. Follow system prompts.';
+        // On Android we don't exit(0) immediately to let user see the install dialog
       } else {
         updateStateNotifier.value = UpdateState.error;
-        updateStatusNotifier.value = 'Execution failed: ${result.message}';
+        updateStatusNotifier.value = 'Installer failed: ${result.message}';
         isUpdatingNotifier.value = false;
       }
     }
+  }
   }
 
   Future<void> _cleanOldUpdates() async {
