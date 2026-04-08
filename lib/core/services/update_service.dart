@@ -34,8 +34,11 @@ Map<String, dynamic>? _readyReleaseInfo;
 class UpdateService {
   static const String _updateUrl =
       'https://api.github.com/repos/atikrights/ebficBM/releases';
+
+  // ✅ SECURE: Token is injected at compile-time via --dart-define=GITHUB_TOKEN=xxx
+  // Never hardcoded in source. Reads from build environment only.
   static const String _privateRepoToken =
-      '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';
+      String.fromEnvironment('GITHUB_TOKEN', defaultValue: '');
 
   Future<List<Map<String, dynamic>>?> getReleases() async {
     try {
