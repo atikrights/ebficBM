@@ -55,7 +55,7 @@ class _UpdateScreenState extends State<UpdateScreen> with SingleTickerProviderSt
 
   IconData get _platformIcon {
     if (Platform.isWindows) return IconsaxPlusBold.monitor;
-    if (Platform.isMacOS) return IconsaxPlusBold.apple;
+    if (Platform.isMacOS) return IconsaxPlusBold.monitor;
     if (Platform.isAndroid) return IconsaxPlusBold.mobile;
     if (Platform.isIOS) return IconsaxPlusBold.mobile;
     return IconsaxPlusBold.global;
@@ -135,7 +135,7 @@ class _UpdateScreenState extends State<UpdateScreen> with SingleTickerProviderSt
                         // Action button
                         SliverToBoxAdapter(child: _buildActionButton(isDark, primary, success)),
                         // Platform chips
-                        SliverToBoxAdapter(child: _buildPlatformRow(isDark, primary)),
+                        SliverToBoxAdapter(child: _buildPlatformRow(isDark)),
                         // Author / release notes
                         if (_onlineInfo != null)
                           SliverToBoxAdapter(child: _buildReleaseCard(isDark, primary, success)),
@@ -450,7 +450,7 @@ class _UpdateScreenState extends State<UpdateScreen> with SingleTickerProviderSt
       {'label': 'Android', 'icon': IconsaxPlusBold.mobile, 'color': const Color(0xFF10B981)},
       {'label': 'iOS', 'icon': IconsaxPlusBold.mobile, 'color': const Color(0xFF3B82F6)},
       {'label': 'Windows', 'icon': IconsaxPlusBold.monitor, 'color': const Color(0xFF6366F1)},
-      {'label': 'macOS', 'icon': IconsaxPlusBold.apple, 'color': const Color(0xFF8B5CF6)},
+      {'label': 'macOS', 'icon': IconsaxPlusBold.monitor, 'color': const Color(0xFF8B5CF6)},
     ];
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
