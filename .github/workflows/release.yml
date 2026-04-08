@@ -86,6 +86,7 @@ jobs:
       - name: Build Android APK
         run: |
           flutter build apk --release \
+            --dart-define=GITHUB_TOKEN=${{ secrets.UPDATE_PAT }} \
             --build-name=${{ needs.tag-version.outputs.version }} \
             --build-number=${{ github.run_number }}
 
@@ -123,6 +124,7 @@ jobs:
       - name: Build Windows Release
         run: |
           flutter build windows --release `
+            --dart-define=GITHUB_TOKEN=${{ secrets.UPDATE_PAT }} `
             --build-name=${{ needs.tag-version.outputs.version }} `
             --build-number=${{ github.run_number }}
 
@@ -166,6 +168,7 @@ jobs:
       - name: Build macOS Release
         run: |
           flutter build macos --release \
+            --dart-define=GITHUB_TOKEN=${{ secrets.UPDATE_PAT }} \
             --build-name=${{ needs.tag-version.outputs.version }} \
             --build-number=${{ github.run_number }}
 

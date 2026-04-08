@@ -1,4 +1,4 @@
-# Flutter/Dart
+# ─── Flutter / Dart ──────────────────────────────────────────────────────────
 .dart_tool/
 .flutter-plugins
 .flutter-plugins-dependencies
@@ -7,33 +7,51 @@
 .pub/
 build/
 
-# Android
+# ─── Android ─────────────────────────────────────────────────────────────────
 android/**/build/
 android/.gradle/
 android/app/build/
 android/local.properties
 android/GeneratedPluginRegistrant.java
+
+# ─── Secrets & Certificates (NEVER commit these) ──────────────────────────────
 *.keystore
 *.jks
+*.pfx
+*.p12
+*.cer
+*.pem
+*.key
+*.env
+.env.*
+secrets.json
+secrets.yaml
+*_secret*
+*_token*
+*credentials*
+google-services.json
+GoogleService-Info.plist
 
-# Windows
-build/windows/
-build/windows/x64/
-*.exe
+# ─── Windows ─────────────────────────────────────────────────────────────────
 *.dll
 *.pdb
 
-# IDE
+# ─── IDE ─────────────────────────────────────────────────────────────────────
 .idea/
-.vscode/
+.vscode/settings.json
+.vscode/launch.json
 *.iml
 *.swp
 *.bak
 
-# Others
+# ─── macOS ───────────────────────────────────────────────────────────────────
 .DS_Store
-node_modules/
+*.xcworkspace
+xcuserdata/
 
+# ─── CI/CD artifacts ─────────────────────────────────────────────────────────
+release-assets/
+*.log
 pub_error.txt
 outdated.txt
 build_app.bat
