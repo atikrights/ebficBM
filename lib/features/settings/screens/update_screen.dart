@@ -139,7 +139,25 @@ class _UpdateScreenState extends State<UpdateScreen> with SingleTickerProviderSt
                         // Author / release notes
                         if (_onlineInfo != null)
                           SliverToBoxAdapter(child: _buildReleaseCard(isDark, primary, success)),
-                        const SliverToBoxAdapter(child: SizedBox(height: 60)),
+                        
+                        // Footer
+                        SliverToBoxAdapter(
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 40),
+                            child: Center(
+                              child: Text(
+                                'thanks for ebfic developer Teams',
+                                style: GoogleFonts.outfit(
+                                  fontSize: 12,
+                                  color: isDark ? Colors.white24 : Colors.black26,
+                                  letterSpacing: 1.1,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SliverToBoxAdapter(child: SizedBox(height: 20)),
                       ],
                     ),
                   ),
