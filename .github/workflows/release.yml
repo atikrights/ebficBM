@@ -101,10 +101,10 @@ jobs:
           path: build/app/outputs/flutter-apk/ebficBM-${{ needs.tag-version.outputs.tag }}.apk
 
   # ─────────────────────────────────────────────────────────────────────────────
-  # JOB 3 — Build Windows MSIX
+  # JOB 3 — Build Windows EXE (Silent Update Enabled)
   # ─────────────────────────────────────────────────────────────────────────────
   build-windows:
-    name: 🪟 Build Windows MSIX
+    name: 🪟 Build Windows EXE
     runs-on: windows-latest
     needs: tag-version
     if: needs.tag-version.outputs.already_released == 'false'
@@ -126,20 +126,22 @@ jobs:
             --build-name=${{ needs.tag-version.outputs.version }} `
             --build-number=${{ github.run_number }}
 
-      - name: Create Portable Windows ZIP
-        run: |
-          Compress-Archive -Path "build\windows\x64\runner\Release\*" -DestinationPath "build\ebficBM-windows-portable.zip"
+      - name: Install Inno Setup
+        run: choco install innosetup -y
 
-      - name: Create MSIX Package
-        run: flutter pub run msix:create
+      - name: Compile EXE with Inno Setup
+        run: |
+          & "C:\Program Files (x86)\Inno Setup 6\iscc.exe" "/DMyAppVersion=${{ needs.tag-version.outputs.version }}" windows\setup.iss
+
+      - name: Rename EXE with version
+        run: |
+          Rename-Item -Path "build\windows\inno\ebficBM-windows.exe" -NewName "ebficBM-${{ needs.tag-version.outputs.tag }}-windows-setup.exe"
 
       - name: Upload Windows Artifacts
         uses: actions/upload-artifact@v4
         with:
           name: windows-release
-          path: |
-            build\windows\x64\runner\Release\ebficBM.msix
-            build\ebficBM-windows-portable.zip
+          path: build\windows\inno\ebficBM-${{ needs.tag-version.outputs.tag }}-windows-setup.exe
 
   # ─────────────────────────────────────────────────────────────────────────────
   # JOB 4 — Build macOS App
@@ -217,25 +219,23 @@ jobs:
 
             | Platform | File | How to Install |
             |----------|------|----------------|
-            | 🤖 **Android** | `ebficBM-*.apk` | Download → Open/Tap to install |
-            | 🪟 **Windows** | `ebficBM-*-portable.zip` | **(Recommended)** Unzip -> Run `ebficBM.exe` |
-            | 🪟 **Windows (MSIX)** | `ebficBM.msix` | Install via App Installer (MSIX) |
+            | 🤖 **Android** | `ebficBM-*-apk` | Download → Open/Tap to install |
+            | 🪟 **Windows** | `ebficBM-*-windows-setup.exe` | Download & Run / In-App Silent Update |
             | 🍎 **macOS** | `ebficBM-*-macos.zip` | Extract → Drag to Applications |
 
             ---
 
             ### ✅ Changelog
-            - Added **Portable Windows (ZIP)** version (No installation/certificate needed)
-            - Improved **Real-time Download Progress** UI
-            - Robust update downloader (Fixes connection interruptions)
-            - **Automatic System Transition**: App closes itself after starting update for a clean installation.
-            - Security: Private repository update fetching with restricted PAT.
+            - **Seamless Advanced Over-the-Air Update System.**
+            - Shifted logic from Certificate-bound MSIX to 100% Free Silent EXE executable.
+            - UI fixes and Dashboard responsiveness enhancements.
+            - Fully secure and corrupt-proof real-time integrity verification.
 
             ---
             *Commit: `${{ github.sha }}` | Run: #${{ github.run_number }}*
           files: |
             release-assets/**/*.apk
-            release-assets/**/*.msix
+            release-assets/**/*.exe
             release-assets/**/*.zip
           draft: false
           prerelease: false

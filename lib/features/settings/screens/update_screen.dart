@@ -16,8 +16,6 @@ class _UpdateScreenState extends State<UpdateScreen> {
   String _currentVersion = '';
   Map<String, dynamic>? _onlineInfo;
   bool _isLoading = true;
-  bool _isChecking = false;
-  String? _errorMessage;
 
   @override
   void initState() {
@@ -27,28 +25,21 @@ class _UpdateScreenState extends State<UpdateScreen> {
 
   Future<void> _initialFetch() async {
     if (!mounted) return;
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-    });
+    setState(() => _isLoading = true);
 
     try {
       final packageInfo = await PackageInfo.fromPlatform();
-      final info = await UpdateService().getLatestVersionInfo();
+      _currentVersion = packageInfo.version;
+      
+      final info = await UpdateService().checkForUpdateFlow();
       if (mounted) {
         setState(() {
-          _currentVersion = packageInfo.version;
           _onlineInfo = info;
           _isLoading = false;
         });
       }
     } catch (e) {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-          _errorMessage = 'Connection Error: Check your internet and retry.';
-        });
-      }
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -67,7 +58,6 @@ class _UpdateScreenState extends State<UpdateScreen> {
       ),
       body: Stack(
         children: [
-          // Background Gradient
           Container(
             decoration: BoxDecoration(
               gradient: LinearGradient(
@@ -90,32 +80,35 @@ class _UpdateScreenState extends State<UpdateScreen> {
                     physics: const AlwaysScrollableScrollPhysics(),
                     slivers: [
                       SliverToBoxAdapter(child: SizedBox(height: MediaQuery.of(context).padding.top + 60)),
+                      SliverToBoxAdapter(child: _buildHeroHeader(primaryColor, isDark)),
                       
-                      // Hero Header Section
+                      // Live Update State Visualizer
                       SliverToBoxAdapter(
-                        child: _buildHeroHeader(primaryColor, isDark),
-                      ),
-
-                      // Real-time Progress Section (Sticky if updating)
-                      SliverToBoxAdapter(
-                        child: ValueListenableBuilder<bool>(
-                          valueListenable: isUpdatingNotifier,
-                          builder: (context, isUpdating, _) {
-                            if (!isUpdating) return const SizedBox.shrink();
-                            return _buildLiveUpdateProgress(primaryColor, isDark).animate().fadeIn().slideY(begin: 0.1);
+                        child: ValueListenableBuilder<UpdateState>(
+                          valueListenable: updateStateNotifier,
+                          builder: (context, state, _) {
+                            if (state == UpdateState.idle || state == UpdateState.available) {
+                              return const SizedBox.shrink();
+                            }
+                            return _buildLiveStateVisualizer(primaryColor, isDark, state).animate().fadeIn().slideY(begin: 0.1);
                           },
                         ),
                       ),
 
-                      // Update Status Banner
+                      // Status Banner
                       SliverToBoxAdapter(
                         child: Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                          child: _buildStatusBanner(primaryColor, isDark),
+                          child: ValueListenableBuilder<UpdateState>(
+                            valueListenable: updateStateNotifier,
+                            builder: (context, state, _) {
+                               return _buildDynamicBanner(primaryColor, isDark, state);
+                            }
+                          ),
                         ),
                       ),
 
-                      // Actions Section
+                      // Action Controls
                       SliverToBoxAdapter(
                         child: Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -123,11 +116,11 @@ class _UpdateScreenState extends State<UpdateScreen> {
                         ),
                       ),
 
-                      // Changelog/Activity Section
+                      // Release Details & Author
                       SliverPadding(
                         padding: const EdgeInsets.fromLTRB(20, 24, 20, 40),
                         sliver: SliverToBoxAdapter(
-                          child: _buildActivitySection(primaryColor, isDark),
+                          child: _buildReleaseDetails(primaryColor, isDark),
                         ),
                       ),
                     ],
@@ -146,13 +139,7 @@ class _UpdateScreenState extends State<UpdateScreen> {
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             color: primary.withOpacity(0.1),
-            boxShadow: [
-              BoxShadow(
-                color: primary.withOpacity(0.1),
-                blurRadius: 40,
-                spreadRadius: 5,
-              )
-            ],
+            boxShadow: [BoxShadow(color: primary.withOpacity(0.1), blurRadius: 40, spreadRadius: 5)],
           ),
           child: Icon(IconsaxPlusLinear.refresh_circle, size: 80, color: primary),
         ).animate(onPlay: (c) => c.repeat(reverse: true)).shimmer(duration: 2000.ms),
@@ -167,99 +154,109 @@ class _UpdateScreenState extends State<UpdateScreen> {
         ),
         Text(
           'Current System Version',
-          style: GoogleFonts.outfit(
-            color: Colors.grey,
-            fontSize: 14,
-            fontWeight: FontWeight.w500,
-          ),
+          style: GoogleFonts.outfit(color: Colors.grey, fontSize: 14, fontWeight: FontWeight.w500),
         ),
         const SizedBox(height: 30),
       ],
     );
   }
 
-  Widget _buildLiveUpdateProgress(Color primary, bool isDark) {
+  Widget _buildLiveStateVisualizer(Color primary, bool isDark, UpdateState state) {
+    IconData statusIcon = IconsaxPlusLinear.cloud_change;
+    Color statusColor = primary;
+
+    if (state == UpdateState.validating) {
+      statusIcon = IconsaxPlusLinear.security_safe;
+      statusColor = Colors.orangeAccent;
+    } else if (state == UpdateState.readyToInstall) {
+      statusIcon = IconsaxPlusLinear.tick_circle;
+      statusColor = Colors.green;
+    } else if (state == UpdateState.installing || state == UpdateState.relaunching) {
+      statusIcon = IconsaxPlusLinear.setting_4;
+      statusColor = Colors.greenAccent;
+    } else if (state == UpdateState.error) {
+      statusIcon = IconsaxPlusLinear.close_circle;
+      statusColor = Colors.redAccent;
+    }
+
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF1E293B) : Colors.white,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: primary.withOpacity(0.3)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          )
-        ],
+        border: Border.all(color: statusColor.withOpacity(0.4)),
+        boxShadow: [BoxShadow(color: statusColor.withOpacity(0.08), blurRadius: 15, offset: const Offset(0, 5))],
       ),
       child: Column(
         children: [
           Row(
             children: [
-              const Icon(IconsaxPlusLinear.document_download, color: Colors.blueAccent),
+              Icon(statusIcon, color: statusColor)
+                  .animate(onPlay: (c) => state == UpdateState.readyToInstall ? c : c.repeat())
+                  .shimmer(duration: 1500.ms),
               const SizedBox(width: 12),
               Expanded(
                 child: ValueListenableBuilder<String>(
                   valueListenable: updateStatusNotifier,
-                  builder: (context, status, _) {
-                    return Text(
-                      status,
-                      style: GoogleFonts.outfit(fontWeight: FontWeight.w600, fontSize: 14),
-                    );
+                  builder: (context, statusMsg, _) {
+                    return Text(statusMsg, style: GoogleFonts.outfit(fontWeight: FontWeight.w600, fontSize: 13));
                   },
                 ),
               ),
-              ValueListenableBuilder<double>(
-                valueListenable: updateProgressNotifier,
-                builder: (context, progress, _) {
-                  return Text(
-                    '${(progress * 100).toStringAsFixed(0)}%',
-                    style: GoogleFonts.outfit(fontWeight: FontWeight.w800, color: primary),
-                  );
-                },
-              ),
+              if (state == UpdateState.downloading)
+                ValueListenableBuilder<double>(
+                  valueListenable: updateProgressNotifier,
+                  builder: (context, progress, _) {
+                    return Text('${(progress * 100).toStringAsFixed(0)}%', style: GoogleFonts.outfit(fontWeight: FontWeight.w800, color: statusColor));
+                  },
+                ),
             ],
           ),
-          const SizedBox(height: 15),
-          ValueListenableBuilder<double>(
-            valueListenable: updateProgressNotifier,
-            builder: (context, progress, _) {
-              return ClipRRect(
-                borderRadius: BorderRadius.circular(10),
-                child: LinearProgressIndicator(
-                  value: progress,
-                  minHeight: 8,
-                  backgroundColor: primary.withOpacity(0.1),
-                  valueColor: AlwaysStoppedAnimation<Color>(primary),
-                ),
-              );
-            },
-          ),
+          if (state == UpdateState.downloading || state == UpdateState.validating || state == UpdateState.installing) ...[
+            const SizedBox(height: 15),
+            ValueListenableBuilder<double>(
+              valueListenable: updateProgressNotifier,
+              builder: (context, progress, _) {
+                return ClipRRect(
+                  borderRadius: BorderRadius.circular(10),
+                  child: LinearProgressIndicator(
+                    value: (state == UpdateState.validating || state == UpdateState.installing) ? null : progress,
+                    minHeight: 8,
+                    backgroundColor: statusColor.withOpacity(0.1),
+                    valueColor: AlwaysStoppedAnimation<Color>(statusColor),
+                  ),
+                );
+              },
+            ),
+          ]
         ],
       ),
     );
   }
 
-  Widget _buildStatusBanner(Color primary, bool isDark) {
-    if (_errorMessage != null) {
-      return _banner(
-        label: _errorMessage!,
-        icon: IconsaxPlusLinear.info_circle,
-        color: Colors.redAccent,
-        isDark: isDark,
+  Widget _buildDynamicBanner(Color primary, bool isDark, UpdateState state) {
+    if (state == UpdateState.error) {
+      return ValueListenableBuilder<String>(
+        valueListenable: updateStatusNotifier,
+        builder: (context, errMsg, _) {
+          return _banner(label: errMsg.isNotEmpty ? errMsg : 'An error occurred.', icon: IconsaxPlusLinear.info_circle, color: Colors.redAccent, isDark: isDark);
+        }
       );
     }
+    if (state == UpdateState.checking) {
+      return _banner(label: 'Checking securely for updates...', icon: IconsaxPlusLinear.search_zoom_in_1, color: Colors.orangeAccent, isDark: isDark);
+    }
+    
+    if (state == UpdateState.readyToInstall) {
+      return _banner(label: 'Update downloaded! Ready to install.', icon: IconsaxPlusBold.magic_star, color: Colors.green, isDark: isDark);
+    }
 
-    final isUpdateAvailable = _onlineInfo != null &&
-        _onlineInfo!['version'] != null &&
-        _currentVersion.isNotEmpty &&
-        _onlineInfo!['version'] != _currentVersion;
+    final isUpdateAvailable = _onlineInfo != null && _onlineInfo!['version'] != null && _currentVersion.isNotEmpty && _onlineInfo!['version'] != _currentVersion;
 
     if (isUpdateAvailable) {
       return _banner(
-        label: 'Version v${_onlineInfo!['version']} is available for download',
+        label: 'Version v${_onlineInfo!['version']} is available',
         detail: 'Package size: ${_onlineInfo!['sizeMb']} MB',
         icon: IconsaxPlusLinear.info_circle,
         color: Colors.greenAccent,
@@ -267,13 +264,7 @@ class _UpdateScreenState extends State<UpdateScreen> {
       );
     }
 
-    return _banner(
-      label: 'Your system is up to date',
-      detail: 'Last checked: just now',
-      icon: IconsaxPlusLinear.tick_circle,
-      color: primary,
-      isDark: isDark,
-    );
+    return _banner(label: 'Your system is fully protected & up to date', detail: 'Local Version: $_currentVersion', icon: IconsaxPlusBold.shield_tick, color: primary, isDark: isDark);
   }
 
   Widget _banner({required String label, String? detail, required IconData icon, required Color color, required bool isDark}) {
@@ -290,17 +281,16 @@ class _UpdateScreenState extends State<UpdateScreen> {
           const SizedBox(width: 14),
           Expanded(
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(label, style: GoogleFonts.outfit(fontWeight: FontWeight.w600, color: isDark ? Colors.white : Colors.black87, fontSize: 13)),
-                if (detail != null)
-                  Text(detail, style: GoogleFonts.outfit(color: isDark ? Colors.white70 : Colors.black54, fontSize: 11)),
-              ],
-            ),
+               crossAxisAlignment: CrossAxisAlignment.start,
+               children: [
+                 Text(label, style: GoogleFonts.outfit(fontWeight: FontWeight.w600, color: isDark ? Colors.white : Colors.black87, fontSize: 13)),
+                 if (detail != null) Text(detail, style: GoogleFonts.outfit(color: isDark ? Colors.white70 : Colors.black54, fontSize: 11)),
+               ],
+             ),
           ),
         ],
       ),
-    );
+    ).animate().scale(delay: 200.ms, duration: 400.ms, curve: Curves.easeOutBack);
   }
 
   Widget _buildActionCard(Color primary, bool isDark) {
@@ -309,147 +299,129 @@ class _UpdateScreenState extends State<UpdateScreen> {
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF1E293B) : Colors.white,
         borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 20,
-            offset: const Offset(0, 10),
-          )
-        ],
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 20, offset: const Offset(0, 10))],
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('System Controls', style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 4),
-          Text('Check manually or start installation if available.', style: GoogleFonts.outfit(color: Colors.grey, fontSize: 13)),
-          const SizedBox(height: 20),
-          SizedBox(
-            width: double.infinity,
-            height: 54,
-            child: ElevatedButton.icon(
-              onPressed: _isChecking
-                  ? null
-                  : () async {
-                      if (!mounted) return;
-                      setState(() => _isChecking = true);
-                      try {
-                        await UpdateService().checkForUpdate(context, showNoUpdate: true);
-                        await _initialFetch();
-                      } catch (_) {}
-                      if (mounted) {
-                        setState(() => _isChecking = false);
-                      }
-                    },
-              icon: _isChecking
-                  ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                  : const Icon(IconsaxPlusLinear.refresh),
-              label: Text(_isChecking ? 'Verifying...' : 'Check System Updates'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: primary,
-                foregroundColor: Colors.white,
-                elevation: 0,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-              ),
-            ),
-          ),
-        ],
+      child: ValueListenableBuilder<UpdateState>(
+        valueListenable: updateStateNotifier,
+        builder: (context, state, _) {
+          bool isBusy = (state == UpdateState.checking || state == UpdateState.downloading || state == UpdateState.validating || state == UpdateState.installing);
+          bool isReady = state == UpdateState.readyToInstall;
+
+          final isUpdateAvailable = _onlineInfo != null && _onlineInfo!['version'] != null && _currentVersion.isNotEmpty && _onlineInfo!['version'] != _currentVersion;
+
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('System Controls', style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 4),
+              Text('Initiate cross-platform secure update process.', style: GoogleFonts.outfit(color: Colors.grey, fontSize: 13)),
+              const SizedBox(height: 20),
+              
+              if (isUpdateAvailable || isReady) ...[
+                SizedBox(
+                  width: double.infinity,
+                  height: 54,
+                  child: ElevatedButton.icon(
+                    onPressed: isBusy ? null : () async => await UpdateService().startDirectUpdate(_onlineInfo!),
+                    icon: isBusy
+                        ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                        : Icon(isReady ? IconsaxPlusBold.refresh : IconsaxPlusLinear.document_download),
+                    label: Text(isBusy ? 'Processing...' : (isReady ? 'Restart & Apply Update' : 'Install Secure Update Now')),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: isReady ? Colors.green : Colors.blueAccent,
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    ),
+                  ),
+                )
+              ] else ...[
+                SizedBox(
+                  width: double.infinity,
+                  height: 54,
+                  child: ElevatedButton.icon(
+                    onPressed: isBusy ? null : _initialFetch,
+                    icon: isBusy
+                        ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                        : const Icon(IconsaxPlusLinear.refresh),
+                    label: Text(isBusy ? 'Verifying...' : 'Check System Updates'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: primary,
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          );
+        }
       ),
     );
   }
 
-  Widget _buildActivitySection(Color primary, bool isDark) {
-    final releases = _onlineInfo?['all_releases'] as List?;
+  Widget _buildReleaseDetails(Color primary, bool isDark) {
+    if (_onlineInfo == null) return const SizedBox.shrink();
+
+    final releaseVersion = _onlineInfo!['version'] as String;
+    String notes = (_onlineInfo!['notes'] ?? '').toString();
+    notes = notes.replaceAll('**', '').replaceAll('##', '').replaceAll('`', '').replaceAll('|', '').trim();
     
+    final authorName = _onlineInfo!['author'] as String;
+    final authorAvatar = _onlineInfo!['author_avatar'] as String;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text('Update History', style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.bold)),
+            Text('What\'s Changed v$releaseVersion', style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.bold)),
             const Icon(IconsaxPlusLinear.status, size: 18, color: Colors.grey),
           ],
         ),
         const SizedBox(height: 16),
-        if (releases == null || releases.isEmpty)
-          const Center(child: Text('No activity data.', style: TextStyle(color: Colors.grey)))
-        else
-          ListView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            padding: EdgeInsets.zero,
-            itemCount: releases.length.clamp(0, 8),
-            itemBuilder: (context, index) {
-              final release = releases[index];
-              final tag = (release['tag_name'] ?? '').toString();
-              final isCurrent = tag == 'v$_currentVersion' || tag == _currentVersion;
-              
-              String notes = (release['body'] ?? '').toString();
-              // Format notes for preview
-              notes = notes
-                  .replaceAll('**', '')
-                  .replaceAll('##', '')
-                  .replaceAll('`', '')
-                  .replaceAll('|', '')
-                  .replaceAll('\n', ' ')
-                  .trim();
-
-              return Container(
-                margin: const EdgeInsets.only(bottom: 12),
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: isDark ? const Color(0xFF1E293B).withOpacity(0.5) : Colors.white,
-                  borderRadius: BorderRadius.circular(18),
-                  border: isCurrent ? Border.all(color: primary.withOpacity(0.5), width: 1) : null,
-                ),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: isCurrent ? primary.withOpacity(0.1) : Colors.grey.withOpacity(0.1),
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(
-                        isCurrent ? IconsaxPlusBold.tick_circle : IconsaxPlusLinear.clock, 
-                        size: 16, 
-                        color: isCurrent ? primary : Colors.grey
-                      ),
-                    ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(tag, style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 15)),
-                              if (isCurrent)
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                                  decoration: BoxDecoration(color: primary, borderRadius: BorderRadius.circular(6)),
-                                  child: Text('Active', style: GoogleFonts.outfit(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
-                                ),
-                            ],
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            notes.isEmpty ? 'Performance improvements and security patches.' : notes,
-                            style: GoogleFonts.outfit(fontSize: 12, color: Colors.grey, height: 1.4),
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ).animate().fadeIn(delay: (index * 100).ms).slideX(begin: 0.05);
-            },
+        
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: isDark ? const Color(0xFF1E293B).withOpacity(0.5) : Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: primary.withOpacity(0.2)),
+            boxShadow: [
+              if (!isDark) BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10, offset: const Offset(0, 2))
+            ],
           ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Author Section
+              Row(
+                children: [
+                  CircleAvatar(
+                    radius: 12,
+                    backgroundColor: primary.withOpacity(0.2),
+                    backgroundImage: authorAvatar.isNotEmpty ? NetworkImage(authorAvatar) : null,
+                    child: authorAvatar.isEmpty ? Icon(Icons.person, size: 12, color: primary) : null,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Released by @$authorName',
+                    style: GoogleFonts.outfit(fontSize: 13, fontWeight: FontWeight.w600, color: primary),
+                  ),
+                ],
+              ),
+              const Divider(height: 24),
+              // Changelog
+              Text(
+                notes.isEmpty ? 'Performance and security updates.' : notes,
+                style: GoogleFonts.outfit(fontSize: 14, color: isDark ? Colors.grey[300] : Colors.grey[700], height: 1.6),
+              ),
+            ],
+          ),
+        ).animate().fadeIn().slideY(begin: 0.1),
       ],
     );
   }
