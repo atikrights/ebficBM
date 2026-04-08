@@ -209,7 +209,6 @@ class UpdateService {
       }
     }
   }
-  }
 
   Future<void> _cleanOldUpdates() async {
     try {
