@@ -32,7 +32,7 @@ class _HomeScreenState extends State<HomeScreen> {
     
     // Check for updates on startup
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      UpdateService().checkForUpdate(context);
+      UpdateService().initializeBackgroundUpdate();
     });
   }
 
