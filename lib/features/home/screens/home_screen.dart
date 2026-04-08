@@ -13,6 +13,7 @@ import 'package:ebficBM/features/projects/screens/project_workspace_screen.dart'
 import 'package:ebficBM/core/services/update_service.dart';
 import 'package:ebficBM/features/settings/screens/update_screen.dart';
 import 'package:ebficBM/features/guidelines/screens/guidelines_screen.dart';
+import 'package:ebficBM/features/modules/screens/module_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -72,6 +73,7 @@ class _HomeScreenState extends State<HomeScreen> {
     const NotesScreen(),
     const UpdateScreen(),
     const GuidelinesScreen(),
+    const ModuleScreen(),
   ];
 
   final List<String> _titles = [
@@ -84,6 +86,7 @@ class _HomeScreenState extends State<HomeScreen> {
     'Notes',
     'Software Update',
     'System Guidelines',
+    'App Modules',
   ];
 
   @override
