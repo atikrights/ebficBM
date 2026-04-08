@@ -115,7 +115,7 @@ class UpdateService {
 
       // Download start
       updateStateNotifier.value = UpdateState.downloading;
-      updateStatusNotifier.value = 'Downloading secure update...';
+      updateStatusNotifier.value = 'Connecting to secure server...';
       
       final headers = _privateRepoToken.isNotEmpty 
         ? {'Authorization': 'Bearer $_privateRepoToken', 'Accept': 'application/octet-stream'}
@@ -123,12 +123,20 @@ class UpdateService {
 
       String downloadUrl = _privateRepoToken.isNotEmpty ? info['url'] : info['browser_download_url'];
 
-      await Dio().download(
+      final dio = Dio(BaseOptions(
+        connectTimeout: const Duration(seconds: 30),
+        receiveTimeout: const Duration(minutes: 5),
+      ));
+
+      await dio.download(
         downloadUrl,
         filePath,
         options: Options(headers: headers),
         onReceiveProgress: (count, total) {
-          if (total != -1) updateProgressNotifier.value = count / total;
+          if (total != -1) {
+            updateProgressNotifier.value = count / total;
+            updateStatusNotifier.value = 'Downloading: ${(count / (1024 * 1024)).toStringAsFixed(1)}MB / ${(total / (1024 * 1024)).toStringAsFixed(1)}MB';
+          }
         },
       );
 
@@ -163,7 +171,7 @@ class UpdateService {
 
     if (Platform.isWindows) {
       if (path.toLowerCase().endsWith('.exe')) {
-        await Process.start(path, ['/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART'], 
+        await Process.start(path, ['/VERYSILENT', '/SUPPRESSMSGBOXES'], 
           runInShell: true, mode: ProcessStartMode.detached);
       } else {
         await Process.start(path, [], runInShell: true, mode: ProcessStartMode.detached);
