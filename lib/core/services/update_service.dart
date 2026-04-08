@@ -128,17 +128,29 @@ class UpdateService {
         receiveTimeout: const Duration(minutes: 5),
       ));
 
-      await dio.download(
-        downloadUrl,
-        filePath,
-        options: Options(headers: headers),
-        onReceiveProgress: (count, total) {
-          if (total != -1) {
-            updateProgressNotifier.value = count / total;
-            updateStatusNotifier.value = 'Downloading: ${(count / (1024 * 1024)).toStringAsFixed(1)}MB / ${(total / (1024 * 1024)).toStringAsFixed(1)}MB';
-          }
-        },
-      );
+      int retryCount = 0;
+      bool success = false;
+      while (retryCount < 3 && !success) {
+        try {
+          await dio.download(
+            downloadUrl,
+            filePath,
+            options: Options(headers: headers),
+            onReceiveProgress: (count, total) {
+              if (total != -1) {
+                updateProgressNotifier.value = count / total;
+                updateStatusNotifier.value = 'Downloading: ${(count / (1024 * 1024)).toStringAsFixed(1)}MB / ${(total / (1024 * 1024)).toStringAsFixed(1)}MB';
+              }
+            },
+          );
+          success = true;
+        } catch (e) {
+          retryCount++;
+          if (retryCount >= 3) rethrow;
+          updateStatusNotifier.value = 'Retry $retryCount/3...';
+          await Future.delayed(const Duration(seconds: 2));
+        }
+      }
 
       // Verify integrity
       updateStateNotifier.value = UpdateState.validating;
