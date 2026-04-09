@@ -81,7 +81,7 @@ class ResponsiveLayout extends StatelessWidget {
                 BottomNavigationBarItem(icon: Icon(IconsaxPlusLinear.element_3), label: 'Home'),
                 BottomNavigationBarItem(icon: Icon(IconsaxPlusLinear.task_square), label: 'Tasks'),
                 BottomNavigationBarItem(icon: Icon(IconsaxPlusLinear.card), label: 'Finance'),
-                BottomNavigationBarItem(icon: Icon(IconsaxPlusLinear.notification), label: 'Alerts'),
+                BottomNavigationBarItem(icon: Icon(IconsaxPlusLinear.notification), label: 'Notices'),
                 BottomNavigationBarItem(icon: Icon(IconsaxPlusLinear.refresh), label: 'Update'),
               ],
             )
@@ -96,7 +96,8 @@ int _mobileNavIndex(int screenIndex) {
     case 0: return 0;  // Dashboard
     case 4: return 1;  // Tasks
     case 5: return 2;  // Finance
-    case 8: return 4;  // Update
+    case 7: return 3;  // Notices
+    case 9: return 4;  // Update
     default: return 0;
   }
 }
@@ -107,11 +108,12 @@ int _mobileNavToScreenIndex(int navIndex) {
     case 0: return 0;  // Dashboard
     case 1: return 4;  // Tasks
     case 2: return 5;  // Finance
-    case 3: return 0;  // Alerts
-    case 4: return 8;  // Update
+    case 3: return 7;  // Notices
+    case 4: return 9;  // Update
     default: return 0;
   }
 }
+
 
 
 class _Sidebar extends StatelessWidget {
@@ -201,29 +203,38 @@ class _Sidebar extends StatelessWidget {
                   isDark: isDark,
                 ),
                 _NavItem(
-                  icon: IconsaxPlusLinear.document_text,
-                  label: 'Notes',
+                  icon: IconsaxPlusLinear.notification_status, // Icon for Notices
+                  label: 'Notices',
                   isSelected: selectedIndex == 7,
                   isCollapsed: isCollapsed,
                   onTap: () => onNavigationChanged(7),
                   isDark: isDark,
                 ),
                 _NavItem(
-                  icon: IconsaxPlusLinear.refresh,
-                  label: 'Update',
+                  icon: IconsaxPlusLinear.document_text,
+                  label: 'Notes',
                   isSelected: selectedIndex == 8,
                   isCollapsed: isCollapsed,
                   onTap: () => onNavigationChanged(8),
                   isDark: isDark,
                 ),
                 _NavItem(
-                  icon: IconsaxPlusLinear.category,
-                  label: 'Modules',
-                  isSelected: selectedIndex == 10,
+                  icon: IconsaxPlusLinear.refresh,
+                  label: 'Update',
+                  isSelected: selectedIndex == 9,
                   isCollapsed: isCollapsed,
-                  onTap: () => onNavigationChanged(10),
+                  onTap: () => onNavigationChanged(9),
                   isDark: isDark,
                 ),
+                _NavItem(
+                  icon: IconsaxPlusLinear.category,
+                  label: 'Modules',
+                  isSelected: selectedIndex == 11,
+                  isCollapsed: isCollapsed,
+                  onTap: () => onNavigationChanged(11),
+                  isDark: isDark,
+                ),
+
               ],
             ),
           ),

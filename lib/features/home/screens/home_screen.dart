@@ -15,6 +15,8 @@ import 'package:ebficBM/features/settings/screens/update_screen.dart';
 import 'package:ebficBM/features/guidelines/screens/guidelines_screen.dart';
 import 'package:ebficBM/features/modules/screens/module_screen.dart';
 import 'package:ebficBM/features/analysis/screens/analysis_screen.dart';
+import 'package:ebficBM/features/notices/screens/notice_screen.dart';
+
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -72,6 +74,7 @@ class _HomeScreenState extends State<HomeScreen> {
     const TaskListScreen(),
     const FinanceScreen(),
     const ReportsScreen(),
+    const NoticeScreen(),
     const NotesScreen(),
     const UpdateScreen(),
     const GuidelinesScreen(),
@@ -86,6 +89,7 @@ class _HomeScreenState extends State<HomeScreen> {
     'Tasks',
     'Finance',
     'Reports',
+    'Official Notices',
     'Notes',
     'Software Update',
     'System Guidelines',
