@@ -247,5 +247,14 @@ class ProjectProvider with ChangeNotifier {
     notifyListeners();
   }
 
+  void clearSyncLogs(String projectId) {
+    final idx = _projects.indexWhere((p) => p.id == projectId);
+    if (idx != -1) {
+      _projects[idx] = _projects[idx].copyWith(syncLogs: []);
+      _saveToStorage();
+      notifyListeners();
+    }
+  }
+
   void reload() => _loadFromStorage();
 }

@@ -2094,93 +2094,105 @@ class _PlanConsoleBoardState extends State<_PlanConsoleBoard> {
   }
 
   Widget _buildActionButtons(bool isDesktop, Color color, bool isDark, List<SystemTask> tasks, int archivedCount) {
-    if (isDesktop) {
-      return Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          ElevatedButton.icon(
-            onPressed: () => _showArchivedTasksDialog(context, color, isDark),
-            icon: const Icon(IconsaxPlusLinear.archive_tick, size: 16),
-            label: Text('ARCHIVE ($archivedCount)', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
-            style: ElevatedButton.styleFrom(backgroundColor: color.withValues(alpha: 0.08), foregroundColor: color, elevation: 0, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
-          ),
-          const SizedBox(width: 8),
-          ElevatedButton.icon(
-            onPressed: () => _exportConsoleData(tasks),
-            icon: const Icon(IconsaxPlusLinear.document_download, size: 16),
-            label: const Text('EXPORT', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
-            style: ElevatedButton.styleFrom(backgroundColor: color.withValues(alpha: 0.08), foregroundColor: color, elevation: 0, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
-          ),
-          const SizedBox(width: 8),
-          ElevatedButton.icon(
-            onPressed: () => _importConsoleData(context),
-            icon: const Icon(IconsaxPlusLinear.document_upload, size: 16),
-            label: const Text('IMPORT', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
-            style: ElevatedButton.styleFrom(backgroundColor: color.withValues(alpha: 0.08), foregroundColor: color, elevation: 0, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
-          ),
-          const SizedBox(width: 16),
-          ElevatedButton.icon(
-            onPressed: () => _showAddNodeDialog(context, color, isDark),
-            icon: const Icon(IconsaxPlusLinear.search_status, size: 16),
-            label: const Text('ATTACH NODE', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
-            style: ElevatedButton.styleFrom(backgroundColor: color.withValues(alpha: 0.12), foregroundColor: color, elevation: 0, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
-          ),
-          const SizedBox(width: 12),
-          ElevatedButton.icon(
-            onPressed: () => _showQuickAddDialog(context, color, isDark), 
-            icon: const Icon(IconsaxPlusLinear.add, size: 16),
-            label: const Text('CREATE NODE', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
-            style: ElevatedButton.styleFrom(backgroundColor: color, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
-          ),
-        ],
-      );
-    } else {
-      return Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Badge(
-            label: Text('$archivedCount'),
-            isLabelVisible: archivedCount > 0,
-            backgroundColor: color,
-            child: IconButton(
-              onPressed: () => _showArchivedTasksDialog(context, color, isDark),
-              icon: const Icon(IconsaxPlusLinear.archive_tick),
-              color: color,
-              tooltip: 'Archived Tasks',
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _actionIconButton(
+          onPressed: () => _showArchivedTasksDialog(context, color, isDark),
+          icon: IconsaxPlusLinear.archive_tick,
+          tooltip: 'Registry Archive ($archivedCount)',
+          color: color,
+          isDark: isDark,
+          badge: archivedCount > 0 ? '$archivedCount' : null,
+        ),
+        _actionIconButton(
+          onPressed: () => _exportConsoleData(tasks),
+          icon: IconsaxPlusLinear.document_download,
+          tooltip: 'Export Console Bundle',
+          color: color,
+          isDark: isDark,
+        ),
+        _actionIconButton(
+          onPressed: () => _importConsoleData(context),
+          icon: IconsaxPlusLinear.document_upload,
+          tooltip: 'Import Cloud Registry',
+          color: color,
+          isDark: isDark,
+        ),
+        _actionIconButton(
+          onPressed: () => _showAddNodeDialog(context, color, isDark),
+          icon: IconsaxPlusLinear.search_status,
+          tooltip: 'Search & Attach Node',
+          color: color,
+          isDark: isDark,
+          isSpecial: true,
+        ),
+        const SizedBox(width: 8),
+        _actionIconButton(
+          onPressed: () => _showQuickAddDialog(context, color, isDark), 
+          icon: IconsaxPlusLinear.add,
+          tooltip: 'Generate New Node',
+          color: color,
+          isDark: isDark,
+          isPrimary: true,
+        ),
+      ],
+    );
+  }
+
+  Widget _actionIconButton({
+    required VoidCallback onPressed,
+    required IconData icon,
+    required String tooltip,
+    required Color color,
+    required bool isDark,
+    String? badge,
+    bool isPrimary = false,
+    bool isSpecial = false,
+  }) {
+    final bgColor = isPrimary 
+        ? color 
+        : (isSpecial ? color.withOpacity(0.15) : color.withOpacity(0.08));
+    final iconColor = isPrimary ? Colors.white : color;
+
+    Widget button = Tooltip(
+      message: tooltip,
+      waitDuration: const Duration(milliseconds: 500),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onPressed,
+          borderRadius: BorderRadius.circular(10),
+          child: Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: bgColor,
+              borderRadius: BorderRadius.circular(10),
             ),
+            child: Icon(icon, size: 18, color: iconColor),
           ),
-          IconButton(
-            onPressed: () => _exportConsoleData(tasks),
-            icon: const Icon(IconsaxPlusLinear.document_download),
-            color: color,
-            tooltip: 'Export Bundle',
-          ),
-          IconButton(
-            onPressed: () => _importConsoleData(context),
-            icon: const Icon(IconsaxPlusLinear.document_upload),
-            color: color,
-            tooltip: 'Import Registry',
-          ),
-          IconButton(
-            onPressed: () => _showAddNodeDialog(context, color, isDark),
-            icon: const Icon(IconsaxPlusLinear.search_status),
-            color: color,
-            tooltip: 'Link Node',
-          ),
-          Container(
-            margin: const EdgeInsets.only(left: 4),
-            decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(12)),
-            child: IconButton(
-              onPressed: () => _showQuickAddDialog(context, color, isDark), 
-              icon: const Icon(IconsaxPlusLinear.add),
-              color: Colors.white,
-              tooltip: 'Generate',
-            ),
-          ),
-        ],
+        ),
+      ),
+    );
+
+    if (badge != null) {
+      return Padding(
+        padding: const EdgeInsets.only(left: 8),
+        child: Badge(
+          label: Text(badge, style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.white)),
+          backgroundColor: color,
+          offset: const Offset(4, -4),
+          child: button,
+        ),
       );
     }
+
+    return Padding(
+      padding: const EdgeInsets.only(left: 8),
+      child: button,
+    );
   }
+
 
   void _showArchivedTasksDialog(BuildContext context, Color color, bool isDark) {
     showDialog(

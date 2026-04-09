@@ -195,6 +195,7 @@ class Project {
   final List<String> taskIds;
   final List<Plan> plans;
   final List<CostLog> financialLogs;
+  final List<HistoryLog> syncLogs; // New: Activity logs for attachment/sync
 
   Project({
     required this.id,
@@ -221,6 +222,7 @@ class Project {
     this.taskIds = const [],
     this.plans = const [],
     this.financialLogs = const [],
+    this.syncLogs = const [],
   });
 
   Map<String, dynamic> toMap() {
@@ -249,6 +251,7 @@ class Project {
       'taskIds': taskIds,
       'plans': plans.map((p) => p.toMap()).toList(),
       'financialLogs': financialLogs.map((l) => l.toMap()).toList(),
+      'syncLogs': syncLogs.map((l) => l.toMap()).toList(),
     };
   }
 
@@ -278,6 +281,7 @@ class Project {
       taskIds: List<String>.from(map['taskIds'] ?? []),
       plans: (map['plans'] as List? ?? []).map((p) => Plan.fromMap(p)).toList(),
       financialLogs: (map['financialLogs'] as List? ?? []).map((l) => CostLog.fromMap(l)).toList(),
+      syncLogs: (map['syncLogs'] as List? ?? []).map((l) => HistoryLog.fromMap(l)).toList(),
     );
   }
 
@@ -290,7 +294,8 @@ class Project {
     ProjectStatus? status, DateTime? startDate, DateTime? estimatedEndDate,
     DateTime? actualEndDate, Color? brandColor, String? website, String? phoneNumber,
     String? coverPhotoUrl, List<String>? adminPhotos, String? inspirationText, String? managerSignature,
-    List<String>? additionalLinks, List<String>? taskIds, List<Plan>? plans, List<CostLog>? financialLogs,
+    List<String>? additionalLinks, List<String>? taskIds, List<Plan>? plans,
+    List<CostLog>? financialLogs, List<HistoryLog>? syncLogs,
   }) {
     return Project(
       id: id ?? this.id, pid: pid ?? this.pid, name: name ?? this.name,
@@ -309,6 +314,7 @@ class Project {
       taskIds: taskIds ?? this.taskIds,
       plans: plans ?? this.plans,
       financialLogs: financialLogs ?? this.financialLogs,
+      syncLogs: syncLogs ?? this.syncLogs,
     );
   }
 }
