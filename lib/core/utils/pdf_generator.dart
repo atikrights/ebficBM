@@ -90,7 +90,7 @@ class ProjectExporter {
                         project.inspirationText.isEmpty
                             ? 'Operating under standard strategic protocols for enterprise deployment.'
                             : project.inspirationText,
-                        style: const pw.TextStyle(fontSize: 11, lineSpacing: 5, fontStyle: pw.FontStyle.italic)),
+                        style: pw.TextStyle(fontSize: 11, lineSpacing: 5, fontStyle: pw.FontStyle.italic)),
                   ],
                 ),
               ),
