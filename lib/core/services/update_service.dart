@@ -20,6 +20,9 @@ class UpdateService {
 
   static final UpdateService _instance = UpdateService._internal();
   factory UpdateService() => _instance;
+  
+  final Dio _dio = Dio();
+  
   UpdateService._internal();
 
   // Initialize and check in background
@@ -117,17 +120,31 @@ class UpdateService {
     try {
       final headers = {
         'Accept': 'application/vnd.github.v3+json',
-        'User-Agent': 'ebficBM-App-Client',
+        'User-Agent': 'ebficBM-Production-App-Client',
       };
+      
       if (_privateRepoToken.isNotEmpty) {
         headers['Authorization'] = 'Bearer $_privateRepoToken';
       }
         
-      final response = await Dio().get(_updateUrl, options: Options(headers: headers));
-      debugPrint('GitHub API Response: ${response.statusCode}');
+      final response = await _dio.get(
+        _updateUrl, 
+        options: Options(
+          headers: headers,
+          validateStatus: (status) => status! < 500, // Handle 403 gracefully
+        )
+      );
+
+      if (response.statusCode == 403) {
+        debugPrint('GitHub rate limit reached (403). Waiting for cool-down...');
+        return null;
+      }
+
+      if (response.statusCode != 200) return null;
+      
       return List<Map<String, dynamic>>.from(response.data);
     } catch (e) {
-      debugPrint('Update Check Failed: $e');
+      debugPrint('Update Check Failed (Network Issue): $e');
       return null;
     }
   }
