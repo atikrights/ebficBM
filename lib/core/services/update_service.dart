@@ -130,7 +130,9 @@ class UpdateService {
 
   // Get the dedicated Update Folder path
   Future<String> getUpdateFolderPath() async {
-    final baseDir = await getApplicationDocumentsDirectory();
+    final baseDir = Platform.isAndroid 
+        ? await getTemporaryDirectory() 
+        : await getApplicationDocumentsDirectory();
     final updateDirPath = '${baseDir.path}/ebficBM/Update - New Release';
     final directory = Directory(updateDirPath);
     if (!await directory.exists()) {

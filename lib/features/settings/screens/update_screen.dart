@@ -253,19 +253,7 @@ class _UpdateScreenState extends State<UpdateScreen> with SingleTickerProviderSt
             
             const SizedBox(height: 32),
             
-            // Build current & online version chips
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                _buildVersionChip('CURRENT', _currentVersion, isDark, false),
-                if (hasUpdate) ...[
-                  const SizedBox(width: 12),
-                  Icon(IconsaxPlusLinear.arrow_right_1, color: primary.withOpacity(0.5), size: 16),
-                  const SizedBox(width: 12),
-                  _buildVersionChip('LATEST', _onlineInfo!['version'], isDark, true),
-                ],
-              ],
-            ),
+            _buildVersionDisplay(isDark, primary, success),
             
             // Progress Bar (if busy)
             if (isBusy) ...[
@@ -275,6 +263,88 @@ class _UpdateScreenState extends State<UpdateScreen> with SingleTickerProviderSt
           ],
         );
       },
+    );
+  }
+
+  Widget _buildVersionDisplay(bool isDark, Color primary, Color success) {
+    final hasUpdate = _isUpdateAvailable;
+    
+    return Column(
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            _buildVersionChip('CURRENT', _currentVersion, isDark, false),
+            if (hasUpdate) ...[
+              const SizedBox(width: 12),
+              Icon(IconsaxPlusLinear.arrow_right_1, color: primary.withOpacity(0.5), size: 16),
+              const SizedBox(width: 12),
+              _buildVersionChip('LATEST', (_onlineInfo!['version'] ?? '').toString(), isDark, true),
+            ],
+          ],
+        ),
+        
+        // Show small inline actions if up to date
+        if (!hasUpdate) ...[
+          const SizedBox(height: 20),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              _buildSmallActionBtn(
+                onTap: () => UpdateService().openUpdateFolder(),
+                icon: IconsaxPlusBold.folder_open,
+                label: 'Open setup',
+                color: primary,
+                isDark: isDark,
+              ),
+              const SizedBox(width: 12),
+              _buildSmallActionBtn(
+                onTap: () => _initialFetch(),
+                icon: IconsaxPlusBold.refresh,
+                label: 'Repair',
+                color: success,
+                isDark: isDark,
+              ),
+            ],
+          ).animate().fadeIn(duration: 400.ms),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildSmallActionBtn({
+    required VoidCallback onTap,
+    required IconData icon,
+    required String label,
+    required Color color,
+    required bool isDark,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(10),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: color.withOpacity(isDark ? 0.1 : 0.05),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: color.withOpacity(0.3), width: 1),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 14, color: color),
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: GoogleFonts.outfit(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: isDark ? Colors.white70 : color,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -472,9 +542,10 @@ class _UpdateScreenState extends State<UpdateScreen> with SingleTickerProviderSt
           final isError = state == UpdateState.error;
           final hasUpdate = _isUpdateAvailable;
 
-          // If no update available and no error/ready, still check if we can offer a "Repair/Open Folder"
+          // If no update available and no error/ready, we hide the bottom FAB area
+          // since actions are now inline with the version display.
           if (!hasUpdate && !isBusy && !isReady && !isError) {
-             return _buildUpToDateActionPanel(isDark, primary, success);
+             return const SizedBox.shrink();
           }
 
           final btnColor = isError ? Colors.redAccent : (isReady ? success : primary);
