@@ -147,31 +147,43 @@ class UpdateService {
       final updateDirPath = await getUpdateFolderPath();
       debugPrint('Target Download Folder: $updateDirPath');
       
-      // 1. Force Clean: Delete the entire directory and recreate it to be 100% sure
+      // 1. Resilient Cleanup: Delete files individually
       final directory = Directory(updateDirPath);
       if (await directory.exists()) {
-        await directory.delete(recursive: true);
-        debugPrint('Old update directory purged.');
+        try {
+          final entities = await directory.list().toList();
+          for (var entity in entities) {
+             if (entity is File) {
+               await entity.delete();
+               debugPrint('Deleted old file: ${entity.path}');
+             }
+          }
+        } catch (e) {
+          debugPrint('Non-critical cleanup error: $e');
+        }
+      } else {
+        await directory.create(recursive: true);
       }
-      await directory.create(recursive: true);
-      debugPrint('Fresh update directory created.');
 
-      final filePath = '$updateDirPath/${info['name']}';
+      final fileName = info['name'];
+      final filePath = '${directory.path}/$fileName';
       final file = File(filePath);
 
       // 2. Download start
       updateStateNotifier.value = UpdateState.downloading;
-      updateStatusNotifier.value = 'Connecting to GitHub...';
+      updateStatusNotifier.value = 'Preparing download...';
       
       final headers = _privateRepoToken.isNotEmpty 
         ? {'Authorization': 'Bearer $_privateRepoToken', 'Accept': 'application/octet-stream'}
         : {'Accept': 'application/octet-stream'};
 
       String downloadUrl = _privateRepoToken.isNotEmpty ? info['url'] : info['browser_download_url'];
-      debugPrint('Triggering download from: $downloadUrl');
+      debugPrint('Downloading from: $downloadUrl');
+
       final dio = Dio(BaseOptions(
-        connectTimeout: const Duration(seconds: 30),
-        receiveTimeout: const Duration(minutes: 10),
+        connectTimeout: const Duration(seconds: 60),
+        receiveTimeout: const Duration(minutes: 20),
+        followRedirects: true,
       ));
 
       int retryCount = 0;
