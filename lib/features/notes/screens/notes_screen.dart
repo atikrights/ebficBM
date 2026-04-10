@@ -44,6 +44,7 @@ class _NotesScreenState extends State<NotesScreen> {
       MaterialPageRoute(
         builder: (context) => NoteEditorScreen(
           note: note,
+          initialStatus: _currentView == NoteStatus.archived ? NoteStatus.active : _currentView,
           onSave: (savedNote) {
             setState(() {
               final index = _allNotes.indexWhere((n) => n.id == savedNote.id);
@@ -583,13 +584,14 @@ class _PremiumNoteCardState extends State<_PremiumNoteCard> with SingleTickerPro
     final bool isActive = _isHovered || widget.isSelected;
 
     final Color cardColor = widget.isDark
-        ? Color.lerp(const Color(0xFF1A1A2E), widget.note.color, 0.08)!
-        : widget.note.color.withOpacity(0.88);
+        ? const Color(0xFF1A1B2E) // Deep elegant dark box
+        : Colors.white; // Pure white box
+
     final Color borderColor = widget.isSelected
         ? widget.theme.primaryColor
         : widget.isDark
-            ? widget.note.color.withOpacity(0.18)
-            : Colors.black.withOpacity(0.06);
+            ? widget.note.color.withOpacity(0.12)
+            : widget.note.color.withOpacity(0.1);
 
     final Color textColor = widget.isDark ? Colors.white : Colors.black87;
     final Color subTextColor = widget.isDark ? Colors.white60 : Colors.black54;

@@ -8,6 +8,7 @@ import 'package:ebficBM/features/tasks/screens/task_list_screen.dart';
 import 'package:ebficBM/features/finance/screens/finance_screen.dart';
 import 'package:ebficBM/features/reports/screens/reports_screen.dart';
 import 'package:ebficBM/features/notes/screens/notes_screen.dart';
+import 'package:ebficBM/features/broadcast/screens/broadcast_screen.dart';
 import 'package:ebficBM/core/services/refresh_service.dart';
 import 'package:ebficBM/features/projects/screens/project_workspace_screen.dart';
 import 'package:ebficBM/core/services/update_service.dart';
@@ -76,6 +77,7 @@ class _HomeScreenState extends State<HomeScreen> {
     const ReportsScreen(),
     const NoticeScreen(),
     const NotesScreen(),
+    const BroadcastScreen(),
     const UpdateScreen(),
     const GuidelinesScreen(),
     const ModuleScreen(),
@@ -91,6 +93,7 @@ class _HomeScreenState extends State<HomeScreen> {
     'Reports',
     'Official Notices',
     'Notes',
+    'Broadcast',
     'Software Update',
     'System Guidelines',
     'App Modules',

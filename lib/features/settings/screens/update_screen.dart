@@ -71,7 +71,6 @@ class _UpdateScreenState extends State<UpdateScreen> with SingleTickerProviderSt
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     
-    // Premium color system
     const primary = Color(0xFF6366F1);      // Indigo
     const accent  = Color(0xFF8B5CF6);      // Violet
     const success = Color(0xFF10B981);      // Emerald
@@ -84,7 +83,7 @@ class _UpdateScreenState extends State<UpdateScreen> with SingleTickerProviderSt
       backgroundColor: bgTop,
       body: Stack(
         children: [
-          // Premium gradient background
+          // Background Gradient & Glow
           Positioned.fill(
             child: Container(
               decoration: BoxDecoration(
@@ -96,17 +95,12 @@ class _UpdateScreenState extends State<UpdateScreen> with SingleTickerProviderSt
               ),
             ),
           ),
-          // Decorative glow blobs
           Positioned(top: -80, right: -80,
             child: _GlowBlob(color: primary.withOpacity(0.12), size: 280)
                 .animate(onPlay: (c) => c.repeat(reverse: true))
                 .moveY(begin: 0, end: 20, duration: 4.seconds)),
-          Positioned(bottom: 100, left: -100,
-            child: _GlowBlob(color: accent.withOpacity(0.10), size: 320)
-                .animate(onPlay: (c) => c.repeat(reverse: true))
-                .moveX(begin: 0, end: 25, duration: 5.seconds)),
 
-          // Main content
+          // Main Scrollable Content
           SafeArea(
             child: _isLoading
                 ? _buildLoader(primary)
@@ -114,486 +108,426 @@ class _UpdateScreenState extends State<UpdateScreen> with SingleTickerProviderSt
                     onRefresh: _initialFetch,
                     color: primary,
                     child: CustomScrollView(
-                      physics: const AlwaysScrollableScrollPhysics(),
+                      physics: const BouncingScrollPhysics(),
                       slivers: [
-                        // Header
-                        SliverToBoxAdapter(child: _buildTopBar(isDark, primary)),
-                        // Hero
-                        SliverToBoxAdapter(child: _buildHero(isDark, primary, accent, success, warning)),
-                        // Live progress
+                        // Section 1: Update Status Hero
                         SliverToBoxAdapter(
-                          child: ValueListenableBuilder<UpdateState>(
-                            valueListenable: updateStateNotifier,
-                            builder: (_, state, __) {
-                              if (state == UpdateState.idle || state == UpdateState.available) return const SizedBox.shrink();
-                              return _buildProgressPanel(isDark, state, primary, success).animate().fadeIn().slideY(begin: 0.15);
-                            },
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+                            child: _buildSectionOne(isDark, primary, accent, success, warning),
                           ),
                         ),
-                        // Status card
-                        SliverToBoxAdapter(child: _buildStatusCard(isDark, primary, success, warning)),
-                        // Action button
-                        SliverToBoxAdapter(child: _buildActionButton(isDark, primary, success)),
-                        // Platform chips
-                        SliverToBoxAdapter(child: _buildPlatformRow(isDark)),
-                        // Author / release notes
-                        if (_onlineInfo != null)
-                          SliverToBoxAdapter(child: _buildReleaseCard(isDark, primary, success)),
-                        
+
+                        // Section 2: Device & Platform Info
+                        SliverToBoxAdapter(
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                            child: _buildSectionTwo(isDark, primary),
+                          ),
+                        ),
+
+                        // Section 3: Release Post / What's New
+                        SliverToBoxAdapter(
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                            child: _buildSectionThree(isDark, primary, success),
+                          ),
+                        ),
+
                         // Footer
                         SliverToBoxAdapter(
                           child: Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 40),
-                            child: Center(
-                              child: Text(
-                                'thanks for ebfic developer Teams',
-                                style: GoogleFonts.outfit(
-                                  fontSize: 12,
-                                  color: isDark ? Colors.white24 : Colors.black26,
-                                  letterSpacing: 1.1,
-                                  fontWeight: FontWeight.w500,
+                            padding: const EdgeInsets.only(top: 40, bottom: 40),
+                            child: Column(
+                              children: [
+                                Text(
+                                  'thanks for ebfic developer Teams',
+                                  style: GoogleFonts.outfit(
+                                    fontSize: 12,
+                                    color: isDark ? Colors.white24 : Colors.black26,
+                                    letterSpacing: 1.1,
+                                    fontWeight: FontWeight.w500,
+                                  ),
                                 ),
-                              ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  'App is running in optimized mode',
+                                  style: GoogleFonts.outfit(fontSize: 10, color: isDark ? Colors.white10 : Colors.black12),
+                                ),
+                              ],
                             ),
                           ),
                         ),
-                        const SliverToBoxAdapter(child: SizedBox(height: 20)),
                       ],
                     ),
                   ),
           ),
+          
+          // Sticky Action Button (at bottom)
+          if (!_isLoading) _buildFloatingActionButton(isDark, primary, success),
         ],
       ),
     );
   }
 
-  // ───────────────────────── widgets ───────────────────────────
+  // ──────────────────────── SECTION 1: STATUS HERO ───────────────────────────
 
-  Widget _buildLoader(Color primary) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          CircularProgressIndicator(color: primary, strokeWidth: 2),
-          const SizedBox(height: 16),
-          Text('Checking for updates...', style: GoogleFonts.outfit(color: Colors.grey, fontSize: 14)),
-        ],
-      ),
-    );
-  }
+  Widget _buildSectionOne(bool isDark, Color primary, Color accent, Color success, Color warning) {
+    return ValueListenableBuilder<UpdateState>(
+      valueListenable: updateStateNotifier,
+      builder: (_, state, __) {
+        final isBusy = state == UpdateState.downloading || state == UpdateState.validating || state == UpdateState.installing;
+        final isReady = state == UpdateState.readyToInstall;
+        final hasUpdate = _isUpdateAvailable;
 
-  Widget _buildTopBar(bool isDark, Color primary) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-            decoration: BoxDecoration(
-              color: primary.withOpacity(isDark ? 0.15 : 0.1),
-              borderRadius: BorderRadius.circular(30),
-              border: Border.all(color: primary.withOpacity(0.25)),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
+        Color statusColor = success;
+        IconData statusIcon = IconsaxPlusBold.shield_tick;
+        String statusTitle = 'Your App is Up to Date';
+        String statusSub = 'You are currently running the latest build of ebfic.';
+
+        if (isBusy) {
+          statusColor = primary;
+          statusIcon = IconsaxPlusBold.refresh_circle;
+          statusTitle = 'System Update in Progress';
+          statusSub = 'Downloading and preparing your new workstation...';
+        } else if (isReady) {
+          statusColor = success;
+          statusIcon = IconsaxPlusBold.magic_star;
+          statusTitle = 'Update Ready to Launch';
+          statusSub = 'The update has been securely downloaded and verified.';
+        } else if (hasUpdate) {
+          statusColor = warning;
+          statusIcon = IconsaxPlusBold.notification_1;
+          statusTitle = 'New Update Available: v${_onlineInfo!['version']}';
+          statusSub = 'A fresh version is available to improve your experience.';
+        }
+
+        return Column(
+          children: [
+            // Top Bar with Refresh
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Icon(_platformIcon, color: primary, size: 14),
-                const SizedBox(width: 6),
-                Text(_platformLabel, style: GoogleFonts.outfit(color: primary, fontSize: 12, fontWeight: FontWeight.w600)),
+                Text('SYSTEM UPDATE', style: GoogleFonts.outfit(fontSize: 12, fontWeight: FontWeight.w800, color: primary, letterSpacing: 1.5)),
+                IconButton(
+                  onPressed: _initialFetch,
+                  icon: Icon(IconsaxPlusLinear.refresh, size: 20, color: isDark ? Colors.white38 : Colors.black38),
+                  style: IconButton.styleFrom(
+                    backgroundColor: isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.05),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
               ],
             ),
-          ),
-          const Spacer(),
-          GestureDetector(
-            onTap: _initialFetch,
-            child: Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: isDark ? Colors.white.withOpacity(0.06) : Colors.black.withOpacity(0.05),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(IconsaxPlusLinear.refresh, color: isDark ? Colors.white60 : Colors.black38, size: 18),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildHero(bool isDark, Color primary, Color accent, Color success, Color warning) {
-    const isUpToDate = false; // will rely on _isUpdateAvailable logic
-    final versionColor = isDark ? Colors.white : Colors.black87;
-    
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 36, 20, 0),
-      child: Column(
-        children: [
-          // Animated orbit icon
-          AnimatedBuilder(
-            animation: _pulseController,
-            builder: (_, __) {
-              final scale = 1.0 + (_pulseController.value * 0.06);
-              final glowOpacity = 0.12 + (_pulseController.value * 0.08);
-              return Transform.scale(
-                scale: scale,
-                child: Container(
-                  width: 110, height: 110,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: LinearGradient(colors: [primary, accent], begin: Alignment.topLeft, end: Alignment.bottomRight),
-                    boxShadow: [
-                      BoxShadow(color: primary.withOpacity(glowOpacity), blurRadius: 40, spreadRadius: 10),
-                    ],
-                  ),
-                  child: const Icon(IconsaxPlusBold.refresh_circle, color: Colors.white, size: 48),
-                ),
-              );
-            },
-          ),
-          const SizedBox(height: 24),
-          Text(
-            'v$_currentVersion',
-            style: GoogleFonts.outfit(fontSize: 34, fontWeight: FontWeight.w800, color: versionColor, letterSpacing: -0.5),
-          ).animate().fadeIn().slideY(begin: 0.2, delay: 100.ms),
-          const SizedBox(height: 4),
-          Text(
-            'ebfic Business Manager — Current Build',
-            style: GoogleFonts.outfit(fontSize: 13, color: Colors.grey, fontWeight: FontWeight.w500),
-          ).animate().fadeIn(delay: 150.ms),
-          const SizedBox(height: 32),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildProgressPanel(bool isDark, UpdateState state, Color primary, Color success) {
-    Color c = primary;
-    IconData ic = IconsaxPlusLinear.cloud_change;
-    String label = 'Processing…';
-
-    switch (state) {
-      case UpdateState.downloading:
-        c = primary; ic = IconsaxPlusLinear.document_download; label = 'Downloading secure package';
-        break;
-      case UpdateState.validating:
-        c = const Color(0xFFF59E0B); ic = IconsaxPlusLinear.security_safe; label = 'Verifying integrity';
-        break;
-      case UpdateState.readyToInstall:
-        c = success; ic = IconsaxPlusBold.tick_circle; label = 'Package ready to install';
-        break;
-      case UpdateState.installing:
-      case UpdateState.relaunching:
-        c = success; ic = IconsaxPlusBold.setting_4; label = 'Applying update…';
-        break;
-      case UpdateState.error:
-        c = Colors.redAccent; ic = IconsaxPlusLinear.close_circle; label = 'Update error';
-        break;
-      default: break;
-    }
-
-    return Container(
-      margin: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: isDark ? Colors.white.withOpacity(0.04) : Colors.white.withOpacity(0.8),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: c.withOpacity(0.35)),
-        boxShadow: [BoxShadow(color: c.withOpacity(0.08), blurRadius: 20, offset: const Offset(0, 6))],
-      ),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(color: c.withOpacity(0.12), borderRadius: BorderRadius.circular(10)),
-                child: Icon(ic, color: c, size: 18)
-                    .animate(onPlay: (ctrl) => state == UpdateState.readyToInstall ? null : ctrl.repeat())
-                    .shimmer(duration: 1200.ms, color: c),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: ValueListenableBuilder<String>(
-                  valueListenable: updateStatusNotifier,
-                  builder: (_, msg, __) => Text(
-                    msg.isEmpty ? label : msg,
-                    style: GoogleFonts.outfit(fontWeight: FontWeight.w600, fontSize: 13, color: isDark ? Colors.white : Colors.black87),
-                  ),
-                ),
-              ),
-              if (state == UpdateState.downloading)
-                ValueListenableBuilder<double>(
-                  valueListenable: updateProgressNotifier,
-                  builder: (_, p, __) => Text(
-                    '${(p * 100).toStringAsFixed(0)}%',
-                    style: GoogleFonts.outfit(fontWeight: FontWeight.w800, fontSize: 14, color: c),
-                  ),
-                ),
-            ],
-          ),
-          if (state == UpdateState.downloading || state == UpdateState.validating || state == UpdateState.installing) ...[
-            const SizedBox(height: 14),
-            ValueListenableBuilder<double>(
-              valueListenable: updateProgressNotifier,
-              builder: (_, p, __) {
-                return ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: LinearProgressIndicator(
-                    value: (state == UpdateState.validating || state == UpdateState.installing) ? null : p,
-                    minHeight: 6,
-                    backgroundColor: c.withOpacity(0.12),
-                    valueColor: AlwaysStoppedAnimation<Color>(c),
+            const SizedBox(height: 24),
+            
+            // Hero Icon
+            AnimatedBuilder(
+              animation: _pulseController,
+              builder: (_, __) {
+                final scale = 1.0 + (_pulseController.value * 0.05);
+                return Transform.scale(
+                  scale: isBusy ? 1.0 : scale,
+                  child: Container(
+                    width: 100, height: 100,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: LinearGradient(colors: [statusColor, statusColor.withOpacity(0.7)], begin: Alignment.topLeft, end: Alignment.bottomRight),
+                      boxShadow: [
+                        BoxShadow(color: statusColor.withOpacity(0.2), blurRadius: 40, spreadRadius: 10),
+                      ],
+                    ),
+                    child: isBusy 
+                      ? const CircularProgressIndicator(color: Colors.white, strokeWidth: 3).animate().scale(begin: const Offset(0.5, 0.5))
+                      : Icon(statusIcon, color: Colors.white, size: 40),
                   ),
                 );
               },
             ),
+            const SizedBox(height: 24),
+
+            // Text info
+            Text(statusTitle, textAlign: TextAlign.center, style: GoogleFonts.outfit(fontSize: 22, fontWeight: FontWeight.w800, color: isDark ? Colors.white : Colors.black87)),
+            const SizedBox(height: 6),
+            Text(statusSub, textAlign: TextAlign.center, style: GoogleFonts.outfit(fontSize: 14, color: isDark ? Colors.white54 : Colors.black45, fontWeight: FontWeight.w500)),
+            
+            const SizedBox(height: 32),
+            
+            // Build current & online version chips
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                _buildVersionChip('CURRENT', _currentVersion, isDark, false),
+                if (hasUpdate) ...[
+                  const SizedBox(width: 12),
+                  Icon(IconsaxPlusLinear.arrow_right_1, color: primary.withOpacity(0.5), size: 16),
+                  const SizedBox(width: 12),
+                  _buildVersionChip('LATEST', _onlineInfo!['version'], isDark, true),
+                ],
+              ],
+            ),
+            
+            // Progress Bar (if busy)
+            if (isBusy) ...[
+              const SizedBox(height: 40),
+              _buildLiveProgressPanel(isDark, state, primary, success),
+            ],
           ],
+        );
+      },
+    );
+  }
+
+  Widget _buildVersionChip(String label, String version, bool isDark, bool isLatest) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+      decoration: BoxDecoration(
+        color: isDark ? Colors.white.withOpacity(0.04) : Colors.black.withOpacity(0.04),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: isLatest ? const Color(0xFF10B981).withOpacity(0.3) : (isDark ? Colors.white12 : Colors.black12)),
+      ),
+      child: Column(
+        children: [
+          Text(label, style: GoogleFonts.outfit(fontSize: 10, fontWeight: FontWeight.w800, color: isLatest ? const Color(0xFF10B981) : Colors.grey)),
+          Text('v$version', style: GoogleFonts.outfit(fontSize: 15, fontWeight: FontWeight.w700, color: isDark ? Colors.white : Colors.black87)),
         ],
       ),
     );
   }
 
-  Widget _buildStatusCard(bool isDark, Color primary, Color success, Color warning) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
-      child: ValueListenableBuilder<UpdateState>(
-        valueListenable: updateStateNotifier,
-        builder: (_, state, __) {
-          if (state == UpdateState.downloading || state == UpdateState.validating ||
-              state == UpdateState.installing || state == UpdateState.relaunching) {
-            return const SizedBox.shrink();
-          }
+  // ──────────────────────── SECTION 2: DEVICE INFO ───────────────────────────
 
-          Color c; IconData ic; String title; String? sub;
-
-          if (state == UpdateState.error) {
-            c = Colors.redAccent; ic = IconsaxPlusBold.close_circle;
-            title = 'Update failed. Please retry.'; sub = 'Check your internet connection.';
-          } else if (state == UpdateState.readyToInstall) {
-            c = success; ic = IconsaxPlusBold.magic_star;
-            title = 'Ready to Install'; sub = 'Update downloaded in the background.';
-          } else if (_isUpdateAvailable) {
-            c = warning; ic = IconsaxPlusBold.notification_1;
-            title = 'Update v${_onlineInfo!['version']} Available';
-            sub = 'Size: ${_onlineInfo!['sizeMb']} MB';
-          } else {
-            c = success; ic = IconsaxPlusBold.shield_tick;
-            title = 'Up to Date'; sub = 'You have the latest version installed.';
-          }
-
-          return Container(
-            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
-            decoration: BoxDecoration(
-              color: c.withOpacity(isDark ? 0.1 : 0.07),
-              borderRadius: BorderRadius.circular(18),
-              border: Border.all(color: c.withOpacity(0.28)),
-            ),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(color: c.withOpacity(0.15), shape: BoxShape.circle),
-                  child: Icon(ic, color: c, size: 20),
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(title, style: GoogleFonts.outfit(fontSize: 14, fontWeight: FontWeight.w700, color: isDark ? Colors.white : Colors.black87)),
-                      if (sub != null) Text(sub, style: GoogleFonts.outfit(fontSize: 12, color: isDark ? Colors.white60 : Colors.black45)),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ).animate().scale(begin: const Offset(0.96, 0.96), duration: 350.ms, curve: Curves.easeOutBack);
-        },
-      ),
-    );
-  }
-
-  Widget _buildActionButton(bool isDark, Color primary, Color success) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-      child: ValueListenableBuilder<UpdateState>(
-        valueListenable: updateStateNotifier,
-        builder: (_, state, __) {
-          final isBusy = state == UpdateState.checking || state == UpdateState.downloading ||
-              state == UpdateState.validating || state == UpdateState.installing;
-          final isReady = state == UpdateState.readyToInstall;
-          final hasUpdate = _isUpdateAvailable || isReady;
-
-          final btnColor = isReady ? success : (hasUpdate ? primary : primary.withOpacity(0.85));
-          final btnLabel = isBusy ? 'Processing…' : (isReady ? 'Restart & Apply Update' : (hasUpdate ? 'Install Secure Update' : 'Check for Updates'));
-          final btnIcon  = isBusy ? null : (isReady ? IconsaxPlusBold.refresh : (hasUpdate ? IconsaxPlusBold.document_download : IconsaxPlusLinear.refresh));
-
-          return SizedBox(
-            width: double.infinity,
-            height: 56,
-            child: ElevatedButton(
-              onPressed: isBusy ? null : () async {
-                if (hasUpdate || isReady) {
-                  await UpdateService().startDirectUpdate(_onlineInfo!);
-                } else {
-                  _initialFetch();
-                }
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: btnColor,
-                foregroundColor: Colors.white,
-                elevation: 0,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  if (isBusy)
-                    const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                  else if (btnIcon != null)
-                    Icon(btnIcon, size: 20),
-                  const SizedBox(width: 10),
-                  Text(btnLabel, style: GoogleFonts.outfit(fontWeight: FontWeight.w700, fontSize: 15)),
-                ],
-              ),
-            ),
-          );
-        },
-      ),
-    );
-  }
-
-  Widget _buildPlatformRow(bool isDark) {
+  Widget _buildSectionTwo(bool isDark, Color primary) {
     final platforms = [
       {'label': 'Android', 'icon': IconsaxPlusBold.mobile, 'color': const Color(0xFF10B981)},
       {'label': 'iOS', 'icon': IconsaxPlusBold.mobile, 'color': const Color(0xFF3B82F6)},
       {'label': 'Windows', 'icon': IconsaxPlusBold.monitor, 'color': const Color(0xFF6366F1)},
       {'label': 'macOS', 'icon': IconsaxPlusBold.monitor, 'color': const Color(0xFF8B5CF6)},
     ];
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
-      child: Row(
-        children: platforms.map((p) {
-          final isActive = (p['label'] as String) == _platformLabel;
-          final c = p['color'] as Color;
-          return Expanded(
-            child: Container(
-              margin: const EdgeInsets.only(right: 8),
-              padding: const EdgeInsets.symmetric(vertical: 12),
-              decoration: BoxDecoration(
-                color: isActive ? c.withOpacity(0.12) : (isDark ? Colors.white.withOpacity(0.04) : Colors.black.withOpacity(0.03)),
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: isActive ? c.withOpacity(0.4) : Colors.transparent),
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(IconsaxPlusLinear.cpu, size: 18, color: primary),
+            const SizedBox(width: 8),
+            Text('RUNNING ON DEVICE', style: GoogleFonts.outfit(fontSize: 12, fontWeight: FontWeight.w800, color: primary, letterSpacing: 1.1)),
+          ],
+        ),
+        const SizedBox(height: 16),
+        Row(
+          children: platforms.map((p) {
+            final isActive = (p['label'] as String) == _platformLabel;
+            final c = p['color'] as Color;
+            return Expanded(
+              child: Container(
+                margin: const EdgeInsets.only(right: 8),
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                decoration: BoxDecoration(
+                  color: isActive ? c.withOpacity(0.1) : (isDark ? Colors.white.withOpacity(0.04) : Colors.black.withOpacity(0.03)),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: isActive ? c.withOpacity(0.4) : Colors.transparent),
+                ),
+                child: Column(
+                  children: [
+                    Icon(p['icon'] as IconData, color: isActive ? c : Colors.grey.withOpacity(0.5), size: 22),
+                    const SizedBox(height: 8),
+                    Text(p['label'] as String, style: GoogleFonts.outfit(fontSize: 11, fontWeight: FontWeight.w700, color: isActive ? c : Colors.grey)),
+                  ],
+                ),
               ),
-              child: Column(
+            );
+          }).toList(),
+        ),
+      ],
+    );
+  }
+
+  // ──────────────────────── SECTION 3: RELEASE POST ───────────────────────────
+
+  Widget _buildSectionThree(bool isDark, Color primary, Color success) {
+    if (_onlineInfo == null) return const SizedBox.shrink();
+
+    final author    = (_onlineInfo!['author'] ?? 'ebfic teams').toString();
+    final avatar    = (_onlineInfo!['author_avatar'] ?? '').toString();
+    final notes     = (_onlineInfo!['notes'] ?? 'No release notes available.').toString();
+    final date      = (_onlineInfo!['published_at'] ?? '').toString();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(IconsaxPlusLinear.document_text, size: 18, color: primary),
+            const SizedBox(width: 8),
+            Text('RELEASE CHANGELOG', style: GoogleFonts.outfit(fontSize: 12, fontWeight: FontWeight.w800, color: primary, letterSpacing: 1.1)),
+          ],
+        ),
+        const SizedBox(height: 16),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: isDark ? Colors.white.withOpacity(0.04) : Colors.white,
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(color: isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.05)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
                 children: [
-                  Icon(p['icon'] as IconData, color: isActive ? c : Colors.grey, size: 18),
-                  const SizedBox(height: 4),
-                  Text(p['label'] as String, style: GoogleFonts.outfit(fontSize: 10, fontWeight: FontWeight.w600, color: isActive ? c : Colors.grey)),
+                  CircleAvatar(radius: 16, backgroundImage: avatar.isNotEmpty ? NetworkImage(avatar) : null, backgroundColor: primary.withOpacity(0.1)),
+                  const SizedBox(width: 12),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(author, style: GoogleFonts.outfit(fontSize: 14, fontWeight: FontWeight.w700, color: isDark ? Colors.white : Colors.black87)),
+                      Text('Published on GitHub', style: GoogleFonts.outfit(fontSize: 11, color: Colors.grey)),
+                    ],
+                  ),
+                  const Spacer(),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(color: success.withOpacity(0.1), borderRadius: BorderRadius.circular(20)),
+                    child: Text('VERIFIED', style: GoogleFonts.outfit(fontSize: 9, fontWeight: FontWeight.w900, color: success, letterSpacing: 1)),
+                  ),
                 ],
               ),
+              const SizedBox(height: 20),
+              Divider(color: isDark ? Colors.white10 : Colors.black.withOpacity(0.05), height: 1),
+              const SizedBox(height: 20),
+              // Release Notes Text
+              Text(
+                notes,
+                style: GoogleFonts.outfit(
+                  fontSize: 14,
+                  height: 1.6,
+                  color: isDark ? Colors.white70 : Colors.black87,
+                ),
+              ),
+              const SizedBox(height: 12),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ──────────────────────── HELPERS ───────────────────────────
+
+  Widget _buildLiveProgressPanel(bool isDark, UpdateState state, Color primary, Color success) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: primary.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: primary.withOpacity(0.2)),
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Icon(IconsaxPlusBold.document_download, color: primary, size: 20),
+              const SizedBox(width: 12),
+              Expanded(
+                child: ValueListenableBuilder<String>(
+                  valueListenable: updateStatusNotifier,
+                  builder: (_, msg, __) => Text(msg, overflow: TextOverflow.ellipsis, style: GoogleFonts.outfit(fontSize: 13, fontWeight: FontWeight.w600, color: isDark ? Colors.white70 : Colors.black87)),
+                ),
+              ),
+              ValueListenableBuilder<double>(
+                valueListenable: updateProgressNotifier,
+                builder: (_, p, __) => Text('${(p * 100).toInt()}%', style: GoogleFonts.outfit(fontSize: 14, fontWeight: FontWeight.w900, color: primary)),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          ValueListenableBuilder<double>(
+            valueListenable: updateProgressNotifier,
+            builder: (_, p, __) => ClipRRect(
+              borderRadius: BorderRadius.circular(10),
+              child: LinearProgressIndicator(
+                value: p == 0 ? null : p,
+                minHeight: 8,
+                backgroundColor: primary.withOpacity(0.1),
+                valueColor: AlwaysStoppedAnimation<Color>(primary),
+              ),
             ),
-          );
-        }).toList(),
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildReleaseCard(bool isDark, Color primary, Color success) {
-    final version   = (_onlineInfo!['version'] ?? '').toString();
-    final author    = (_onlineInfo!['author'] ?? 'atikrights').toString();
-    final avatar    = (_onlineInfo!['author_avatar'] ?? '').toString();
-    String notes    = (_onlineInfo!['notes'] ?? '').toString();
+  Widget _buildFloatingActionButton(bool isDark, Color primary, Color success) {
+    return Positioned(
+      bottom: 24, left: 20, right: 20,
+      child: ValueListenableBuilder<UpdateState>(
+        valueListenable: updateStateNotifier,
+        builder: (_, state, __) {
+          final isBusy = state == UpdateState.downloading || state == UpdateState.validating || state == UpdateState.installing;
+          final isReady = state == UpdateState.readyToInstall;
+          final hasUpdate = _isUpdateAvailable || isReady;
 
-    // Strip markdown for now
-    notes = notes
-        .replaceAll(RegExp(r'\*\*'), '')
-        .replaceAll(RegExp(r'## ?'), '')
-        .replaceAll(RegExp(r'`'), '')
-        .replaceAll(RegExp(r'\|.*\|'), '')
-        .replaceAll(RegExp(r'\n{3,}'), '\n\n')
-        .trim();
+          if (!hasUpdate && !isBusy) return const SizedBox.shrink();
 
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Section label
-          Row(
-            children: [
-              Container(width: 4, height: 20, decoration: BoxDecoration(color: primary, borderRadius: BorderRadius.circular(2))),
-              const SizedBox(width: 10),
-              Text("What's New in v$version", style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.w800, color: isDark ? Colors.white : Colors.black87)),
-            ],
-          ),
-          const SizedBox(height: 14),
+          final btnColor = isReady ? success : primary;
+          final btnLabel = isBusy ? 'Applying Update...' : (isReady ? 'Restart Workstation Now' : 'Download & Install Update');
+          final btnIcon  = isReady ? IconsaxPlusBold.refresh : IconsaxPlusBold.document_download;
 
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(20),
+          return Container(
+            height: 60,
             decoration: BoxDecoration(
-              color: isDark ? Colors.white.withOpacity(0.04) : Colors.white.withOpacity(0.85),
-              borderRadius: BorderRadius.circular(22),
-              border: Border.all(color: isDark ? Colors.white.withOpacity(0.08) : primary.withOpacity(0.12)),
-              boxShadow: [
-                if (!isDark) BoxShadow(color: primary.withOpacity(0.05), blurRadius: 20, offset: const Offset(0, 6)),
-              ],
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [BoxShadow(color: btnColor.withOpacity(0.4), blurRadius: 20, offset: const Offset(0, 10))],
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Author row
-                Row(
-                  children: [
-                    CircleAvatar(
-                      radius: 18,
-                      backgroundColor: primary.withOpacity(0.2),
-                      backgroundImage: avatar.isNotEmpty ? NetworkImage(avatar) : null,
-                      child: avatar.isEmpty ? Icon(Icons.person, size: 16, color: primary) : null,
-                    ),
-                    const SizedBox(width: 12),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('@$author', style: GoogleFonts.outfit(fontSize: 14, fontWeight: FontWeight.w700, color: primary)),
-                        Text('Production Release · v$version', style: GoogleFonts.outfit(fontSize: 11, color: Colors.grey, fontWeight: FontWeight.w500)),
-                      ],
-                    ),
-                    const Spacer(),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                      decoration: BoxDecoration(
-                        color: success.withOpacity(0.12),
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: success.withOpacity(0.3)),
-                      ),
-                      child: Text('LIVE', style: GoogleFonts.outfit(fontSize: 10, fontWeight: FontWeight.w800, color: success, letterSpacing: 1)),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                Divider(color: isDark ? Colors.white10 : Colors.black.withOpacity(0.06), height: 1),
-                const SizedBox(height: 16),
-                // Changelog
-                Text(
-                  notes.isEmpty ? '• Performance & security improvements.\n• UI refinements.\n• Cross-platform stability updates.' : notes,
-                  style: GoogleFonts.outfit(
-                    fontSize: 13,
-                    height: 1.7,
-                    color: isDark ? Colors.white70 : Colors.black54,
-                  ),
-                ),
-              ],
-            ),
-          ).animate().fadeIn(delay: 200.ms).slideY(begin: 0.1),
+            child: ElevatedButton(
+              onPressed: isBusy ? null : () {
+                UpdateService().startDirectUpdate(_onlineInfo!);
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: btnColor,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                elevation: 0,
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  if (isBusy)
+                    const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white))
+                  else
+                    Icon(btnIcon, size: 20),
+                  const SizedBox(width: 12),
+                  Text(btnLabel, style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.w800, letterSpacing: 0.2)),
+                ],
+              ),
+            ).animate().slideY(begin: 1.0, duration: 400.ms, curve: Curves.easeOutBack),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildLoader(Color primary) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          _GlowBlob(color: primary.withOpacity(0.15), size: 120).animate(onPlay: (c) => c.repeat(reverse: true)).scale(begin: const Offset(0.8, 0.8), end: const Offset(1.2, 1.2)),
+          const SizedBox(height: 20),
+          CircularProgressIndicator(color: primary, strokeWidth: 2),
+          const SizedBox(height: 24),
+          Text('Connecting to Secure Cloud...', style: GoogleFonts.outfit(color: Colors.grey, fontSize: 13, fontWeight: FontWeight.w500, letterSpacing: 1)),
         ],
       ),
     );
   }
 }
 
-// ─── Ambient glow blob ───────────────────────────────────────────────────────
+// ─── Glow Blob ─────────────────────────────────────────────────────────────
 class _GlowBlob extends StatelessWidget {
   final Color color;
   final double size;
@@ -602,8 +536,7 @@ class _GlowBlob extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: size,
-      height: size,
+      width: size, height: size,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         color: color,

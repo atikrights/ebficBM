@@ -8,9 +8,10 @@ import 'package:intl/intl.dart';
 
 class NoteEditorScreen extends StatefulWidget {
   final NoteModel? note;
+  final NoteStatus? initialStatus;
   final Function(NoteModel) onSave;
 
-  const NoteEditorScreen({super.key, this.note, required this.onSave});
+  const NoteEditorScreen({super.key, this.note, this.initialStatus, required this.onSave});
 
   @override
   State<NoteEditorScreen> createState() => _NoteEditorScreenState();
@@ -48,7 +49,7 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
     super.dispose();
   }
 
-  void _handleSave() {
+  void _handleSaveWithStatus(NoteStatus status) {
     if (_contentController.text.trim().isEmpty && _titleController.text.trim().isEmpty) {
       Navigator.pop(context);
       return;
@@ -60,11 +61,15 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
       content: _contentController.text.trim(),
       color: _selectedColor,
       date: _lastEdited,
-      status: widget.note?.status ?? NoteStatus.active,
+      status: status,
     );
 
     widget.onSave(newNote);
     Navigator.pop(context);
+  }
+
+  void _handleSave() {
+    _handleSaveWithStatus(widget.note?.status ?? widget.initialStatus ?? NoteStatus.active);
   }
 
   int get _wordCount {
@@ -87,8 +92,8 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
     // The entire canvas takes the subtle tint of the selected color.
     // Extremely light tint for Light Mode, very deep subtle tint for Dark mode.
     final backgroundColor = isDark 
-        ? Color.alphaBlend(_selectedColor.withOpacity(0.08), const Color(0xFF0F0F1A))
-        : Color.alphaBlend(_selectedColor.withOpacity(0.15), const Color(0xFFFBFBFC));
+        ? const Color(0xFF0F0F1A) // Pure elegant dark background
+        : Colors.white; // Clean pure white background
 
     return Scaffold(
       backgroundColor: backgroundColor,
@@ -273,8 +278,8 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
                   activeColor: _selectedColor
                 ),
                 _buildVerticalDivider(isDark),
-                _buildDockButton(icon: IconsaxPlusLinear.archive, tooltip: 'Archive', onTap: () {}, isDark: isDark),
-                _buildDockButton(icon: IconsaxPlusLinear.document_favorite, tooltip: 'Make Draft', onTap: () {}, isDark: isDark),
+                _buildDockButton(icon: IconsaxPlusLinear.archive, tooltip: 'Archive', onTap: () => _handleSaveWithStatus(NoteStatus.archived), isDark: isDark),
+                _buildDockButton(icon: IconsaxPlusLinear.document_favorite, tooltip: 'Make Draft', onTap: () => _handleSaveWithStatus(NoteStatus.draft), isDark: isDark),
                 _buildDockButton(icon: IconsaxPlusLinear.text_block, tooltip: 'Formatting Options', onTap: () {}, isDark: isDark),
                 _buildVerticalDivider(isDark),
                 _buildDockButton(

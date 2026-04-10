@@ -50,12 +50,24 @@ class UpdateService {
     
     Map<String, dynamic>? platformAsset;
     
+    // Improved asset detection for all platforms
     if (Platform.isWindows) {
-      platformAsset = assets.firstWhere((a) => a['name'].toString().toLowerCase().endsWith('.exe'), orElse: () => null);
+      // Priority: .msix -> .exe
+      platformAsset = assets.firstWhere((a) => a['name'].toString().toLowerCase().endsWith('.msix'), orElse: () => null) ??
+                      assets.firstWhere((a) => a['name'].toString().toLowerCase().endsWith('.exe'), orElse: () => null);
     } else if (Platform.isAndroid) {
       platformAsset = assets.firstWhere((a) => a['name'].toString().toLowerCase().endsWith('.apk'), orElse: () => null);
     } else if (Platform.isMacOS) {
-      platformAsset = assets.firstWhere((a) => a['name'].toString().toLowerCase().endsWith('.zip') && a['name'].toString().toLowerCase().contains('macos'), orElse: () => null);
+      // Priority: .dmg -> .zip (containing macos)
+      platformAsset = assets.firstWhere((a) => a['name'].toString().toLowerCase().endsWith('.dmg'), orElse: () => null) ??
+                      assets.firstWhere((a) => a['name'].toString().toLowerCase().endsWith('.zip') && a['name'].toString().toLowerCase().contains('macos'), orElse: () => null);
+    } else if (Platform.isIOS) {
+      platformAsset = assets.firstWhere((a) => a['name'].toString().toLowerCase().endsWith('.ipa'), orElse: () => null);
+    }
+
+    if (platformAsset == null) {
+      // If no platform specific asset, look for a 'universal' zip or similar
+      platformAsset = assets.firstWhere((a) => a['name'].toString().toLowerCase().endsWith('.zip'), orElse: () => null);
     }
 
     if (platformAsset == null) {
@@ -71,6 +83,8 @@ class UpdateService {
       'size': platformAsset['size'],
       'sizeMb': (platformAsset['size'] / (1024 * 1024)).toStringAsFixed(1),
       'notes': latest['body'],
+      'published_at': latest['published_at'],
+      'tag_name': latest['tag_name'],
       'author': latest['author']['login'],
       'author_avatar': latest['author']['avatar_url'],
     };
@@ -178,13 +192,18 @@ class UpdateService {
 
   Future<void> _installExecutingFile(String path) async {
     updateStateNotifier.value = UpdateState.installing;
-    updateStatusNotifier.value = 'Engaging System Installer...';
+    updateStatusNotifier.value = 'Preparing installation...';
     await Future.delayed(const Duration(seconds: 1));
 
     if (Platform.isWindows) {
       if (path.toLowerCase().endsWith('.exe')) {
-        // Safe quoted path for Windows
+        updateStatusNotifier.value = 'Starting EXE installer...';
         await Process.start('cmd', ['/c', 'start', '""', '"$path"', '/VERYSILENT', '/SUPPRESSMSGBOXES'], 
+          runInShell: true, mode: ProcessStartMode.detached);
+      } else if (path.toLowerCase().endsWith('.msix')) {
+        updateStatusNotifier.value = 'Starting MSIX installer...';
+        // Opening MSIX will trigger the Windows App Installer
+        await Process.start('cmd', ['/c', 'start', '""', '"$path"'], 
           runInShell: true, mode: ProcessStartMode.detached);
       } else {
         await Process.start(path, [], runInShell: true, mode: ProcessStartMode.detached);
@@ -192,19 +211,32 @@ class UpdateService {
       
       updateStateNotifier.value = UpdateState.relaunching;
       updateStatusNotifier.value = 'Success! App closing to apply update...';
-      await Future.delayed(const Duration(seconds: 2));
+      await Future.delayed(const Duration(seconds: 3));
       exit(0);
     }
 
     if (Platform.isAndroid) {
+      updateStatusNotifier.value = 'Opening APK file...';
       final result = await OpenFilex.open(path);
       if (result.type == ResultType.done) {
         updateStateNotifier.value = UpdateState.relaunching;
-        updateStatusNotifier.value = 'Installer started. Follow system prompts.';
-        // On Android we don't exit(0) immediately to let user see the install dialog
+        updateStatusNotifier.value = 'Installer active. Please follow prompts.';
       } else {
         updateStateNotifier.value = UpdateState.error;
         updateStatusNotifier.value = 'Installer failed: ${result.message}';
+        isUpdatingNotifier.value = false;
+      }
+    }
+
+    if (Platform.isMacOS) {
+      updateStatusNotifier.value = 'Opening update file...';
+      final result = await OpenFilex.open(path);
+      if (result.type == ResultType.done) {
+        updateStateNotifier.value = UpdateState.relaunching;
+        updateStatusNotifier.value = 'Update package opened.';
+      } else {
+        updateStateNotifier.value = UpdateState.error;
+        updateStatusNotifier.value = 'Failed to open update file.';
         isUpdatingNotifier.value = false;
       }
     }

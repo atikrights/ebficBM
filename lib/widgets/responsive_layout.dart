@@ -97,7 +97,7 @@ int _mobileNavIndex(int screenIndex) {
     case 4: return 1;  // Tasks
     case 5: return 2;  // Finance
     case 7: return 3;  // Notices
-    case 9: return 4;  // Update
+    case 10: return 4;  // Update
     default: return 0;
   }
 }
@@ -109,7 +109,7 @@ int _mobileNavToScreenIndex(int navIndex) {
     case 1: return 4;  // Tasks
     case 2: return 5;  // Finance
     case 3: return 7;  // Notices
-    case 4: return 9;  // Update
+    case 4: return 10; // Update
     default: return 0;
   }
 }
@@ -219,19 +219,27 @@ class _Sidebar extends StatelessWidget {
                   isDark: isDark,
                 ),
                 _NavItem(
-                  icon: IconsaxPlusLinear.refresh,
-                  label: 'Update',
+                  icon: IconsaxPlusLinear.radar,
+                  label: 'Broadcast',
                   isSelected: selectedIndex == 9,
                   isCollapsed: isCollapsed,
                   onTap: () => onNavigationChanged(9),
                   isDark: isDark,
                 ),
                 _NavItem(
+                  icon: IconsaxPlusLinear.refresh,
+                  label: 'Update',
+                  isSelected: selectedIndex == 10,
+                  isCollapsed: isCollapsed,
+                  onTap: () => onNavigationChanged(10),
+                  isDark: isDark,
+                ),
+                _NavItem(
                   icon: IconsaxPlusLinear.category,
                   label: 'Modules',
-                  isSelected: selectedIndex == 11,
+                  isSelected: selectedIndex == 12,
                   isCollapsed: isCollapsed,
-                  onTap: () => onNavigationChanged(11),
+                  onTap: () => onNavigationChanged(12),
                   isDark: isDark,
                 ),
 
