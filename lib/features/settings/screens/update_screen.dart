@@ -525,46 +525,40 @@ class _UpdateScreenState extends State<UpdateScreen> with SingleTickerProviderSt
     );
   }
 
-  // Helper for Up-To-Date action - Premium & Responsive
+  // Helper for Up-To-Date action - Premium, Responsive & Overflow-proof
   Widget _buildUpToDateActionPanel(bool isDark, Color primary, Color success) {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        LayoutBuilder(
-          builder: (context, constraints) {
-            final isNarrow = constraints.maxWidth < 400;
-            
-            return Wrap(
-              spacing: 12,
-              runSpacing: 12,
-              alignment: WrapAlignment.center,
-              children: [
-                _buildActionCard(
-                  onTap: () => UpdateService().openUpdateFolder(),
-                  icon: IconsaxPlusBold.folder_open,
-                  label: 'Open Update Folder',
-                  color: primary,
-                  isDark: isDark,
-                  width: isNarrow ? (constraints.maxWidth - 12) : 190,
-                ),
-                _buildActionCard(
-                  onTap: () => _initialFetch(),
-                  icon: IconsaxPlusBold.refresh,
-                  label: 'Repair / Re-check',
-                  color: success,
-                  isDark: isDark,
-                  width: isNarrow ? (constraints.maxWidth - 12) : 190,
-                ),
-              ],
-            );
-          },
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              _buildActionCard(
+                onTap: () => UpdateService().openUpdateFolder(),
+                icon: IconsaxPlusBold.folder_open,
+                label: 'Open File',
+                color: primary,
+                isDark: isDark,
+              ),
+              const SizedBox(width: 12),
+              _buildActionCard(
+                onTap: () => _initialFetch(),
+                icon: IconsaxPlusBold.refresh,
+                label: 'Repair',
+                color: success,
+                isDark: isDark,
+              ),
+            ],
+          ),
         ),
         const SizedBox(height: 16),
         Text(
           'Thanks for ebfic developer Teams',
           style: GoogleFonts.outfit(
             fontSize: 12,
-            color: isDark ? Colors.white38 : Colors.black38,
+            color: isDark ? Colors.white30 : Colors.black38,
             fontWeight: FontWeight.w500,
             letterSpacing: 0.5,
           ),
@@ -579,37 +573,50 @@ class _UpdateScreenState extends State<UpdateScreen> with SingleTickerProviderSt
     required String label,
     required Color color,
     required bool isDark,
-    required double width,
   }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(16),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        width: width,
-        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
-        decoration: BoxDecoration(
-          color: isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.03),
+    return Flexible(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 180),
+        child: InkWell(
+          onTap: onTap,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: color.withOpacity(isDark ? 0.2 : 0.1),
-            width: 1.5,
-          ),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, size: 20, color: color),
-            const SizedBox(width: 10),
-            Text(
-              label,
-              style: GoogleFonts.outfit(
-                color: isDark ? Colors.white : Colors.black87,
-                fontWeight: FontWeight.w700,
-                fontSize: 14,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
+            decoration: BoxDecoration(
+              color: isDark ? Colors.white.withOpacity(0.05) : color.withOpacity(0.08),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: color.withOpacity(isDark ? 0.3 : 0.4),
+                width: 1.5,
               ),
+              boxShadow: isDark ? [] : [
+                BoxShadow(
+                  color: color.withOpacity(0.1),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                )
+              ],
             ),
-          ],
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(icon, size: 18, color: color),
+                const SizedBox(width: 8),
+                Flexible(
+                  child: Text(
+                    label,
+                    style: GoogleFonts.outfit(
+                      color: isDark ? Colors.white : color.withOpacity(0.8),
+                      fontWeight: FontWeight.w700,
+                      fontSize: 13,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );
