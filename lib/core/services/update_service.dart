@@ -131,18 +131,16 @@ class UpdateService {
 
     try {
       final updateDirPath = await getUpdateFolderPath();
-      debugPrint('Download Folder: $updateDirPath');
+      debugPrint('Target Download Folder: $updateDirPath');
       
-      // 1. Clean old updates in that folder
+      // 1. Force Clean: Delete the entire directory and recreate it to be 100% sure
       final directory = Directory(updateDirPath);
       if (await directory.exists()) {
-        await for (var file in directory.list()) {
-          if (file is File) {
-            debugPrint('Cleaning old file: ${file.path}');
-            await file.delete();
-          }
-        }
+        await directory.delete(recursive: true);
+        debugPrint('Old update directory purged.');
       }
+      await directory.create(recursive: true);
+      debugPrint('Fresh update directory created.');
 
       final filePath = '$updateDirPath/${info['name']}';
       final file = File(filePath);
@@ -212,11 +210,18 @@ class UpdateService {
     } else if (Platform.isMacOS) {
       await Process.run('open', [path]);
     } else if (Platform.isAndroid || Platform.isIOS) {
-      // On mobile, opening a folder isn't standard, so we prompt install
+      // On mobile, opening a folder isn't standard, so we trigger the installer directly
       final directory = Directory(path);
-      final files = await directory.list().toList();
-      if (files.isNotEmpty) {
-        await OpenFilex.open(files.first.path);
+      if (await directory.exists()) {
+        final files = await directory.list().toList();
+        if (files.isNotEmpty) {
+          final filePath = files.first.path;
+          if (filePath.endsWith('.apk')) {
+            await OpenFilex.open(filePath, type: "application/vnd.android.package-archive");
+          } else {
+            await OpenFilex.open(filePath);
+          }
+        }
       }
     }
   }
