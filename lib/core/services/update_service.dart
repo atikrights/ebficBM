@@ -228,19 +228,19 @@ class UpdateService {
     }
   }
 
-  // New method  // Open the local update directory or launch the file directly
+  // Open the local update directory or launch/highlight the file
   Future<void> openUpdateFolder() async {
     final path = await getUpdateFolderPath();
     final directory = Directory(path);
 
     if (!await directory.exists()) return;
 
-    // Check for files inside the folder to launch directly
+    // Check for files inside the folder
     final files = await directory.list().toList();
     if (files.isEmpty) {
-      // If empty, just open the folder as fallback
       if (Platform.isWindows) {
-        await Process.run('explorer.exe', [path]);
+        final winPath = path.replaceAll('/', '\\');
+        await Process.run('explorer.exe', [winPath]);
       } else if (Platform.isMacOS) {
         await Process.run('open', [path]);
       }
@@ -250,12 +250,13 @@ class UpdateService {
     final latestFile = files.first.path;
 
     if (Platform.isWindows) {
-      // Launch the .exe directly for Windows
-      await Process.run('explorer.exe', [latestFile]);
+      // Open folder and HIGHLIGHT the setup file for manual install
+      final winPath = latestFile.replaceAll('/', '\\');
+      await Process.run('explorer.exe', ['/select,', winPath]);
     } else if (Platform.isMacOS) {
       await Process.run('open', [latestFile]);
     } else if (Platform.isAndroid || Platform.isIOS) {
-      // Trigger installer directly for Mobile
+      // Trigger installer for Mobile
       if (latestFile.endsWith('.apk')) {
         await OpenFilex.open(latestFile, type: "application/vnd.android.package-archive");
       } else {
