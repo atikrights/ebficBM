@@ -115,9 +115,13 @@ class UpdateService {
 
   Future<List<Map<String, dynamic>>?> getReleases() async {
     try {
-      final headers = _privateRepoToken.isNotEmpty 
-        ? {'Authorization': 'Bearer $_privateRepoToken', 'Accept': 'application/vnd.github.v3+json'}
-        : {'Accept': 'application/vnd.github.v3+json'};
+      final headers = {
+        'Accept': 'application/vnd.github.v3+json',
+        'User-Agent': 'ebficBM-App-Client',
+      };
+      if (_privateRepoToken.isNotEmpty) {
+        headers['Authorization'] = 'Bearer $_privateRepoToken';
+      }
         
       final response = await Dio().get(_updateUrl, options: Options(headers: headers));
       debugPrint('GitHub API Response: ${response.statusCode}');

@@ -16,6 +16,9 @@ import 'package:ebficBM/widgets/custom_title_bar.dart';
 
 import 'package:flutter/foundation.dart';
 
+import 'package:flutter/services.dart';
+import 'package:ebficBM/core/services/refresh_service.dart';
+
 class BizOSApp extends StatelessWidget {
   const BizOSApp({super.key});
 
@@ -28,94 +31,79 @@ class BizOSApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => ProjectProvider()),
         ChangeNotifierProvider(create: (_) => TaskProvider()),
       ],
-      child: Consumer2<ThemeProvider, StorageService>(
-        builder: (context, themeProvider, storageService, child) {
-          final bool isDark = themeProvider.themeMode == ThemeMode.dark;
-          
-          // Cross-platform safe desktop check
-          final bool isDesktop = !kIsWeb && (
-            defaultTargetPlatform == TargetPlatform.windows || 
-            defaultTargetPlatform == TargetPlatform.linux || 
-            defaultTargetPlatform == TargetPlatform.macOS
-          );
+      child: Builder(
+        builder: (context) {
+          return Shortcuts(
+            shortcuts: <LogicalKeySet, Intent>{
+              LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.keyR): const RefreshIntent(),
+              LogicalKeySet(LogicalKeyboardKey.meta, LogicalKeyboardKey.keyR): const RefreshIntent(),
+              LogicalKeySet(LogicalKeyboardKey.f5): const RefreshIntent(),
+            },
+            child: Actions(
+              actions: <Type, Action<Intent>>{
+                RefreshIntent: RefreshAction(context: context),
+              },
+              child: Consumer2<ThemeProvider, StorageService>(
+                builder: (context, themeProvider, storageService, child) {
+                  final bool isDark = themeProvider.themeMode == ThemeMode.dark;
+                  
+                  final bool isDesktop = !kIsWeb && (
+                    defaultTargetPlatform == TargetPlatform.windows || 
+                    defaultTargetPlatform == TargetPlatform.linux || 
+                    defaultTargetPlatform == TargetPlatform.macOS
+                  );
 
-          
-          return MaterialApp(
-            title: 'ebficBM',
-            debugShowCheckedModeBanner: false,
-            builder: (context, child) => ResponsiveBreakpoints.builder(
-              child: isDesktop 
-                ? Material(
-                    child: Stack(
-                      children: [
-                        // Main App Content (Below)
-                        Padding(
-                          padding: const EdgeInsets.only(top: 33),
-                          child: ClipRect(child: child!),
-                        ),
-                        // Fixed Title Bar (Always on Top)
-                        Positioned(
-                          top: 0,
-                          left: 0,
-                          right: 0,
-                          child: CustomTitleBar(isDark: isDark),
-                        ),
+                  return MaterialApp(
+                    title: 'ebficBM',
+                    debugShowCheckedModeBanner: false,
+                    builder: (context, child) => ResponsiveBreakpoints.builder(
+                      child: isDesktop 
+                        ? Material(
+                            child: Stack(
+                              children: [
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 33),
+                                  child: ClipRect(child: child!),
+                                ),
+                                Positioned(
+                                  top: 0, left: 0, right: 0,
+                                  child: CustomTitleBar(isDark: isDark),
+                                ),
+                              ],
+                            ),
+                          )
+                        : child!,
+                      breakpoints: [
+                        const Breakpoint(start: 0, end: 450, name: MOBILE),
+                        const Breakpoint(start: 451, end: 800, name: TABLET),
+                        const Breakpoint(start: 801, end: 1920, name: DESKTOP),
+                        const Breakpoint(start: 1921, end: double.infinity, name: '4K'),
                       ],
                     ),
-                  )
-                : child!,
-              breakpoints: [
-                const Breakpoint(start: 0, end: 450, name: MOBILE),
-                const Breakpoint(start: 451, end: 800, name: TABLET),
-                const Breakpoint(start: 801, end: 1920, name: DESKTOP),
-                const Breakpoint(start: 1921, end: double.infinity, name: '4K'),
-              ],
-            ),
-            themeMode: themeProvider.themeMode,
-            // ... themes stay same ...
-            theme: ThemeData(
-              useMaterial3: true,
-              brightness: Brightness.light,
-              textTheme: GoogleFonts.outfitTextTheme(),
-              scaffoldBackgroundColor: AppColors.lightBackground,
-              cardColor: AppColors.lightSurface,
-              colorScheme: ColorScheme.fromSeed(
-                seedColor: AppColors.primary,
-                brightness: Brightness.light,
-              ),
-              scrollbarTheme: ScrollbarThemeData(
-                thumbColor: WidgetStateProperty.all(AppColors.primary.withOpacity(0.2)),
-                trackColor: WidgetStateProperty.all(Colors.transparent),
-                thickness: WidgetStateProperty.all(4.0),
-                radius: const Radius.circular(10),
-                interactive: true,
-                mainAxisMargin: 2,
-                crossAxisMargin: 2,
+                    themeMode: themeProvider.themeMode,
+                    theme: ThemeData(
+                      useMaterial3: true,
+                      brightness: Brightness.light,
+                      textTheme: GoogleFonts.outfitTextTheme(),
+                      scaffoldBackgroundColor: AppColors.lightBackground,
+                      cardColor: AppColors.lightSurface,
+                      colorScheme: ColorScheme.fromSeed(seedColor: AppColors.primary, brightness: Brightness.light),
+                    ),
+                    darkTheme: ThemeData(
+                      useMaterial3: true,
+                      brightness: Brightness.dark,
+                      textTheme: GoogleFonts.outfitTextTheme(ThemeData.dark().textTheme),
+                      scaffoldBackgroundColor: AppColors.darkBackground,
+                      cardColor: AppColors.darkSurface,
+                      colorScheme: ColorScheme.fromSeed(seedColor: AppColors.primary, brightness: Brightness.dark),
+                    ),
+                    home: storageService.isSetupComplete 
+                        ? const GlobalRefreshWrapper(child: HomeScreen())
+                        : const OnboardingScreen(),
+                  );
+                },
               ),
             ),
-            darkTheme: ThemeData(
-              useMaterial3: true,
-              brightness: Brightness.dark,
-              textTheme: GoogleFonts.outfitTextTheme(ThemeData.dark().textTheme),
-              scaffoldBackgroundColor: AppColors.darkBackground,
-              cardColor: AppColors.darkSurface,
-              colorScheme: ColorScheme.fromSeed(
-                seedColor: AppColors.primary,
-                brightness: Brightness.dark,
-              ),
-              scrollbarTheme: ScrollbarThemeData(
-                thumbColor: WidgetStateProperty.all(AppColors.primary.withOpacity(0.3)),
-                trackColor: WidgetStateProperty.all(Colors.transparent),
-                thickness: WidgetStateProperty.all(4.0),
-                radius: const Radius.circular(10),
-                interactive: true,
-                mainAxisMargin: 2,
-                crossAxisMargin: 2,
-              ),
-            ),
-            home: storageService.isSetupComplete 
-                ? const GlobalRefreshWrapper(child: HomeScreen())
-                : const OnboardingScreen(),
           );
         },
       ),

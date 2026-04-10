@@ -149,3 +149,33 @@ class AppRefreshIndicator extends StatelessWidget {
     );
   }
 }
+
+// --- Global Keyboard Shortcut Support ---
+
+class RefreshIntent extends Intent {
+  const RefreshIntent();
+}
+
+class RefreshAction extends Action<RefreshIntent> {
+  final BuildContext context;
+  RefreshAction({required this.context});
+
+  @override
+  void invoke(RefreshIntent intent) {
+    // Manually trigger data reloads via context
+    context.read<ProjectProvider>().reload();
+    context.read<TaskProvider>().reload();
+    context.read<CompanyProvider>().reload();
+    
+    ScaffoldMessenger.of(context).clearSnackBars();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: const Text('System Synchronized', style: TextStyle(fontWeight: FontWeight.w700)),
+        backgroundColor: const Color(0xFF6366F1),
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 1),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      )
+    );
+  }
+}
