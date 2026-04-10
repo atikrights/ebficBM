@@ -467,20 +467,24 @@ class _UpdateScreenState extends State<UpdateScreen> with SingleTickerProviderSt
       child: ValueListenableBuilder<UpdateState>(
         valueListenable: updateStateNotifier,
         builder: (_, state, __) {
-          final isBusy = state == UpdateState.downloading || state == UpdateState.validating || state == UpdateState.installing;
+          final isBusy  = state == UpdateState.downloading || state == UpdateState.validating || state == UpdateState.installing;
           final isReady = state == UpdateState.readyToInstall;
-          final hasUpdate = _isUpdateAvailable || isReady;
+          final isError = state == UpdateState.error;
+          final hasUpdate = _isUpdateAvailable;
 
-          if (!hasUpdate && !isBusy) return const SizedBox.shrink();
+          // If no update available and no error/ready, still check if we can offer a "Repair/Open Folder"
+          if (!hasUpdate && !isBusy && !isReady && !isError) {
+             return _buildUpToDateActionPanel(isDark, primary, success);
+          }
 
-          final btnColor = isReady ? success : primary;
+          final btnColor = isError ? Colors.redAccent : (isReady ? success : primary);
           
-          // Updated label logic according to user request
           String btnLabel = 'Download & Install Update';
           if (isBusy) btnLabel = 'Processing Update...';
           if (isReady) btnLabel = 'Open Update Folder';
+          if (isError) btnLabel = 'Repair & Download Again';
 
-          final btnIcon = isReady ? IconsaxPlusBold.folder_open : IconsaxPlusBold.document_download;
+          final btnIcon = isError ? IconsaxPlusBold.refresh_circle : (isReady ? IconsaxPlusBold.folder_open : IconsaxPlusBold.document_download);
 
           return Container(
             height: 60,
@@ -518,6 +522,35 @@ class _UpdateScreenState extends State<UpdateScreen> with SingleTickerProviderSt
         },
       ),
     );
+  }
+
+  // Helper for Up-To-Date action
+  Widget _buildUpToDateActionPanel(bool isDark, Color primary, Color success) {
+    return Container(
+      height: 60,
+      decoration: BoxDecoration(
+        color: isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          TextButton.icon(
+            onPressed: () => UpdateService().openUpdateFolder(),
+            icon: Icon(IconsaxPlusBold.folder_open, size: 18, color: primary),
+            label: Text('Open Update Folder', style: GoogleFonts.outfit(color: primary, fontWeight: FontWeight.w700)),
+          ),
+          const SizedBox(width: 20),
+          Container(width: 1, height: 20, color: Colors.grey.withOpacity(0.2)),
+          const SizedBox(width: 20),
+          TextButton.icon(
+            onPressed: () => _initialFetch(),
+            icon: Icon(IconsaxPlusBold.refresh, size: 18, color: success),
+            label: Text('Repair / Re-check', style: GoogleFonts.outfit(color: success, fontWeight: FontWeight.w700)),
+          ),
+        ],
+      ),
+    ).animate().fadeIn();
   }
 
   Widget _buildLoader(Color primary) {
