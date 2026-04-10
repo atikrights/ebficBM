@@ -202,26 +202,38 @@ class UpdateService {
     }
   }
 
-  // New method to open the specific update folder
+  // New method  // Open the local update directory or launch the file directly
   Future<void> openUpdateFolder() async {
     final path = await getUpdateFolderPath();
+    final directory = Directory(path);
+
+    if (!await directory.exists()) return;
+
+    // Check for files inside the folder to launch directly
+    final files = await directory.list().toList();
+    if (files.isEmpty) {
+      // If empty, just open the folder as fallback
+      if (Platform.isWindows) {
+        await Process.run('explorer.exe', [path]);
+      } else if (Platform.isMacOS) {
+        await Process.run('open', [path]);
+      }
+      return;
+    }
+
+    final latestFile = files.first.path;
+
     if (Platform.isWindows) {
-      await Process.run('explorer.exe', [path.replaceAll('/', '\\')]);
+      // Launch the .exe directly for Windows
+      await Process.run('explorer.exe', [latestFile]);
     } else if (Platform.isMacOS) {
-      await Process.run('open', [path]);
+      await Process.run('open', [latestFile]);
     } else if (Platform.isAndroid || Platform.isIOS) {
-      // On mobile, opening a folder isn't standard, so we trigger the installer directly
-      final directory = Directory(path);
-      if (await directory.exists()) {
-        final files = await directory.list().toList();
-        if (files.isNotEmpty) {
-          final filePath = files.first.path;
-          if (filePath.endsWith('.apk')) {
-            await OpenFilex.open(filePath, type: "application/vnd.android.package-archive");
-          } else {
-            await OpenFilex.open(filePath);
-          }
-        }
+      // Trigger installer directly for Mobile
+      if (latestFile.endsWith('.apk')) {
+        await OpenFilex.open(latestFile, type: "application/vnd.android.package-archive");
+      } else {
+        await OpenFilex.open(latestFile);
       }
     }
   }
