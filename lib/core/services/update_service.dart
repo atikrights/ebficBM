@@ -108,28 +108,38 @@ class UpdateService {
     }
   }
 
+  // Get the dedicated Update Folder path
+  Future<String> getUpdateFolderPath() async {
+    final baseDir = await getApplicationDocumentsDirectory();
+    final updateDirPath = '${baseDir.path}/ebficBM/Update - New Release';
+    final directory = Directory(updateDirPath);
+    if (!await directory.exists()) {
+      await directory.create(recursive: true);
+    }
+    return updateDirPath;
+  }
+
   Future<void> startDirectUpdate(Map<String, dynamic> info) async {
     if (isUpdatingNotifier.value) return;
     isUpdatingNotifier.value = true;
 
     try {
-      final tempDir = await getTemporaryDirectory();
-      final updateDir = Directory('${tempDir.path}/updates');
-      if (!await updateDir.exists()) await updateDir.create();
-
-      final filePath = '${updateDir.path}/${info['name']}';
-      final file = File(filePath);
-
-      // Secure comparison: Verify if file already fully downloaded and correct size
-      if (await file.exists() && await file.length() == info['size']) {
-        updateStateNotifier.value = UpdateState.readyToInstall;
-        updateStatusNotifier.value = 'Update downloaded! Ready to install.';
-        return;
+      final updateDirPath = await getUpdateFolderPath();
+      
+      // 1. Clean old updates in that folder
+      final directory = Directory(updateDirPath);
+      if (await directory.exists()) {
+        await for (var file in directory.list()) {
+          if (file is File) await file.delete();
+        }
       }
 
-      // Download start
+      final filePath = '$updateDirPath/${info['name']}';
+      final file = File(filePath);
+
+      // 2. Download start
       updateStateNotifier.value = UpdateState.downloading;
-      updateStatusNotifier.value = 'Connecting to secure server...';
+      updateStatusNotifier.value = 'Connecting to GitHub...';
       
       final headers = _privateRepoToken.isNotEmpty 
         ? {'Authorization': 'Bearer $_privateRepoToken', 'Accept': 'application/octet-stream'}
@@ -139,7 +149,7 @@ class UpdateService {
 
       final dio = Dio(BaseOptions(
         connectTimeout: const Duration(seconds: 30),
-        receiveTimeout: const Duration(minutes: 5),
+        receiveTimeout: const Duration(minutes: 10),
       ));
 
       int retryCount = 0;
@@ -168,14 +178,14 @@ class UpdateService {
 
       // Verify integrity
       updateStateNotifier.value = UpdateState.validating;
-      updateStatusNotifier.value = 'Verifying integrity...';
+      updateStatusNotifier.value = 'Verifying secure package...';
       await Future.delayed(const Duration(seconds: 1));
 
       if (await file.length() == info['size']) {
         updateStateNotifier.value = UpdateState.readyToInstall;
-        updateStatusNotifier.value = 'Ready to install.';
+        updateStatusNotifier.value = 'Download Complete in "Update - New Release"';
       } else {
-        throw Exception('File integrity check failed (Size mismatch)');
+        throw Exception('File integrity check failed');
       }
     } catch (e) {
       updateStateNotifier.value = UpdateState.error;
@@ -184,9 +194,26 @@ class UpdateService {
     }
   }
 
+  // New method to open the specific update folder
+  Future<void> openUpdateFolder() async {
+    final path = await getUpdateFolderPath();
+    if (Platform.isWindows) {
+      await Process.run('explorer.exe', [path.replaceAll('/', '\\')]);
+    } else if (Platform.isMacOS) {
+      await Process.run('open', [path]);
+    } else if (Platform.isAndroid || Platform.isIOS) {
+      // On mobile, opening a folder isn't standard, so we prompt install
+      final directory = Directory(path);
+      final files = await directory.list().toList();
+      if (files.isNotEmpty) {
+        await OpenFilex.open(files.first.path);
+      }
+    }
+  }
+
   Future<void> installUpdate(Map<String, dynamic> info) async {
-    final tempDir = await getTemporaryDirectory();
-    final filePath = '${tempDir.path}/updates/${info['name']}';
+    final updateDirPath = await getUpdateFolderPath();
+    final filePath = '$updateDirPath/${info['name']}';
     await _installExecutingFile(filePath);
   }
 
@@ -202,7 +229,6 @@ class UpdateService {
           runInShell: true, mode: ProcessStartMode.detached);
       } else if (path.toLowerCase().endsWith('.msix')) {
         updateStatusNotifier.value = 'Starting MSIX installer...';
-        // Opening MSIX will trigger the Windows App Installer
         await Process.start('cmd', ['/c', 'start', '""', '"$path"'], 
           runInShell: true, mode: ProcessStartMode.detached);
       } else {
@@ -220,7 +246,7 @@ class UpdateService {
       final result = await OpenFilex.open(path);
       if (result.type == ResultType.done) {
         updateStateNotifier.value = UpdateState.relaunching;
-        updateStatusNotifier.value = 'Installer active. Please follow prompts.';
+        updateStatusNotifier.value = 'Installer active.';
       } else {
         updateStateNotifier.value = UpdateState.error;
         updateStatusNotifier.value = 'Installer failed: ${result.message}';
@@ -244,10 +270,10 @@ class UpdateService {
 
   Future<void> _cleanOldUpdates() async {
     try {
-      final tempDir = await getTemporaryDirectory();
-      final updateDir = Directory('${tempDir.path}/updates');
-      if (await updateDir.exists()) {
-        await updateDir.delete(recursive: true);
+      final path = await getUpdateFolderPath();
+      final directory = Directory(path);
+      if (await directory.exists()) {
+        await directory.delete(recursive: true);
       }
     } catch (_) {}
   }

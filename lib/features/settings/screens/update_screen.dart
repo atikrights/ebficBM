@@ -474,8 +474,13 @@ class _UpdateScreenState extends State<UpdateScreen> with SingleTickerProviderSt
           if (!hasUpdate && !isBusy) return const SizedBox.shrink();
 
           final btnColor = isReady ? success : primary;
-          final btnLabel = isBusy ? 'Applying Update...' : (isReady ? 'Restart Workstation Now' : 'Download & Install Update');
-          final btnIcon  = isReady ? IconsaxPlusBold.refresh : IconsaxPlusBold.document_download;
+          
+          // Updated label logic according to user request
+          String btnLabel = 'Download & Install Update';
+          if (isBusy) btnLabel = 'Processing Update...';
+          if (isReady) btnLabel = 'Open Update Folder';
+
+          final btnIcon = isReady ? IconsaxPlusBold.folder_open : IconsaxPlusBold.document_download;
 
           return Container(
             height: 60,
@@ -485,7 +490,11 @@ class _UpdateScreenState extends State<UpdateScreen> with SingleTickerProviderSt
             ),
             child: ElevatedButton(
               onPressed: isBusy ? null : () {
-                UpdateService().startDirectUpdate(_onlineInfo!);
+                if (isReady) {
+                  UpdateService().openUpdateFolder();
+                } else {
+                  UpdateService().startDirectUpdate(_onlineInfo!);
+                }
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: btnColor,
@@ -496,10 +505,10 @@ class _UpdateScreenState extends State<UpdateScreen> with SingleTickerProviderSt
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  if (isBusy)
+                   if (isBusy)
                     const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white))
                   else
-                    Icon(btnIcon, size: 20),
+                    Icon(btnIcon, size: 22),
                   const SizedBox(width: 12),
                   Text(btnLabel, style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.w800, letterSpacing: 0.2)),
                 ],
