@@ -12,6 +12,7 @@ import 'package:ebficBM/features/broadcast/screens/broadcast_screen.dart';
 import 'package:ebficBM/core/services/refresh_service.dart';
 import 'package:ebficBM/features/projects/screens/project_workspace_screen.dart';
 import 'package:ebficBM/core/services/update_service.dart';
+import 'package:flutter/foundation.dart'; // Add this for kIsWeb
 import 'package:ebficBM/features/settings/screens/update_screen.dart';
 import 'package:ebficBM/features/guidelines/screens/guidelines_screen.dart';
 import 'package:ebficBM/features/modules/screens/module_screen.dart';
@@ -34,10 +35,12 @@ class _HomeScreenState extends State<HomeScreen> {
     super.initState();
     _loadNavigationState();
     
-    // Check for updates on startup
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      UpdateService().initializeBackgroundUpdate();
-    });
+    // Check for updates on startup (Not on Web)
+    if (!kIsWeb) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        UpdateService().initializeBackgroundUpdate();
+      });
+    }
   }
 
   Future<void> _loadNavigationState() async {
@@ -67,50 +70,71 @@ class _HomeScreenState extends State<HomeScreen> {
     await prefs.setInt('selected_home_index', index);
   }
 
-  final List<Widget> _screens = [
-    const DashboardContent(),
-    const AnalysisScreen(),
-    const CompanyListScreen(),
-    const ProjectListScreen(),
-    const TaskListScreen(),
-    const FinanceScreen(),
-    const ReportsScreen(),
-    const NoticeScreen(),
-    const NotesScreen(),
-    const BroadcastScreen(),
-    const UpdateScreen(),
-    const GuidelinesScreen(),
-    const ModuleScreen(),
-  ];
+  List<Widget> get _screens {
+    final screens = [
+      const DashboardContent(),
+      const AnalysisScreen(),
+      const CompanyListScreen(),
+      const ProjectListScreen(),
+      const TaskListScreen(),
+      const FinanceScreen(),
+      const ReportsScreen(),
+      const NoticeScreen(),
+      const NotesScreen(),
+      const BroadcastScreen(),
+      const UpdateScreen(),
+      const GuidelinesScreen(),
+      const ModuleScreen(),
+    ];
+    if (kIsWeb) {
+      screens.removeAt(10); // Remove UpdateScreen
+    }
+    return screens;
+  }
 
-  final List<String> _titles = [
-    'Dashboard',
-    'Analysis',
-    'Companies',
-    'Projects',
-    'Tasks',
-    'Finance',
-    'Reports',
-    'Official Notices',
-    'Notes',
-    'Broadcast',
-    'Software Update',
-    'System Guidelines',
-    'App Modules',
-  ];
+  List<String> get _titles {
+    final titles = [
+      'Dashboard',
+      'Analysis',
+      'Companies',
+      'Projects',
+      'Tasks',
+      'Finance',
+      'Reports',
+      'Official Notices',
+      'Notes',
+      'Broadcast',
+      'Software Update',
+      'System Guidelines',
+      'App Modules',
+    ];
+    if (kIsWeb) {
+      titles.removeAt(10); // Remove Software Update title
+    }
+    return titles;
+  }
 
   @override
   Widget build(BuildContext context) {
+    final screens = _screens;
+    final titles = _titles;
+
+    // Safety check: Ensure index is never out of bounds
+    int safeIndex = _selectedIndex;
+    if (safeIndex >= screens.length) {
+      safeIndex = 0;
+    }
+
     return ResponsiveLayout(
-      title: _titles[_selectedIndex],
-      selectedIndex: _selectedIndex,
+      title: titles[safeIndex],
+      selectedIndex: safeIndex,
       onNavigationChanged: (index) {
         setState(() {
           _selectedIndex = index;
         });
         _saveNavigationState(index);
       },
-      body: AppRefreshIndicator(child: _screens[_selectedIndex]),
+      body: AppRefreshIndicator(child: screens[safeIndex]),
     );
   }
 }
