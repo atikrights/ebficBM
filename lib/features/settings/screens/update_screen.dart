@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:ebficBM/core/services/update_service.dart';
+import 'package:ebficBM/core/services/refresh_service.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -210,7 +211,11 @@ class _UpdateScreenState extends State<UpdateScreen> with SingleTickerProviderSt
               children: [
                 Text('SYSTEM UPDATE', style: GoogleFonts.outfit(fontSize: 12, fontWeight: FontWeight.w800, color: primary, letterSpacing: 1.5)),
                 IconButton(
-                  onPressed: _initialFetch,
+                  onPressed: () async {
+                     // Trigger Global Refresh Keyboard Action + Local Update Check
+                     await RefreshService.of(context)?.refresh();
+                     await _initialFetch();
+                  },
                   icon: Icon(IconsaxPlusLinear.refresh, size: 20, color: isDark ? Colors.white38 : Colors.black38),
                   style: IconButton.styleFrom(
                     backgroundColor: isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.05),
