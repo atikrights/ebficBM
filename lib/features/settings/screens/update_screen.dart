@@ -481,10 +481,10 @@ class _UpdateScreenState extends State<UpdateScreen> with SingleTickerProviderSt
           
           String btnLabel = 'Download & Install Update';
           if (isBusy) btnLabel = 'Processing Update...';
-          if (isReady) btnLabel = 'Open Update Folder';
+          if (isReady) btnLabel = 'Install / Open Update';
           if (isError) btnLabel = 'Repair & Download Again';
 
-          final btnIcon = isError ? IconsaxPlusBold.refresh_circle : (isReady ? IconsaxPlusBold.folder_open : IconsaxPlusBold.document_download);
+          final btnIcon = isError ? IconsaxPlusBold.refresh_circle : (isReady ? IconsaxPlusBold.flash : IconsaxPlusBold.document_download);
 
           return Container(
             height: 60,
@@ -497,6 +497,7 @@ class _UpdateScreenState extends State<UpdateScreen> with SingleTickerProviderSt
                 if (isReady) {
                   UpdateService().openUpdateFolder();
                 } else {
+                  // If error or normal available, start download
                   UpdateService().startDirectUpdate(_onlineInfo!);
                 }
               },

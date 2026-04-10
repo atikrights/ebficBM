@@ -91,11 +91,25 @@ class UpdateService {
 
     final current = await _currentVersion;
     
+    // Check if the file already exists locally to skip download
+    bool alreadyDownloaded = false;
+    try {
+      final updateDirPath = await getUpdateFolderPath();
+      final filePath = '$updateDirPath/${platformAsset['name']}';
+      if (await File(filePath).exists()) {
+        alreadyDownloaded = true;
+      }
+    } catch (_) {}
+
+    updateStateNotifier.value = _isVersionNewer(current, version) 
+      ? (alreadyDownloaded ? UpdateState.readyToInstall : UpdateState.available) 
+      : UpdateState.idle;
+    
     // Debug logging for developers
     debugPrint('Checking for updates: $current -> $version');
+    debugPrint('Already downloaded: $alreadyDownloaded');
     debugPrint('Found Platform Asset: ${platformAsset['name']}');
 
-    updateStateNotifier.value = _isVersionNewer(current, version) ? UpdateState.available : UpdateState.idle;
     return info;
   }
 
