@@ -525,33 +525,94 @@ class _UpdateScreenState extends State<UpdateScreen> with SingleTickerProviderSt
     );
   }
 
-  // Helper for Up-To-Date action
+  // Helper for Up-To-Date action - Premium & Responsive
   Widget _buildUpToDateActionPanel(bool isDark, Color primary, Color success) {
-    return Container(
-      height: 60,
-      decoration: BoxDecoration(
-        color: isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.05),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          TextButton.icon(
-            onPressed: () => UpdateService().openUpdateFolder(),
-            icon: Icon(IconsaxPlusBold.folder_open, size: 18, color: primary),
-            label: Text('Open Update Folder', style: GoogleFonts.outfit(color: primary, fontWeight: FontWeight.w700)),
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final isNarrow = constraints.maxWidth < 400;
+            
+            return Wrap(
+              spacing: 12,
+              runSpacing: 12,
+              alignment: WrapAlignment.center,
+              children: [
+                _buildActionCard(
+                  onTap: () => UpdateService().openUpdateFolder(),
+                  icon: IconsaxPlusBold.folder_open,
+                  label: 'Open Update Folder',
+                  color: primary,
+                  isDark: isDark,
+                  width: isNarrow ? (constraints.maxWidth - 12) : 190,
+                ),
+                _buildActionCard(
+                  onTap: () => _initialFetch(),
+                  icon: IconsaxPlusBold.refresh,
+                  label: 'Repair / Re-check',
+                  color: success,
+                  isDark: isDark,
+                  width: isNarrow ? (constraints.maxWidth - 12) : 190,
+                ),
+              ],
+            );
+          },
+        ),
+        const SizedBox(height: 16),
+        Text(
+          'Thanks for ebfic developer Teams',
+          style: GoogleFonts.outfit(
+            fontSize: 12,
+            color: isDark ? Colors.white38 : Colors.black38,
+            fontWeight: FontWeight.w500,
+            letterSpacing: 0.5,
           ),
-          const SizedBox(width: 20),
-          Container(width: 1, height: 20, color: Colors.grey.withOpacity(0.2)),
-          const SizedBox(width: 20),
-          TextButton.icon(
-            onPressed: () => _initialFetch(),
-            icon: Icon(IconsaxPlusBold.refresh, size: 18, color: success),
-            label: Text('Repair / Re-check', style: GoogleFonts.outfit(color: success, fontWeight: FontWeight.w700)),
+        ).animate().fadeIn(delay: 500.ms),
+      ],
+    ).animate().fadeIn(duration: 600.ms).slideY(begin: 0.1);
+  }
+
+  Widget _buildActionCard({
+    required VoidCallback onTap,
+    required IconData icon,
+    required String label,
+    required Color color,
+    required bool isDark,
+    required double width,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        width: width,
+        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+        decoration: BoxDecoration(
+          color: isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.03),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: color.withOpacity(isDark ? 0.2 : 0.1),
+            width: 1.5,
           ),
-        ],
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, size: 20, color: color),
+            const SizedBox(width: 10),
+            Text(
+              label,
+              style: GoogleFonts.outfit(
+                color: isDark ? Colors.white : Colors.black87,
+                fontWeight: FontWeight.w700,
+                fontSize: 14,
+              ),
+            ),
+          ],
+        ),
       ),
-    ).animate().fadeIn();
+    );
   }
 
   Widget _buildLoader(Color primary) {
