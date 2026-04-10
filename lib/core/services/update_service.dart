@@ -90,6 +90,11 @@ class UpdateService {
     };
 
     final current = await _currentVersion;
+    
+    // Debug logging for developers
+    debugPrint('Checking for updates: $current -> $version');
+    debugPrint('Found Platform Asset: ${platformAsset['name']}');
+
     updateStateNotifier.value = _isVersionNewer(current, version) ? UpdateState.available : UpdateState.idle;
     return info;
   }
@@ -101,6 +106,7 @@ class UpdateService {
         : {'Accept': 'application/vnd.github.v3+json'};
         
       final response = await Dio().get(_updateUrl, options: Options(headers: headers));
+      debugPrint('GitHub API Response: ${response.statusCode}');
       return List<Map<String, dynamic>>.from(response.data);
     } catch (e) {
       debugPrint('Update Check Failed: $e');
@@ -125,12 +131,16 @@ class UpdateService {
 
     try {
       final updateDirPath = await getUpdateFolderPath();
+      debugPrint('Download Folder: $updateDirPath');
       
       // 1. Clean old updates in that folder
       final directory = Directory(updateDirPath);
       if (await directory.exists()) {
         await for (var file in directory.list()) {
-          if (file is File) await file.delete();
+          if (file is File) {
+            debugPrint('Cleaning old file: ${file.path}');
+            await file.delete();
+          }
         }
       }
 
@@ -146,7 +156,7 @@ class UpdateService {
         : {'Accept': 'application/octet-stream'};
 
       String downloadUrl = _privateRepoToken.isNotEmpty ? info['url'] : info['browser_download_url'];
-
+      debugPrint('Triggering download from: $downloadUrl');
       final dio = Dio(BaseOptions(
         connectTimeout: const Duration(seconds: 30),
         receiveTimeout: const Duration(minutes: 10),
