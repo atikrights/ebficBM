@@ -1,12 +1,14 @@
-name: Deploy Flutter Web to Hostinger
+name: Deploy EBM Control Panel to Hostinger
 
 on:
   push:
+    paths:
+      - 'ebm_control/**' # শুধুমাত্র এই ফোল্ডারে কাজ করলে এটি রান হবে
     branches:
       - main
 
 jobs:
-  build-and-deploy:
+  build-and-deploy-admin:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
@@ -17,9 +19,11 @@ jobs:
         with:
           channel: 'stable'
 
-      - name: Build Web
+      - name: Build Admin Panel
         run: |
-          flutter build web --release
+          cd ebm_control
+          flutter pub get
+          flutter build web --release --base-href "/"
 
       - name: Deploy to Hostinger via SSH
         uses: easingthemes/ssh-deploy@main
@@ -29,5 +33,5 @@ jobs:
           REMOTE_HOST: ${{ secrets.REMOTE_HOST }}
           REMOTE_USER: ${{ secrets.REMOTE_USER }}
           REMOTE_PORT: ${{ secrets.REMOTE_PORT }}
-          TARGET: "/home/u200841033/domains/ebfic.store/public_html/ebm/"
-          SOURCE: "build/web/"
+          TARGET: "/home/u200841033/domains/ebfic.store/public_html/com/"
+          SOURCE: "ebm_control/build/web/"
