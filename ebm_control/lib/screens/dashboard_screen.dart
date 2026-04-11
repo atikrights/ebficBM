@@ -147,44 +147,36 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Widget _statCard(String title, String val, IconData icon, Color color) {
-    return GlassmorphicContainer(
+    return Container(
       width: 200,
       height: 100,
-      borderRadius: AdminTheme.cardRadius,
-      blur: 10,
-      alignment: Alignment.center,
-      border: 1,
-      linearGradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            Colors.white.withOpacity(0.05),
-            Colors.white.withOpacity(0.02),
-          ]),
-      borderGradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            color.withOpacity(0.2),
-            color.withOpacity(0.05),
-          ]),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Row(
-              children: [
-                Icon(icon, size: 16, color: color),
-                const SizedBox(width: 8),
-                Text(title, style: const TextStyle(color: Colors.white38, fontSize: 12)),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Text(val, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-          ],
-        ),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AdminTheme.surface,
+        borderRadius: BorderRadius.circular(AdminTheme.cardRadius),
+        border: Border.all(color: color.withOpacity(0.2)),
+        boxShadow: [
+          BoxShadow(
+            color: color.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Row(
+            children: [
+              Icon(icon, size: 16, color: color),
+              const SizedBox(width: 8),
+              Text(title, style: const TextStyle(color: Colors.white38, fontSize: 12)),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(val, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+        ],
       ),
     );
   }

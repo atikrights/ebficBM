@@ -1,24 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:flutter_web_plugins/url_strategy.dart'; // URL থেকে # সরানোর জন্য
 import 'core/theme.dart';
 import 'screens/login_screen.dart';
 import 'screens/dashboard_screen.dart';
 
 void main() {
+  usePathUrlStrategy(); // এটি হ্যাশ (#) রিমুভ করবে
   runApp(const EBMControlApp());
 }
 
-// Router Configuration
 final _router = GoRouter(
-  initialLocation: '/',
+  initialLocation: '/sp-login',
   routes: [
-    GoRoute(
-      path: '/',
-      builder: (context, state) => const Scaffold(
-        backgroundColor: Colors.black,
-        body: Center(child: Text("ACCESS DENIED", style: TextStyle(color: Colors.red, letterSpacing: 5))),
-      ),
-    ),
     GoRoute(
       path: '/sp-login',
       builder: (context, state) => const LoginScreen(),
@@ -26,6 +20,10 @@ final _router = GoRouter(
     GoRoute(
       path: '/dashboard',
       builder: (context, state) => const DashboardScreen(),
+    ),
+    GoRoute(
+      path: '/',
+      builder: (context, state) => const LoginScreen(),
     ),
   ],
 );
