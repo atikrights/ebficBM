@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:window_manager/window_manager.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:ebficBM/core/theme/colors.dart';
+import 'package:ebficbm/core/theme/colors.dart';
 
 
 class CustomTitleBar extends StatelessWidget {

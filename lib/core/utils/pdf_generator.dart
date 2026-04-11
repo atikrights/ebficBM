@@ -5,7 +5,7 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:path_provider/path_provider.dart';
 import 'package:open_filex/open_filex.dart';
-import 'package:ebficBM/features/projects/models/project.dart';
+import 'package:ebficbm/features/projects/models/project.dart';
 import 'package:universal_html/html.dart' as html;
 
 class ProjectExporter {

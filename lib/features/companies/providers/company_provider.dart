@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:ebficBM/features/companies/models/company.dart';
+import 'package:ebficbm/features/companies/models/company.dart';
 
 class CompanyProvider with ChangeNotifier {
   List<Company> _companies = [];

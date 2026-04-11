@@ -1,23 +1,23 @@
 import 'package:flutter/material.dart';
 import 'package:responsive_framework/responsive_framework.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:ebficBM/core/theme/colors.dart';
-import 'package:ebficBM/features/home/screens/home_screen.dart';
+import 'package:ebficbm/core/theme/colors.dart';
+import 'package:ebficbm/features/home/screens/home_screen.dart';
 import 'package:provider/provider.dart';
-import 'package:ebficBM/core/providers/theme_provider.dart';
-import 'package:ebficBM/features/companies/providers/company_provider.dart';
-import 'package:ebficBM/features/projects/providers/project_provider.dart';
-import 'package:ebficBM/features/tasks/providers/task_provider.dart';
-import 'package:ebficBM/core/services/refresh_service.dart';
-import 'package:ebficBM/core/services/storage_service.dart';
-import 'package:ebficBM/features/onboarding/screens/onboarding_screen.dart';
+import 'package:ebficbm/core/providers/theme_provider.dart';
+import 'package:ebficbm/features/companies/providers/company_provider.dart';
+import 'package:ebficbm/features/projects/providers/project_provider.dart';
+import 'package:ebficbm/features/tasks/providers/task_provider.dart';
+import 'package:ebficbm/core/services/refresh_service.dart';
+import 'package:ebficbm/core/services/storage_service.dart';
+import 'package:ebficbm/features/onboarding/screens/onboarding_screen.dart';
 
-import 'package:ebficBM/widgets/custom_title_bar.dart';
+import 'package:ebficbm/widgets/custom_title_bar.dart';
 
 import 'package:flutter/foundation.dart';
 
 import 'package:flutter/services.dart';
-import 'package:ebficBM/core/services/refresh_service.dart';
+import 'package:ebficbm/core/services/refresh_service.dart';
 
 class BizOSApp extends StatelessWidget {
   const BizOSApp({super.key});

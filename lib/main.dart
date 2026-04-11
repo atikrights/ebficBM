@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
-import 'package:ebficBM/core/app.dart';
+import 'package:ebficbm/core/app.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:provider/provider.dart';
-import 'package:ebficBM/core/services/storage_service.dart';
-import 'package:ebficBM/core/providers/analysis_engine.dart';
+import 'package:ebficbm/core/services/storage_service.dart';
+import 'package:ebficbm/core/providers/analysis_engine.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:bitsdojo_window/bitsdojo_window.dart';
 import 'dart:io' show Platform;

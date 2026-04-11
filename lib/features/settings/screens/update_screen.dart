@@ -1,8 +1,8 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
-import 'package:ebficBM/core/services/update_service.dart';
-import 'package:ebficBM/core/services/refresh_service.dart';
+import 'package:ebficbm/core/services/update_service.dart';
+import 'package:ebficbm/core/services/refresh_service.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 import 'package:flutter_animate/flutter_animate.dart';

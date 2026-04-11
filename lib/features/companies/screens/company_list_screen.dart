@@ -5,11 +5,11 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:responsive_framework/responsive_framework.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
-import 'package:ebficBM/core/theme/colors.dart';
-import 'package:ebficBM/widgets/glass_container.dart';
-import 'package:ebficBM/features/companies/models/company.dart';
-import 'package:ebficBM/features/companies/providers/company_provider.dart';
-import 'package:ebficBM/features/companies/screens/company_manage_screen.dart';
+import 'package:ebficbm/core/theme/colors.dart';
+import 'package:ebficbm/widgets/glass_container.dart';
+import 'package:ebficbm/features/companies/models/company.dart';
+import 'package:ebficbm/features/companies/providers/company_provider.dart';
+import 'package:ebficbm/features/companies/screens/company_manage_screen.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 
 class CompanyListScreen extends StatelessWidget {

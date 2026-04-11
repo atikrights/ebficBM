@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 import 'package:provider/provider.dart';
-import 'package:ebficBM/core/theme/colors.dart';
-import 'package:ebficBM/widgets/glass_container.dart';
-import 'package:ebficBM/features/companies/models/company.dart';
-import 'package:ebficBM/features/companies/providers/company_provider.dart';
+import 'package:ebficbm/core/theme/colors.dart';
+import 'package:ebficbm/widgets/glass_container.dart';
+import 'package:ebficbm/features/companies/models/company.dart';
+import 'package:ebficbm/features/companies/providers/company_provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 
 class CompanyMasterView extends StatelessWidget {

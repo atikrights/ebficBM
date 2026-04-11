@@ -1,7 +1,7 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
-import 'package:ebficBM/features/notes/models/note.dart';
-import 'package:ebficBM/features/notes/screens/note_editor_screen.dart';
+import 'package:ebficbm/features/notes/models/note.dart';
+import 'package:ebficbm/features/notes/screens/note_editor_screen.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_animate/flutter_animate.dart';

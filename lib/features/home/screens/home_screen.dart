@@ -1,23 +1,23 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:ebficBM/widgets/responsive_layout.dart';
-import 'package:ebficBM/features/dashboard/widgets/dashboard_content.dart';
-import 'package:ebficBM/features/companies/screens/company_list_screen.dart';
-import 'package:ebficBM/features/projects/screens/project_list_screen.dart';
-import 'package:ebficBM/features/tasks/screens/task_list_screen.dart';
-import 'package:ebficBM/features/finance/screens/finance_screen.dart';
-import 'package:ebficBM/features/reports/screens/reports_screen.dart';
-import 'package:ebficBM/features/notes/screens/notes_screen.dart';
-import 'package:ebficBM/features/broadcast/screens/broadcast_screen.dart';
-import 'package:ebficBM/core/services/refresh_service.dart';
-import 'package:ebficBM/features/projects/screens/project_workspace_screen.dart';
-import 'package:ebficBM/core/services/update_service.dart';
+import 'package:ebficbm/widgets/responsive_layout.dart';
+import 'package:ebficbm/features/dashboard/widgets/dashboard_content.dart';
+import 'package:ebficbm/features/companies/screens/company_list_screen.dart';
+import 'package:ebficbm/features/projects/screens/project_list_screen.dart';
+import 'package:ebficbm/features/tasks/screens/task_list_screen.dart';
+import 'package:ebficbm/features/finance/screens/finance_screen.dart';
+import 'package:ebficbm/features/reports/screens/reports_screen.dart';
+import 'package:ebficbm/features/notes/screens/notes_screen.dart';
+import 'package:ebficbm/features/broadcast/screens/broadcast_screen.dart';
+import 'package:ebficbm/core/services/refresh_service.dart';
+import 'package:ebficbm/features/projects/screens/project_workspace_screen.dart';
+import 'package:ebficbm/core/services/update_service.dart';
 import 'package:flutter/foundation.dart'; // Add this for kIsWeb
-import 'package:ebficBM/features/settings/screens/update_screen.dart';
-import 'package:ebficBM/features/guidelines/screens/guidelines_screen.dart';
-import 'package:ebficBM/features/modules/screens/module_screen.dart';
-import 'package:ebficBM/features/analysis/screens/analysis_screen.dart';
-import 'package:ebficBM/features/notices/screens/notice_screen.dart';
+import 'package:ebficbm/features/settings/screens/update_screen.dart';
+import 'package:ebficbm/features/guidelines/screens/guidelines_screen.dart';
+import 'package:ebficbm/features/modules/screens/module_screen.dart';
+import 'package:ebficbm/features/analysis/screens/analysis_screen.dart';
+import 'package:ebficbm/features/notices/screens/notice_screen.dart';
 
 
 class HomeScreen extends StatefulWidget {

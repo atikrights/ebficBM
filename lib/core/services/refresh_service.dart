@@ -4,9 +4,9 @@ import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:ebficBM/features/companies/providers/company_provider.dart';
-import 'package:ebficBM/features/projects/providers/project_provider.dart';
-import 'package:ebficBM/features/tasks/providers/task_provider.dart';
+import 'package:ebficbm/features/companies/providers/company_provider.dart';
+import 'package:ebficbm/features/projects/providers/project_provider.dart';
+import 'package:ebficbm/features/tasks/providers/task_provider.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 
 /// GlobalRefreshWrapper — wraps the entire app with:

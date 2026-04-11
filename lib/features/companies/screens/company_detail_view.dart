@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
-import 'package:ebficBM/core/theme/colors.dart';
-import 'package:ebficBM/widgets/glass_container.dart';
-import 'package:ebficBM/features/companies/models/company.dart';
+import 'package:ebficbm/core/theme/colors.dart';
+import 'package:ebficbm/widgets/glass_container.dart';
+import 'package:ebficbm/features/companies/models/company.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 
 class CompanyDetailView extends StatelessWidget {

@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:ebficBM/features/companies/providers/company_provider.dart';
-import 'package:ebficBM/features/companies/models/company.dart';
-import 'package:ebficBM/features/projects/providers/project_provider.dart';
-import 'package:ebficBM/features/projects/models/project.dart';
+import 'package:ebficbm/features/companies/providers/company_provider.dart';
+import 'package:ebficbm/features/companies/models/company.dart';
+import 'package:ebficbm/features/projects/providers/project_provider.dart';
+import 'package:ebficbm/features/projects/models/project.dart';
 
 class SettingsScreen extends StatefulWidget {
   final String currentProjectId;

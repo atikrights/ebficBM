@@ -1,6 +1,6 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
-import 'package:ebficBM/core/theme/colors.dart';
+import 'package:ebficbm/core/theme/colors.dart';
 
 class GlassContainer extends StatelessWidget {
   final Widget? child;

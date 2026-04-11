@@ -2,7 +2,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
-import 'package:ebficBM/core/services/storage_service.dart';
+import 'package:ebficbm/core/services/storage_service.dart';
 import 'package:path/path.dart' as p;
 
 class PathHelper {

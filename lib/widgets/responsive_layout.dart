@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:responsive_framework/responsive_framework.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
-import 'package:ebficBM/core/theme/colors.dart';
+import 'package:ebficbm/core/theme/colors.dart';
 import 'package:provider/provider.dart';
-import 'package:ebficBM/core/providers/theme_provider.dart';
-import 'package:ebficBM/features/notifications/screens/notifications_panel.dart';
+import 'package:ebficbm/core/providers/theme_provider.dart';
+import 'package:ebficbm/features/notifications/screens/notifications_panel.dart';
 import 'package:flutter/foundation.dart'; // Add this for kIsWeb
 
 class ResponsiveLayout extends StatelessWidget {
@@ -288,7 +288,7 @@ class _Logo extends StatelessWidget {
         if (!isCollapsed) ...[
           const SizedBox(width: 12),
           Text(
-            'ebficBM',
+            'ebficbm',
             style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.bold,

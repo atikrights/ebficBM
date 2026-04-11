@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:file_picker/file_picker.dart';
-import 'package:ebficBM/core/services/storage_service.dart';
-import 'package:ebficBM/core/theme/colors.dart';
+import 'package:ebficbm/core/services/storage_service.dart';
+import 'package:ebficbm/core/theme/colors.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
-import 'package:ebficBM/core/theme/colors.dart';
-import 'package:ebficBM/widgets/glass_container.dart';
+import 'package:ebficbm/core/theme/colors.dart';
+import 'package:ebficbm/widgets/glass_container.dart';
 
 class NotificationsPanel extends StatelessWidget {
   const NotificationsPanel({super.key});
