@@ -2020,7 +2020,7 @@ class _PlanConsoleBoardState extends State<_PlanConsoleBoard> {
 
   Future<void> _importConsoleData(BuildContext context) async {
     try {
-      final result = await FilePicker.platform.pickFiles(type: FileType.custom, allowedExtensions: ['json']);
+      final result = await FilePicker.pickFiles(type: FileType.custom, allowedExtensions: ['json']);
       if (result != null && result.files.first.bytes != null) {
         final content = utf8.decode(result.files.first.bytes!);
         final List decoded = json.decode(content);

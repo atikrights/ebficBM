@@ -35,7 +35,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 
   Future<void> _pickFolder() async {
-    String? result = await FilePicker.platform.getDirectoryPath();
+    String? result = await FilePicker.getDirectoryPath();
     if (result != null) {
       setState(() {
         _selectedPath = result;

@@ -118,7 +118,7 @@ class NoteService {
     try {
       final listToExport = notesToExport ?? globalNotes;
       final String encoded = jsonEncode(listToExport.map((n) => n.toJson()).toList());
-      String? outputFile = await FilePicker.platform.saveFile(
+      String? outputFile = await FilePicker.saveFile(
         dialogTitle: 'Export Notes',
         fileName: 'ebfic_notes_backup.json',
         type: FileType.custom,
@@ -138,7 +138,7 @@ class NoteService {
 
   static Future<bool> importNotes() async {
     try {
-      FilePickerResult? result = await FilePicker.platform.pickFiles(
+      FilePickerResult? result = await FilePicker.pickFiles(
         type: FileType.custom,
         allowedExtensions: ['json'],
       );

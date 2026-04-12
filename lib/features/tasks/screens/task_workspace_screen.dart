@@ -1118,7 +1118,7 @@ class _TaskWorkspaceScreenState extends State<TaskWorkspaceScreen> {
     if (typeFilter != null && typeFilter != 'OTHER') {
       allowedExtensions = [typeFilter.toLowerCase()];
     }
-    final result = await FilePicker.platform.pickFiles(
+    final result = await FilePicker.pickFiles(
       allowMultiple: true,
       type: allowedExtensions != null ? FileType.custom : FileType.any,
       allowedExtensions: allowedExtensions,
