@@ -31,9 +31,15 @@ document.getElementById('btn-popout').addEventListener('click', () => {
     chrome.windows.create({
         url: chrome.runtime.getURL("popup.html"),
         type: "popup",
-        width: 400,
+        width: 380,
         height: 600
     });
+    window.close();
+});
+
+// Mock Header Controls
+document.querySelector('.dot.red').addEventListener('click', () => {
+    window.close();
 });
 
 // Crypto functions (AES-GCM 256)

@@ -123,15 +123,16 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding: 8px 16px;
-            background: rgba(0,0,0,0.2);
-            border-bottom: 1px solid var(--border-light);
-            margin: -24px -24px 20px -24px; /* Pull into padding area */
+            padding: 10px 16px;
+            background: #1a1b26; /* Darker, more solid header */
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            margin: -24px -24px 20px -24px;
             border-top-left-radius: 8px;
             border-top-right-radius: 8px;
+            user-select: none;
         }
         .mock-title-text {
-            font-size: 10px;
+            font-size: 11px;
             font-weight: 700;
             color: var(--text-dim);
             text-transform: none;
@@ -139,13 +140,16 @@
         }
         .dot-controls {
             display: flex;
-            gap: 6px;
+            gap: 8px;
         }
         .dot {
-            width: 10px;
-            height: 10px;
+            width: 12px;
+            height: 12px;
             border-radius: 50%;
+            cursor: pointer;
+            transition: 0.2s;
         }
+        .dot:hover { filter: brightness(1.2); transform: scale(1.1); }
         .dot.red { background: #ff5f56; }
         .dot.yellow { background: #ffbd2e; }
         .dot.green { background: #27c93f; }
