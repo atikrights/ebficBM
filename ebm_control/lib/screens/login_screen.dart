@@ -154,8 +154,8 @@ class _LoginScreenState extends State<LoginScreen> {
     }
 
     try {
-      // ✅ SECURE: Credentials are injected at compile-time or use defaults (rotate immediately if public)
-      const String masterSID = String.fromEnvironment('ADMIN_EMAIL', defaultValue: "admin@ebfic.store");
+      const String masterSID = String.fromEnvironment('ADMIN_EMAIL', defaultValue: "admin@ebfic.store");      // ✅ SECURE: Credentials are injected at compile-time or use defaults
+
       const String masterP1 = String.fromEnvironment('ADMIN_PASS1', defaultValue: "ebfic");
       const String masterP2 = String.fromEnvironment('ADMIN_PASS2', defaultValue: "admin");
       const String masterP3 = String.fromEnvironment('ADMIN_PASS3', defaultValue: "786");
@@ -163,9 +163,18 @@ class _LoginScreenState extends State<LoginScreen> {
       if (_sidController.text == masterSID && 
           _pass1.text == masterP1 && 
           _pass2.text == masterP2 && 
-          _pass3.text == masterP3) { 
+          _pass3.text == masterP3) {
         
-        // Notify Hardware Vault securely to backup/update ONLY if checked
+        // ✅ Audit Log: Successful LOGIN
+        triggerAuditLog(
+          status: 'SUCCESS',
+          email: _sidController.text,
+          method: _isVaultConnected ? 'VAULT_AUTOFILL' : 'MANUAL',
+          attempts: 1,
+          vaultUsed: _isVaultConnected,
+        );
+
+        // Save to vault if requested
         if (_rememberInformation) {
             triggerVaultSave({
               'email': _sidController.text,
@@ -180,14 +189,25 @@ class _LoginScreenState extends State<LoginScreen> {
         }
       } else {
         _failedAttempts++;
-        if (_failedAttempts >= 3) {
+        final bool isBlocked = _failedAttempts >= 3;
+
+        // ✅ Audit Log: Failed or Blocked attempt
+        triggerAuditLog(
+          status: isBlocked ? 'BLOCKED' : 'FAILED',
+          email: _sidController.text,
+          method: 'MANUAL',
+          attempts: _failedAttempts,
+          vaultUsed: false,
+        );
+
+        if (isBlocked) {
           _startCooldown();
         }
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               backgroundColor: Colors.redAccent,
-              content: Text(_failedAttempts >= 3 
+              content: Text(isBlocked
                 ? "SECURITY REACHED: System locked for 30s" 
                 : "CREDENTIAL FAILURE: Attempt $_failedAttempts/3"),
             ),

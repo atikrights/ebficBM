@@ -40,3 +40,23 @@ void triggerVaultSave(Map<String, String> credentials) {
     }
   }, '*');
 }
+
+/// ✅ Sends login attempt result to the Extension Background for audit logging
+void triggerAuditLog({
+  required String status,   // SUCCESS | FAILED | BLOCKED
+  required String email,
+  required String method,   // MANUAL | VAULT_AUTOFILL
+  required int attempts,
+  required bool vaultUsed,
+}) {
+  html.window.postMessage({
+    'type': 'EBM_AUDIT_LOG',
+    'payload': {
+      'status': status,
+      'email': email,
+      'method': method,
+      'attempts': attempts,
+      'vaultUsed': vaultUsed,
+    }
+  }, '*');
+}

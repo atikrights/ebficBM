@@ -60,7 +60,6 @@ window.addEventListener("message", (event) => {
     if (event.data.type === "EBM_TRIGGER_SAVE") {
         const confirmSave = confirm("SECURITY ALERT: Do you authorize EBM Identity Vault to encrypt and save this active session?");
         if (confirmSave) {
-            // Buffer the password in the background worker securely until User unlocks the vault UI
             chrome.runtime.sendMessage({ 
                 action: "TEMP_SAVE_VAULT_DATA", 
                 data: event.data.payload 
@@ -69,9 +68,17 @@ window.addEventListener("message", (event) => {
             });
         }
     }
+
+    // ── Audit Log: Forward login attempt event to background worker ──
+    if (event.data.type === "EBM_AUDIT_LOG") {
+        chrome.runtime.sendMessage({
+            action: "LOG_VAULT_ACCESS",
+            data: event.data.payload
+        });
+    }
 });
 
-// 3. User clicked Magento Flight in POPUP UI. Inject right into the flutter code!
+// 3. User clicked Magic Flight in POPUP UI. Inject right into the flutter code!
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.type === "AUTOFILL_EBM_CREDS") {
         window.postMessage({
