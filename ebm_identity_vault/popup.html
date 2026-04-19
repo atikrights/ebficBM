@@ -26,18 +26,19 @@
             margin: 0;
             padding: 0;
             overflow: hidden; 
-            width: 380px; /* Fixed window size */
-            height: 580px;
+            width: 380px; 
+            height: 600px;
             background: var(--bg-color) !important;
         }
 
         body {
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            position: relative;
+            background-color: var(--bg-color) !important;
+            color: var(--text);
             font-family: -apple-system, Inter, "SF Pro Display", "Segoe UI", Roboto, sans-serif;
             -webkit-font-smoothing: antialiased;
-            color: var(--text);
+            display: flex;
+            flex-direction: column;
         }
 
         /* ── Hyper-Premium Animated Border Container ── */
@@ -127,8 +128,8 @@
             background: #1a1b26; /* Darker, more solid header */
             border-bottom: 1px solid rgba(255,255,255,0.05);
             margin: -24px -24px 20px -24px;
-            border-top-left-radius: 8px;
-            border-top-right-radius: 8px;
+            border-top-left-radius: 0; /* Flush with top */
+            border-top-right-radius: 0;
             user-select: none;
         }
         .mock-title-text {
