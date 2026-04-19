@@ -33,11 +33,18 @@ class EBMControlApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp.router(
-      title: 'EBM Control Center',
-      debugShowCheckedModeBanner: false,
-      theme: AdminTheme.darkTheme,
-      routerConfig: _router,
+    return ValueListenableBuilder<ThemeMode>(
+      valueListenable: AdminTheme.themeNotifier,
+      builder: (_, mode, __) {
+        return MaterialApp.router(
+          title: 'EBM Control Center',
+          debugShowCheckedModeBanner: false,
+          theme: AdminTheme.lightTheme,
+          darkTheme: AdminTheme.darkTheme,
+          themeMode: mode,
+          routerConfig: _router,
+        );
+      },
     );
   }
 }

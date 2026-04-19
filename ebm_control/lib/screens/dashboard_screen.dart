@@ -1,9 +1,13 @@
 import 'dart:math';
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter/services.dart';
+import 'package:go_router/go_router.dart';
 import '../core/theme.dart';
+import '../widgets/glass_box.dart';
+import '../widgets/control_core.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -15,6 +19,8 @@ class DashboardScreen extends StatefulWidget {
 class _DashboardScreenState extends State<DashboardScreen> {
   int _selectedIndex = 0;
   String _activeFilter = "ALL USERS";
+  bool _isSidebarPinned = true;
+  bool _isSidebarHovering = false;
   
   // Mock User Database
   final List<Map<String, dynamic>> _users = [
@@ -39,65 +45,106 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return prefix + suffix;
   }
 
-  void _showAddUserDialog() {
+  void _showInvitationDialog() {
     String selectedRole = "USERS";
-    final TextEditingController nameC = TextEditingController();
     final TextEditingController emailC = TextEditingController();
+    bool isGenerating = false;
+    String? invitationLink;
 
     showDialog(
       context: context,
       builder: (context) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          backgroundColor: const Color(0xFF111111),
-          title: const Text("CREATE NEW IDENTITY", style: TextStyle(color: AdminTheme.accent, fontSize: 14, fontWeight: FontWeight.bold, letterSpacing: 2)),
+        builder: (context, setDialogState) => BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
+          child: AlertDialog(
+            backgroundColor: Theme.of(context).brightness == Brightness.dark ? const Color(0xFF111111).withOpacity(0.8) : Colors.white.withOpacity(0.8),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20), side: BorderSide(color: AdminTheme.accent.withOpacity(0.2))),
+          title: Text(invitationLink == null ? "GENERATE SECURITY INVITATION" : "INVITATION READY", 
+            style: const TextStyle(color: AdminTheme.accent, fontSize: 13, fontWeight: FontWeight.bold, letterSpacing: 2)),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              _buildDialogField(nameC, "Full Name", IconsaxPlusLinear.user),
-              const SizedBox(height: 16),
-              _buildDialogField(emailC, "Email Address", IconsaxPlusLinear.sms),
-              const SizedBox(height: 24),
-              const Text("Select Authority Level", style: TextStyle(color: Colors.white24, fontSize: 10)),
-              const SizedBox(height: 8),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: ["SUPER ADMIN", "ADMIN", "USERS"].map((role) => ChoiceChip(
-                  label: Text(role, style: const TextStyle(fontSize: 10)),
-                  selected: selectedRole == role,
-                  onSelected: (val) => setDialogState(() => selectedRole = role),
-                  selectedColor: AdminTheme.accent,
-                  labelStyle: TextStyle(color: selectedRole == role ? Colors.black : Colors.white24),
-                  backgroundColor: Colors.black,
-                )).toList(),
-              ),
+              if (invitationLink == null) ...[
+                const Text("Create a one-time secure join link for a new member.", style: TextStyle(color: Colors.white38, fontSize: 11)),
+                const SizedBox(height: 20),
+                _buildDialogField(emailC, "Invited Email Address", IconsaxPlusLinear.sms),
+                const SizedBox(height: 20),
+                const Text("Authority Level", style: TextStyle(color: Colors.white24, fontSize: 10)),
+                const SizedBox(height: 8),
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: ["SUPER ADMIN", "ADMIN", "USERS"].map((role) => Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 4),
+                      child: ChoiceChip(
+                        label: Text(role, style: const TextStyle(fontSize: 10)),
+                        selected: selectedRole == role,
+                        onSelected: (val) => setDialogState(() => selectedRole = role),
+                        selectedColor: AdminTheme.accent,
+                        labelStyle: TextStyle(color: selectedRole == role ? Colors.black : Colors.white24),
+                        backgroundColor: Colors.black,
+                        side: BorderSide(color: selectedRole == role ? AdminTheme.accent : Colors.white10),
+                      ),
+                    )).toList(),
+                  ),
+                ),
+              ] else ...[
+                 Container(
+                   padding: const EdgeInsets.all(16),
+                   decoration: BoxDecoration(color: Colors.black, borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.greenAccent.withOpacity(0.2))),
+                   child: Column(
+                     children: [
+                       const Icon(IconsaxPlusBold.link_2, color: Colors.greenAccent, size: 32),
+                       const SizedBox(height: 12),
+                       const Text("Secure link generated successfully for:", style: TextStyle(color: Colors.white38, fontSize: 11)),
+                       Text(emailC.text, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                       const SizedBox(height: 16),
+                       Container(
+                         padding: const EdgeInsets.all(10),
+                         decoration: BoxDecoration(color: AdminTheme.surface, borderRadius: BorderRadius.circular(8)),
+                         child: SelectableText(invitationLink!, style: const TextStyle(color: AdminTheme.accent, fontSize: 10, fontFamily: 'monospace')),
+                       ),
+                     ],
+                   ),
+                 ),
+              ],
             ],
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(context), child: const Text("CANCEL", style: TextStyle(color: Colors.white24))),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(backgroundColor: AdminTheme.accent, foregroundColor: Colors.black),
-              onPressed: () {
-                if (nameC.text.isNotEmpty && emailC.text.contains("@")) {
-                  setState(() {
-                    _users.add({
-                      "name": nameC.text,
-                      "email": emailC.text,
-                      "id": _generateUniqueId(selectedRole),
-                      "role": selectedRole,
-                      "color": selectedRole == "SUPER ADMIN" ? Colors.amber : (selectedRole == "ADMIN" ? Colors.blueAccent : Colors.greenAccent),
-                      "online": false
+            if (invitationLink == null) ...[
+              TextButton(onPressed: () => Navigator.pop(context), child: const Text("CANCEL", style: TextStyle(color: Colors.white24, fontSize: 12))),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(backgroundColor: AdminTheme.accent, foregroundColor: Colors.black, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
+                onPressed: () {
+                  if (emailC.text.contains("@")) {
+                    setDialogState(() => isGenerating = true);
+                    Future.delayed(const Duration(seconds: 1), () {
+                      setDialogState(() {
+                        isGenerating = false;
+                        invitationLink = "https://ebfic.store/join?token=${Random().nextInt(999999)}secret";
+                      });
                     });
-                  });
+                  }
+                },
+                child: isGenerating ? const SizedBox(height:12, width:12, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black)) : const Text("GENERATE LINK", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11)),
+              ),
+            ] else ...[
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(backgroundColor: Colors.greenAccent, foregroundColor: Colors.black),
+                onPressed: () {
+                  Clipboard.setData(ClipboardData(text: invitationLink!));
                   Navigator.pop(context);
-                }
-              },
-              child: const Text("GENERATE IDENTITY"),
-            ),
+                },
+                child: const Text("COPY & CLOSE", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11)),
+              ),
+            ],
           ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildDialogField(TextEditingController controller, String hint, IconData icon) {
     return TextField(
@@ -115,51 +162,76 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.black,
-      body: Row(
-        children: [
-          _buildSidebar(),
-          Expanded(
-            child: Column(
+    Widget build(BuildContext context) {
+      final double screenWidth = MediaQuery.of(context).size.width;
+      final bool isDesktop = screenWidth > 1024;
+      final bool isDark = Theme.of(context).brightness == Brightness.dark;
+      final Color bgColor = Theme.of(context).scaffoldBackgroundColor;
+
+      return Scaffold(
+        backgroundColor: bgColor,
+        // Drawer for Mobile/Tablet only
+        drawer: !isDesktop ? Drawer(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          child: _buildSidebar(context, isDrawer: true),
+        ) : null,
+        body: Stack(
+          children: [
+            // Background Gradients
+            Positioned(
+              top: -200, left: -200,
+              child: Container(
+                width: 600, height: 600,
+                decoration: BoxDecoration(shape: BoxShape.circle, color: AdminTheme.accent.withOpacity(isDark ? 0.05 : 0.08)),
+                child: BackdropFilter(filter: ImageFilter.blur(sigmaX: 100, sigmaY: 100), child: Container()),
+              ),
+            ),
+            Row(
               children: [
-                _buildTopBar(),
+                if (isDesktop) _buildSidebar(context),
                 Expanded(
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.all(24),
-                    child: _selectedIndex == 1 
-                      ? _buildPowerUserPanel() 
-                      : _buildMainOverview(),
+                  child: Column(
+                    children: [
+                      _buildTopBar(context, !isDesktop),
+                      Expanded(
+                        child: SingleChildScrollView(
+                          padding: EdgeInsets.all(isDesktop ? 32 : 16),
+                          child: _selectedIndex == 1 
+                            ? _buildPowerUserPanel(context) 
+                            : _buildMainOverview(context),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],
             ),
-          ),
-        ],
-      ),
-    );
-  }
+          ],
+        ),
+      );
+    }
 
-  Widget _buildMainOverview() {
+  Widget _buildMainOverview(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildStatGrid(),
+        _buildStatGrid(context),
         const SizedBox(height: 32),
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Expanded(flex: 2, child: _contentBox("Real-time System Activity", _buildLogList())),
+            Expanded(flex: 2, child: _contentBox(context, "REAL-TIME LOGS", _buildLogList(context))),
             const SizedBox(width: 24),
-            SizedBox(width: 350, child: _contentBox("Quick Control Toggles", _buildToggles())),
+            SizedBox(width: 350, child: _contentBox(context, "CENTRAL TOGGLES", _buildToggles(context))),
           ],
         ),
       ],
     );
   }
 
-  Widget _buildPowerUserPanel() {
+  Widget _buildPowerUserPanel(BuildContext context) {
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
     final filteredUsers = _activeFilter == "ALL USERS" 
         ? _users 
         : _users.where((u) => u['role'] == _activeFilter).toList();
@@ -169,61 +241,54 @@ class _DashboardScreenState extends State<DashboardScreen> {
       children: [
         Row(
           children: [
-            const Text("User Ecosystem", style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, letterSpacing: -0.5)),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text("Global Entity Hub", style: TextStyle(fontSize: 36, fontWeight: FontWeight.w900, color: isDark ? Colors.white : Colors.black87, letterSpacing: -1.5)),
+                const SizedBox(height: 4),
+                Text("Unified Access Control Management", style: TextStyle(color: isDark ? Colors.white54 : Colors.black54, fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 1.5)),
+              ],
+            ),
             const Spacer(),
-            _buildSmallStatBox("TOTAL USERS", "${_users.length}", Colors.blueAccent),
+            _buildSmallStatBox(context, "TOTAL NODES", "${_users.length}", AdminTheme.accent),
             const SizedBox(width: 16),
-            _buildSmallStatBox("ACTIVE NOW", "432", Colors.greenAccent),
-            const SizedBox(width: 16),
-            _buildSmallStatBox("ADMINS", "${_users.where((u) => u['role'] == 'ADMIN').length}", Colors.amberAccent),
+            _buildSmallStatBox(context, "ACTIVE SYNC", "432", Colors.greenAccent),
           ],
         ),
-        const SizedBox(height: 32),
+        const SizedBox(height: 48),
         Row(
           children: [
             Expanded(
-              child: Container(
-                height: 50,
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                decoration: BoxDecoration(color: AdminTheme.surface, borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.white.withOpacity(0.05))),
+              child: GlassBox(
+                blur: 15,
+                opacity: isDark ? 0.03 : 0.8,
+                borderRadius: 16,
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 6),
                 child: Row(
                   children: [
-                    const Icon(IconsaxPlusLinear.search_normal, color: Colors.white24, size: 18),
-                    const SizedBox(width: 12),
-                    const Expanded(
+                    Icon(IconsaxPlusLinear.search_status, color: isDark ? Colors.white38 : Colors.black38, size: 22),
+                    const SizedBox(width: 16),
+                    Expanded(
                       child: TextField(
-                        style: TextStyle(color: Colors.white, fontSize: 13),
-                        decoration: InputDecoration(hintText: "Search Identites...", hintStyle: TextStyle(color: Colors.white10), border: InputBorder.none),
+                        style: TextStyle(fontSize: 14, color: isDark ? Colors.white : Colors.black87),
+                        decoration: InputDecoration(hintText: "Search Identites...", hintStyle: TextStyle(color: isDark ? Colors.grey : Colors.black38), border: InputBorder.none),
                       ),
                     ),
                   ],
                 ),
               ),
             ),
-            const SizedBox(width: 16),
-            _filterActionButton("Export", IconsaxPlusLinear.document_download),
-            const SizedBox(width: 12),
-            _primaryActionButton("Add Identity", IconsaxPlusLinear.user_add, onTap: _showAddUserDialog),
+            const SizedBox(width: 24),
+            _primaryActionButton(context, "Issue Invitation Link", IconsaxPlusLinear.key, onTap: _showInvitationDialog),
           ],
         ),
-        const SizedBox(height: 24),
-        SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: Row(
-            children: [
-              _filterTab("ALL USERS"),
-              _filterTab("SUPER ADMIN"),
-              _filterTab("ADMIN"),
-              _filterTab("USERS"),
-            ],
-          ),
-        ),
-        const SizedBox(height: 32),
-        _contentBox("Authorized Entity Directory", Column(
+        const SizedBox(height: 48),
+        _contentBox(context, "Authorized Security Directory", Column(
           children: [
-            _userTableHeader(),
-            const Divider(color: Colors.white10, height: 1),
-            ...filteredUsers.map((u) => _userTableRow(u['name'], u['id'], u['email'], u['role'], u['color'], u['online'])),
+            _userTableHeader(context),
+            Divider(color: AdminTheme.glassBorder(context), height: 1),
+            const SizedBox(height: 8),
+            ...filteredUsers.map((u) => _userTableRow(context, u['name'], u['id'], u['email'], u['role'], u['color'], u['online'])),
           ],
         )),
       ],
@@ -243,41 +308,54 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  Widget _buildSmallStatBox(String label, String value, Color color) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      decoration: BoxDecoration(color: color.withOpacity(0.05), borderRadius: BorderRadius.circular(12), border: Border.all(color: color.withOpacity(0.1))),
+  Widget _buildSmallStatBox(BuildContext context, String label, String value, Color color) {
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+    return GlassBox(
+      blur: 10,
+      borderRadius: 16,
+      opacity: isDark ? 0.05 : 0.6,
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: TextStyle(color: color, fontSize: 9, fontWeight: FontWeight.bold, letterSpacing: 1)),
-          Text(value, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+          Row(
+            children: [
+               Container(width: 8, height: 8, decoration: BoxDecoration(color: color, shape: BoxShape.circle, boxShadow: [BoxShadow(color: color.withOpacity(0.5), blurRadius: 4)])),
+               const SizedBox(width: 8),
+               Text(label, style: TextStyle(color: isDark ? Colors.grey : Colors.black54, fontSize: 9, fontWeight: FontWeight.bold, letterSpacing: 1.5)),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(value, style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: isDark ? Colors.white : Colors.black87)),
         ],
       ),
     );
   }
 
-  Widget _userTableHeader() {
+  Widget _userTableHeader(BuildContext context) {
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+    final Color headerColor = isDark ? Colors.white38 : Colors.black38;
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
-      color: Colors.white.withOpacity(0.01),
+      padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 24),
+      decoration: BoxDecoration(color: isDark ? Colors.white.withOpacity(0.02) : Colors.black.withOpacity(0.02)),
       child: Row(
-        children: const [
-          Expanded(flex: 4, child: Text("IDENTITY PROFILE", style: TextStyle(color: Colors.white24, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1))),
-          Expanded(flex: 3, child: Text("COMMUNICATION", style: TextStyle(color: Colors.white24, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1))),
-          Expanded(flex: 2, child: Text("SECURITY LEVEL", style: TextStyle(color: Colors.white24, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1))),
-          Expanded(flex: 1, child: Text("MGMT", textAlign: TextAlign.right, style: TextStyle(color: Colors.white24, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1))),
+        children: [
+          Expanded(flex: 4, child: Text("IDENTITY PROFILE", style: TextStyle(color: headerColor, fontSize: 10, fontWeight: FontWeight.w800, letterSpacing: 1.2))),
+          Expanded(flex: 3, child: Text("COMMUNICATION", style: TextStyle(color: headerColor, fontSize: 10, fontWeight: FontWeight.w800, letterSpacing: 1.2))),
+          Expanded(flex: 2, child: Text("SECURITY LEVEL", style: TextStyle(color: headerColor, fontSize: 10, fontWeight: FontWeight.w800, letterSpacing: 1.2))),
+          Expanded(flex: 1, child: Text("MGMT", textAlign: TextAlign.right, style: TextStyle(color: headerColor, fontSize: 10, fontWeight: FontWeight.w800, letterSpacing: 1.2))),
         ],
       ),
     );
   }
 
-  Widget _userTableRow(String name, String id, String email, String role, Color roleColor, bool isOnline) {
+  Widget _userTableRow(BuildContext context, String name, String id, String email, String role, Color roleColor, bool isOnline) {
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
     String idPrefix = role == "SUPER ADMIN" ? "SID" : (role == "ADMIN" ? "AID" : "UID");
     String fullID = "$idPrefix-$id";
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
-      decoration: BoxDecoration(border: Border(bottom: BorderSide(color: Colors.white.withOpacity(0.03)))),
+      padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 24),
+      decoration: BoxDecoration(border: Border(bottom: BorderSide(color: isDark ? Colors.white.withOpacity(0.03) : Colors.black.withOpacity(0.03)))),
       child: Row(
         children: [
           Expanded(
@@ -286,30 +364,40 @@ class _DashboardScreenState extends State<DashboardScreen> {
               children: [
                 Stack(
                   children: [
-                    CircleAvatar(radius: 18, backgroundColor: roleColor.withOpacity(0.1), child: Text(name[0], style: TextStyle(color: roleColor, fontWeight: FontWeight.bold))),
-                    if (isOnline) Positioned(right: 0, bottom: 0, child: Container(height: 10, width: 10, decoration: BoxDecoration(color: Colors.greenAccent, shape: BoxShape.circle, border: Border.all(color: Colors.black, width: 2)))),
+                    CircleAvatar(radius: 22, backgroundColor: roleColor.withOpacity(0.15), child: Text(name[0], style: TextStyle(color: roleColor, fontWeight: FontWeight.w900, fontSize: 18))),
+                    if (isOnline) Positioned(right: 0, bottom: 0, child: Container(height: 12, width: 12, decoration: BoxDecoration(color: Colors.greenAccent, shape: BoxShape.circle, border: Border.all(color: isDark ? const Color(0xFF0D0B14) : Colors.white, width: 2)))),
                   ],
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: 16),
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(name, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
-                    const SizedBox(height: 4),
+                    Text(name, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: isDark ? Colors.white : Colors.black87)),
+                    const SizedBox(height: 6),
                     _idBadge(id, roleColor),
                   ],
                 ),
               ],
             ),
           ),
-          Expanded(flex: 3, child: Text(email, style: const TextStyle(fontSize: 12, color: Colors.white38))),
+          Expanded(flex: 3, child: Text(email, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: isDark ? Colors.white54 : Colors.black54))),
           Expanded(flex: 2, child: _roleBadge(role, roleColor)),
+          Expanded(
+            flex: 2, 
+            child: Row(
+              children: [
+                Icon(IconsaxPlusBold.shield_security, color: isOnline ? Colors.greenAccent : (isDark ? Colors.white24 : Colors.black26), size: 16),
+                const SizedBox(width: 8),
+                Text(isOnline ? "BOUND" : "UNBOUND", style: TextStyle(color: isOnline ? (isDark ? Colors.white70 : Colors.black54) : (isDark ? Colors.white38 : Colors.black38), fontSize: 10, fontWeight: FontWeight.bold)),
+              ],
+            ),
+          ),
           Expanded(flex: 1, child: Row(
             mainAxisAlignment: MainAxisAlignment.end,
             children: [
-              _iconAction(IconsaxPlusLinear.edit, AdminTheme.accent),
+              _iconAction(context, IconsaxPlusLinear.security_user, AdminTheme.accent),
               const SizedBox(width: 12),
-              _iconAction(IconsaxPlusLinear.trash, Colors.redAccent),
+              _iconAction(context, IconsaxPlusLinear.trash, Colors.redAccent),
             ],
           )),
         ],
@@ -324,9 +412,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("ID: $id Copied!"), backgroundColor: AdminTheme.accent, behavior: SnackBarBehavior.floating, width: 200, duration: const Duration(seconds: 1)));
       },
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-        decoration: BoxDecoration(color: Colors.black, borderRadius: BorderRadius.circular(4), border: Border.all(color: color.withOpacity(0.3))),
-        child: Text(id, style: TextStyle(color: color, fontSize: 8, fontWeight: FontWeight.bold)),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(6), border: Border.all(color: color.withOpacity(0.3))),
+        child: Text(id, style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.w800, letterSpacing: 1)),
       ),
     );
   }
@@ -335,28 +423,37 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return UnconstrainedBox(
       alignment: Alignment.centerLeft,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-        decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(6), border: Border.all(color: color.withOpacity(0.2))),
-        child: Text(label, style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.bold)),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(color: color.withOpacity(0.15), borderRadius: BorderRadius.circular(8), border: Border.all(color: color.withOpacity(0.3))),
+        child: Text(label, style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 0.5)),
       ),
     );
   }
 
-  Widget _iconAction(IconData icon, Color color) {
-    return Container(
-      padding: const EdgeInsets.all(6),
-      decoration: BoxDecoration(color: color.withOpacity(0.05), shape: BoxShape.circle),
-      child: Icon(icon, size: 14, color: color.withOpacity(0.7)),
+  Widget _iconAction(BuildContext context, IconData icon, Color color) {
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+    return InkWell(
+      borderRadius: BorderRadius.circular(20),
+      onTap: () {},
+      child: Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(color: color.withOpacity(isDark ? 0.1 : 0.15), shape: BoxShape.circle),
+        child: Icon(icon, size: 16, color: color),
+      ),
     );
   }
 
-  Widget _primaryActionButton(String label, IconData icon, {VoidCallback? onTap}) {
+  Widget _primaryActionButton(BuildContext context, String label, IconData icon, {VoidCallback? onTap}) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        decoration: BoxDecoration(color: AdminTheme.accent, borderRadius: BorderRadius.circular(12)),
-        child: Row(children: [Icon(icon, size: 16, color: Colors.black), const SizedBox(width: 8), Text(label, style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 12))]),
+        padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 16),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(colors: [AdminTheme.accent, AdminTheme.accent.withOpacity(0.8)]), 
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [BoxShadow(color: AdminTheme.accent.withOpacity(0.4), blurRadius: 20, offset: const Offset(0, 10))],
+        ),
+        child: Row(children: [Icon(icon, size: 20, color: Colors.black87), const SizedBox(width: 12), Text(label, style: const TextStyle(color: Colors.black87, fontWeight: FontWeight.w900, fontSize: 14))]),
       ),
     );
   }
@@ -369,121 +466,343 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  Widget _buildSidebar() {
-    return Container(
-      width: 80,
-      color: const Color(0xFF0D0E14),
-      padding: const EdgeInsets.symmetric(vertical: 24),
+  Widget _buildSidebar(BuildContext context, {bool isDrawer = false}) {
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+    final bool isExpanded = isDrawer || _isSidebarPinned || _isSidebarHovering;
+    const double maxExpandedWidth = 280.0;
+    const double collapsedWidth = 90.0;
+    final double sidebarWidth = isExpanded ? maxExpandedWidth : collapsedWidth;
+    final Color bgColor = isDark ? const Color(0xFF0A090E) : const Color(0xFFF9F9FB);
+    final Color borderColor = isDark ? Colors.white.withOpacity(0.04) : Colors.black.withOpacity(0.04);
+    final Color textColor = isDark ? Colors.white : Colors.black87;
+
+    Widget sidebarContent = AnimatedContainer(
+      duration: 350.ms,
+      curve: Curves.fastOutSlowIn,
+      width: sidebarWidth,
+      decoration: BoxDecoration(
+        color: bgColor,
+        border: !isDrawer ? Border(right: BorderSide(color: borderColor, width: 1)) : null,
+        boxShadow: !isDrawer && !_isSidebarPinned && isExpanded ? [
+          BoxShadow(color: Colors.black.withOpacity(isDark ? 0.3 : 0.05), blurRadius: 40, offset: const Offset(15, 0))
+        ] : [],
+      ),
+      padding: EdgeInsets.symmetric(vertical: 32, horizontal: isExpanded ? 20 : 16),
       child: Column(
         children: [
-          const Icon(IconsaxPlusBold.category, color: AdminTheme.accent, size: 32),
+          // Premium Header
+          SizedBox(
+            height: 50,
+            child: Row(
+              mainAxisAlignment: isExpanded ? MainAxisAlignment.spaceBetween : MainAxisAlignment.center,
+              children: [
+                const ControlCore(size: 36),
+                if (isExpanded) ...[
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.only(left: 12),
+                      child: Text("CONTROL-X", style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1.5, fontSize: 15, color: textColor)),
+                    ),
+                  ).animate().fadeIn(duration: 200.ms),
+                  if (!isDrawer)
+                    InkWell(
+                      borderRadius: BorderRadius.circular(12),
+                      onTap: () => setState(() {
+                        _isSidebarPinned = !_isSidebarPinned;
+                        if (!_isSidebarPinned) _isSidebarHovering = true; // Keep open smoothly while mouse is still there
+                      }),
+                      child: Tooltip(
+                        message: _isSidebarPinned ? "Unpin Menu" : "Pin Menu",
+                        child: AnimatedContainer(
+                          duration: 200.ms,
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: _isSidebarPinned ? AdminTheme.accent.withOpacity(0.15) : Colors.transparent,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Icon(
+                            _isSidebarPinned ? IconsaxPlusBold.lock_1 : IconsaxPlusLinear.unlock, 
+                            size: 18, 
+                            color: _isSidebarPinned ? AdminTheme.accent : (isDark ? Colors.white38 : Colors.black38)
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ],
+            ),
+          ),
           const SizedBox(height: 48),
-          _sidebarItem(IconsaxPlusLinear.element_3, 0),
-          _sidebarItem(IconsaxPlusLinear.profile_2user, 1),
-          _sidebarItem(IconsaxPlusLinear.setting, 2),
-          _sidebarItem(IconsaxPlusLinear.monitor, 3),
+          _sidebarItem(context, IconsaxPlusLinear.element_3, "Dashboard", 0, isExpanded, isDrawer: isDrawer),
+          _sidebarItem(context, IconsaxPlusLinear.profile_2user, "Identities", 1, isExpanded, isDrawer: isDrawer),
+          _sidebarItem(context, IconsaxPlusLinear.monitor, "Monitoring", 2, isExpanded, isDrawer: isDrawer),
+          _sidebarItem(context, IconsaxPlusLinear.setting_2, "Network Hub", 3, isExpanded, isDrawer: isDrawer),
           const Spacer(),
-          _sidebarItem(IconsaxPlusLinear.logout, 99, color: Colors.redAccent),
+          
+          if (isExpanded)
+            GlassBox(
+              blur: 10,
+              opacity: isDark ? 0.03 : 0.3,
+              borderRadius: 20,
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                   Container(
+                     height: 42, width: 42, 
+                     decoration: BoxDecoration(shape: BoxShape.circle, gradient: LinearGradient(colors: [AdminTheme.accent, AdminTheme.accent.withOpacity(0.6)])), 
+                     child: const Center(child: Text("A", style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 16)))
+                   ),
+                   const SizedBox(width: 14),
+                   Expanded(
+                     child: Column(
+                       crossAxisAlignment: CrossAxisAlignment.start, 
+                       children: [
+                         Text("Atikur", style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: textColor)), 
+                         const SizedBox(height: 3), 
+                         Text("SUPER ADMIN", style: TextStyle(fontSize: 9, color: isDark ? Colors.white54 : Colors.black54, fontWeight: FontWeight.bold, letterSpacing: 1.2))
+                       ]
+                     )
+                   ),
+                ],
+              ),
+            ).animate().fadeIn()
+          else
+             Container(
+               height: 46, width: 46, 
+               decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: AdminTheme.accent.withOpacity(0.3), width: 2)), 
+               child: const Center(child: Text("A", style: TextStyle(color: AdminTheme.accent, fontWeight: FontWeight.bold, fontSize: 16)))
+             ),
+          const SizedBox(height: 16),
+          _sidebarItem(context, IconsaxPlusLinear.logout, "Terminate", 99, isExpanded, isDrawer: isDrawer, color: Colors.redAccent),
         ],
       ),
     );
+
+    if (isDrawer) return sidebarContent;
+
+    return MouseRegion(
+      onEnter: (_) => setState(() => _isSidebarHovering = true),
+      onExit: (_) => setState(() => _isSidebarHovering = false),
+      child: sidebarContent,
+    );
   }
 
-  Widget _sidebarItem(IconData icon, int index, {Color? color}) {
+  Widget _sidebarItem(BuildContext context, IconData icon, String label, int index, bool isExpanded, {bool isDrawer = false, Color? color}) {
     bool isSelected = _selectedIndex == index;
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+    final Color itemColor = color ?? (isDark ? Colors.white70 : Colors.black87);
+    final Color selectedItemColor = color ?? AdminTheme.accent;
+    final Color unselectedIconColor = color ?? (isDark ? Colors.white38 : Colors.black38);
+    
     return GestureDetector(
-      onTap: () => setState(() => _selectedIndex = index),
-      child: Container(
-        margin: const EdgeInsets.symmetric(vertical: 16),
-        child: Icon(icon, color: isSelected ? AdminTheme.accent : (color ?? Colors.white38), size: 24),
-      ).animate(target: isSelected ? 1 : 0).scale(begin: const Offset(1,1), end: const Offset(1.2, 1.2)),
+      onTap: () {
+        if (label == "Terminate") {
+          context.go('/sp-login');
+          return;
+        }
+        setState(() => _selectedIndex = index);
+        if (isDrawer) Navigator.pop(context); // Close drawer on selection
+      },
+      child: AnimatedContainer(
+        duration: 250.ms,
+        curve: Curves.easeOutCirc,
+        margin: const EdgeInsets.symmetric(vertical: 6),
+        padding: EdgeInsets.symmetric(horizontal: isExpanded ? 16 : 0, vertical: 14),
+        decoration: BoxDecoration(
+          color: isSelected ? selectedItemColor.withOpacity(isDark ? 0.12 : 0.1) : Colors.transparent,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: isSelected ? selectedItemColor.withOpacity(0.3) : Colors.transparent),
+        ),
+        child: Row(
+          mainAxisAlignment: isExpanded ? MainAxisAlignment.start : MainAxisAlignment.center,
+          children: [
+            Icon(
+              icon, 
+              color: isSelected ? selectedItemColor : unselectedIconColor, 
+              size: 22 
+            ),
+            if (isExpanded) ...[
+              const SizedBox(width: 16),
+              Expanded(
+                child: Text(
+                  label, 
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: isSelected ? selectedItemColor : itemColor, 
+                    fontSize: 13, 
+                    fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                  )
+                ).animate().fadeIn(duration: 200.ms),
+              ),
+            ],
+          ],
+        ),
+      ),
     );
   }
 
-  Widget _buildTopBar() {
+  Widget _buildTopBar(BuildContext context, bool showMenu) {
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+    final Color textColor = isDark ? Colors.white : Colors.black87;
     return Container(
-      height: 70,
+      height: 80,
       padding: const EdgeInsets.symmetric(horizontal: 24),
-      decoration: BoxDecoration(border: Border(bottom: BorderSide(color: Colors.white.withOpacity(0.05)))),
+      decoration: BoxDecoration(border: Border(bottom: BorderSide(color: isDark ? Colors.white.withOpacity(0.03) : Colors.black.withOpacity(0.03)))),
       child: Row(
         children: [
-          const Text("EBFIC CONTROL CENTER", style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1.5, fontSize: 16, color: AdminTheme.textDim)),
+          if (showMenu)
+            Builder(builder: (context) => InkWell(
+              borderRadius: BorderRadius.circular(12),
+              onTap: () => Scaffold.of(context).openDrawer(),
+              child: Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: Icon(IconsaxPlusLinear.menu_1, color: AdminTheme.accent, size: 28),
+              ),
+            )),
+          if (showMenu) const SizedBox(width: 16),
+          Row(
+            children: [
+              Icon(IconsaxPlusBold.shield_search, color: AdminTheme.accent, size: 28),
+              const SizedBox(width: 16),
+              Text("CONTROL-X", style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1.2, fontSize: 15, color: textColor)),
+            ],
+          ),
           const Spacer(),
-          _statusChip("SYSTEM LIVE", Colors.greenAccent),
+          if (!showMenu) _statusChip(context, "MESH ONLINE", Colors.greenAccent),
+          const SizedBox(width: 24),
+          GestureDetector(
+            onTap: () {
+              AdminTheme.themeNotifier.value = isDark ? ThemeMode.light : ThemeMode.dark;
+            },
+            child: _premiumActionIcon(context, isDark ? IconsaxPlusLinear.sun_1 : IconsaxPlusLinear.moon),
+          ),
           const SizedBox(width: 16),
-          const CircleAvatar(radius: 18, backgroundColor: AdminTheme.surface, child: Icon(IconsaxPlusLinear.user, size: 18, color: AdminTheme.accent)),
+          _premiumActionIcon(context, IconsaxPlusLinear.notification),
         ],
       ),
     );
   }
 
-  Widget _statusChip(String label, Color color) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(20), border: Border.all(color: color.withOpacity(0.2))),
+  Widget _premiumActionIcon(BuildContext context, IconData icon) {
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+    return GlassBox(
+      blur: 10,
+      borderRadius: 14,
+      opacity: isDark ? 0.05 : 0.2,
+      padding: const EdgeInsets.all(12),
+      child: Icon(icon, size: 22, color: isDark ? Colors.white70 : Colors.black87),
+    );
+  }
+
+  Widget _statusChip(BuildContext context, String label, Color color) {
+    return GlassBox(
+      blur: 2,
+      borderRadius: 20,
+      opacity: 0.05,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       child: Row(
         children: [
-          Container(height: 8, width: 8, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
-          const SizedBox(width: 8),
-          Text(label, style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.bold)),
+          Container(height: 6, width: 6, decoration: BoxDecoration(color: color, shape: BoxShape.circle, boxShadow: [BoxShadow(color: color.withOpacity(0.5), blurRadius: 10)])),
+          const SizedBox(width: 10),
+          Text(label, style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1)),
         ],
       ),
     );
   }
 
-  Widget _buildStatGrid() {
+  Widget _buildStatGrid(BuildContext context) {
     return Wrap(
-      spacing: 16,
-      runSpacing: 16,
+      spacing: 24,
+      runSpacing: 24,
       children: [
-        _statCard("Active Android", "12,840", Icons.android, Colors.green),
-        _statCard("Active Windows", "4,210", Icons.window, Colors.blue),
-        _statCard("Web Access", "8,922", Icons.language, Colors.orange),
-        _statCard("Total Revenue", "\$48,20.00", Icons.attach_money, Colors.purpleAccent),
+        _statCard(context, "Android Activity", "12,840", Icons.android_rounded, Colors.greenAccent),
+        _statCard(context, "Windows Nodes", "4,210", Icons.window_rounded, AdminTheme.accent),
+        _statCard(context, "Identity Syncs", "8,922", IconsaxPlusBold.user_tag, Colors.orangeAccent),
+        _statCard(context, "System Mesh", "v2.0.4", IconsaxPlusBold.cpu, Colors.purpleAccent),
       ],
     );
   }
 
-  Widget _statCard(String title, String val, IconData icon, Color color) {
-    return Container(
-      width: 200,
-      height: 100,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(color: AdminTheme.surface, borderRadius: BorderRadius.circular(AdminTheme.cardRadius), border: Border.all(color: color.withOpacity(0.2))),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Row(children: [Icon(icon, size: 16, color: color), const SizedBox(width: 8), Text(title, style: const TextStyle(color: Colors.white38, fontSize: 12))]),
-          const SizedBox(height: 8),
-          Text(val, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-        ],
+  Widget _statCard(BuildContext context, String title, String val, IconData icon, Color color) {
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+    return GlassBox(
+      blur: 20,
+      opacity: isDark ? 0.04 : 0.5,
+      borderRadius: 24,
+      padding: const EdgeInsets.all(28),
+      child: SizedBox(
+        width: 200,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(10)),
+                child: Icon(icon, size: 20, color: color)
+              ), 
+              const SizedBox(width: 16), 
+              Expanded(child: Text(title, style: TextStyle(color: isDark ? Colors.grey : Colors.black54, fontSize: 12, fontWeight: FontWeight.bold)))
+            ]),
+            const SizedBox(height: 24),
+            Text(val, style: TextStyle(fontSize: 32, fontWeight: FontWeight.w900, color: isDark ? Colors.white : Colors.black87, letterSpacing: -1)),
+          ],
+        ),
       ),
     );
   }
 
-  Widget _contentBox(String title, Widget content) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(color: const Color(0xFF121212), borderRadius: BorderRadius.circular(16)),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.white54)), const SizedBox(height: 24), content]),
+  Widget _contentBox(BuildContext context, String title, Widget content) {
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+    return GlassBox(
+      blur: 25,
+      opacity: isDark ? 0.03 : 0.6,
+      borderRadius: 24,
+      padding: const EdgeInsets.all(36),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start, 
+        children: [
+          Row(
+            children: [
+              Container(width: 4, height: 16, decoration: BoxDecoration(color: AdminTheme.accent, borderRadius: BorderRadius.circular(2))),
+              const SizedBox(width: 12),
+              Text(title, style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, letterSpacing: 2, color: isDark ? Colors.grey : Colors.black54)),
+            ],
+          ),
+          const SizedBox(height: 32), 
+          content
+        ]
+      ),
     );
   }
 
-  Widget _buildLogList() {
+  Widget _buildLogList(BuildContext context) {
     return Column(
-      children: List.generate(5, (index) => ListTile(
-        contentPadding: EdgeInsets.zero,
-        leading: const CircleAvatar(radius: 4, backgroundColor: AdminTheme.accent),
-        title: Text("Authorized system access granted to ID #$index", style: const TextStyle(fontSize: 12)),
-        subtitle: Text("Network Latency: 24ms", style: const TextStyle(fontSize: 10, color: Colors.white24)),
+      children: List.generate(5, (index) => Padding(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        child: Row(
+          children: [
+             Container(height: 32, width: 4, decoration: BoxDecoration(color: AdminTheme.accent, borderRadius: BorderRadius.circular(2))),
+             const SizedBox(width: 16),
+             Expanded(
+               child: Column(
+                 crossAxisAlignment: CrossAxisAlignment.start,
+                 children: [
+                    Text("SECURE TUNNEL ESTABLISHED: NODE #00${index + 71}", style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 4),
+                    const Text("Protocol: AES-GCM-256 | Latency: 12ms", style: TextStyle(fontSize: 10, color: Colors.grey)),
+                 ],
+               ),
+             ),
+          ],
+        ),
       )),
     );
   }
 
-  Widget _buildToggles() {
-    return Column(children: [_toggleItem("Global Maintenance", false), _toggleItem("External Signups", true), _toggleItem("System-wide Forced Update", false)]);
+  Widget _buildToggles(BuildContext context) {
+    return Column(children: [_toggleItem("Global Lockdown", false), _toggleItem("External Hub Access", true), _toggleItem("Automatic Identity Expire", true)]);
   }
 
   Widget _toggleItem(String label, bool initial) {
