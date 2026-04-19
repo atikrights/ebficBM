@@ -9,7 +9,8 @@ const views = {
     setup: document.getElementById('view-setup'),
     login: document.getElementById('view-login'),
     list: document.getElementById('view-list'),
-    edit: document.getElementById('view-edit')
+    edit: document.getElementById('view-edit'),
+    audit: document.getElementById('view-audit')
 };
 
 // Utils
@@ -415,6 +416,77 @@ function doMagicFlight(acc) {
             } else {
                 showToast("Magic Flight Executed 🚀");
             }
+        });
+    });
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// AUDIT LOG SECTION
+// ══════════════════════════════════════════════════════════════════════════════
+
+// Open audit view
+document.getElementById('btn-open-audit').addEventListener('click', () => {
+    loadAuditLog();
+    switchView('audit');
+    // Clear any warning badge
+    chrome.runtime.sendMessage({ action: "CLEAR_BADGE" });
+});
+
+// Go back from audit
+document.getElementById('btn-back-audit').addEventListener('click', () => {
+    switchView('list');
+    renderAccountsList();
+});
+
+// Clear all audit logs
+document.getElementById('btn-clear-audit').addEventListener('click', () => {
+    if (confirm("Clear all access audit log entries?")) {
+        chrome.runtime.sendMessage({ action: "CLEAR_AUDIT_LOG" }, () => {
+            showToast("Audit log cleared.");
+            loadAuditLog();
+        });
+    }
+});
+
+function loadAuditLog() {
+    const container = document.getElementById('audit-list');
+    container.innerHTML = '<div class="audit-empty">Loading...</div>';
+
+    chrome.runtime.sendMessage({ action: "GET_AUDIT_LOG" }, (response) => {
+        const log = response && response.log ? response.log : [];
+
+        if (log.length === 0) {
+            container.innerHTML = '<div class="audit-empty">🛡️ No access attempts recorded yet.</div>';
+            return;
+        }
+
+        container.innerHTML = '';
+        log.forEach(entry => {
+            const statusClass = (entry.status || 'UNKNOWN').toLowerCase();
+            const time = entry.timestamp
+                ? new Date(entry.timestamp).toLocaleString()
+                : 'Unknown time';
+
+            // Truncate device string
+            const deviceStr = entry.device
+                ? entry.device.substring(0, 60) + (entry.device.length > 60 ? '...' : '')
+                : 'Unknown';
+
+            const el = document.createElement('div');
+            el.className = `audit-entry status-${statusClass}`;
+            el.innerHTML = `
+                <div class="audit-header">
+                    <span class="audit-status ${statusClass}">${entry.status || 'UNKNOWN'}</span>
+                    <span class="audit-time">${time}</span>
+                </div>
+                <div class="audit-device">${deviceStr}</div>
+                <div class="audit-meta">
+                    <span class="audit-tag">${(entry.method || 'MANUAL').replace('_', ' ')}</span>
+                    ${entry.vaultUsed ? '<span class="audit-tag vault-tag">VAULT SYNCED</span>' : ''}
+                    ${(entry.attempts > 1) ? `<span class="audit-tag" style="background:rgba(239,68,68,0.15);color:#ef4444;">×${entry.attempts} ATTEMPTS</span>` : ''}
+                </div>
+            `;
+            container.appendChild(el);
         });
     });
 }

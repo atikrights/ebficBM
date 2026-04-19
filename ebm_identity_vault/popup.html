@@ -376,7 +376,82 @@
             box-shadow: 0 5px 20px rgba(0,0,0,0.5);
         }
         #toast.show { bottom: 20px; }
-    </style>
+
+        /* ─── Audit Log Styles ─────────────────────────────── */
+        .audit-scroll {
+            height: 280px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            padding-right: 4px;
+        }
+        .audit-scroll::-webkit-scrollbar { width: 4px; }
+        .audit-scroll::-webkit-scrollbar-thumb { background: var(--border-light); border-radius: 4px; }
+
+        .audit-entry {
+            background: var(--surface);
+            border: 1px solid var(--border-light);
+            border-radius: 8px;
+            padding: 10px 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            transition: 0.2s;
+        }
+        .audit-entry:hover { background: var(--surface-hover); }
+        .audit-entry.status-success { border-left: 3px solid #00cc77; }
+        .audit-entry.status-failed  { border-left: 3px solid #f59e0b; }
+        .audit-entry.status-blocked { border-left: 3px solid #ef4444; }
+
+        .audit-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .audit-status {
+            font-size: 10px;
+            font-weight: 800;
+            letter-spacing: 1px;
+            padding: 2px 8px;
+            border-radius: 4px;
+        }
+        .audit-status.success { background: rgba(0,204,119,0.15); color: #00cc77; }
+        .audit-status.failed  { background: rgba(245,158,11,0.15); color: #f59e0b; }
+        .audit-status.blocked { background: rgba(239,68,68,0.15);  color: #ef4444; }
+
+        .audit-time {
+            font-size: 10px;
+            color: var(--text-dim);
+        }
+        .audit-device {
+            font-size: 11px;
+            color: var(--text-dim);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .audit-meta {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+        .audit-tag {
+            font-size: 9px;
+            font-weight: 700;
+            padding: 2px 6px;
+            border-radius: 4px;
+            letter-spacing: 0.5px;
+            background: rgba(93,95,239,0.15);
+            color: var(--primary);
+        }
+        .audit-tag.vault-tag { background: rgba(0,212,255,0.1); color: var(--secondary); }
+        .audit-empty {
+            text-align: center;
+            color: var(--text-dim);
+            font-size: 12px;
+            padding: 40px 0;
+        }
 </head>
 <body>
     <div class="snake-boundary">
@@ -431,7 +506,10 @@
                 <div id="accounts-list" class="accounts-scroll">
                     <!-- Populated by JS -->
                 </div>
-                <button id="btn-add-account" class="action-btn secondary-btn" style="margin-top:10px;">+ Create New Credential</button>
+                <div style="display:flex; gap:8px; margin-top:10px;">
+                    <button id="btn-add-account" class="action-btn secondary-btn" style="flex:1;">+ Create New Credential</button>
+                    <button id="btn-open-audit" class="action-btn secondary-btn" style="flex:0; padding:0 14px;" title="View Audit Log">📋</button>
+                </div>
             </div>
 
             <!-- 4. Edit/Add View -->
@@ -480,6 +558,18 @@
                 <div style="display:flex; gap:10px; margin-top:5px;">
                     <button id="btn-save-account" class="action-btn" style="flex:1;">Save Data</button>
                     <button id="btn-delete-account" class="action-btn danger-btn" style="flex:1; display:none;">Delete</button>
+                </div>
+            </div>
+
+            <!-- 5. Audit Log View -->
+            <div id="view-audit" class="view-container">
+                <div class="sub-header">
+                    <button id="btn-back-audit" class="back-btn">⬅️</button>
+                    <span class="sub-title">📋 Access Audit Log</span>
+                    <button id="btn-clear-audit" style="margin-left:auto; background:transparent; border:1px solid rgba(239,68,68,0.3); color:#ef4444; padding:4px 10px; border-radius:4px; font-size:10px; font-weight:700; cursor:pointer; letter-spacing:1px;">CLEAR</button>
+                </div>
+                <div id="audit-list" class="audit-scroll">
+                    <div class="audit-empty">Loading audit log...</div>
                 </div>
             </div>
 
