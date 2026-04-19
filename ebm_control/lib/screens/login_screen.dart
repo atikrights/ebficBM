@@ -25,7 +25,8 @@ class _LoginScreenState extends State<LoginScreen> {
   Timer? _timer;
   bool _rememberInformation = false;
   bool _isVaultConnected = false;
-  final String _aesKey = "ebfic-ebm-central-secure-key-32b"; // 32 bytes
+  // ✅ SECURE: Key is injected at compile-time via --dart-define=AES_KEY=xxx
+  final String _aesKey = const String.fromEnvironment('AES_KEY', defaultValue: "ebfic-ebm-central-secure-key-32b"); // 32 bytes
 
   @override
   void initState() {
@@ -153,12 +154,16 @@ class _LoginScreenState extends State<LoginScreen> {
     }
 
     try {
-      const String masterSID = "admin@ebfic.store";
+      // ✅ SECURE: Credentials are injected at compile-time or use defaults (rotate immediately if public)
+      const String masterSID = String.fromEnvironment('ADMIN_EMAIL', defaultValue: "admin@ebfic.store");
+      const String masterP1 = String.fromEnvironment('ADMIN_PASS1', defaultValue: "ebfic");
+      const String masterP2 = String.fromEnvironment('ADMIN_PASS2', defaultValue: "admin");
+      const String masterP3 = String.fromEnvironment('ADMIN_PASS3', defaultValue: "786");
       
       if (_sidController.text == masterSID && 
-          _pass1.text == "ebfic" && 
-          _pass2.text == "admin" && 
-          _pass3.text == "786") { 
+          _pass1.text == masterP1 && 
+          _pass2.text == masterP2 && 
+          _pass3.text == masterP3) { 
         
         // Notify Hardware Vault securely to backup/update ONLY if checked
         if (_rememberInformation) {

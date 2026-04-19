@@ -87,6 +87,11 @@ jobs:
         run: |
           flutter build apk --release \
             --dart-define=GITHUB_TOKEN=${{ secrets.UPDATE_PAT }} \
+            --dart-define=ADMIN_EMAIL=${{ secrets.ADMIN_EMAIL }} \
+            --dart-define=ADMIN_PASS1=${{ secrets.ADMIN_PASS1 }} \
+            --dart-define=ADMIN_PASS2=${{ secrets.ADMIN_PASS2 }} \
+            --dart-define=ADMIN_PASS3=${{ secrets.ADMIN_PASS3 }} \
+            --dart-define=AES_KEY=${{ secrets.AES_KEY }} \
             --build-name=${{ needs.tag-version.outputs.version }} \
             --build-number=${{ github.run_number }}
 
@@ -125,6 +130,11 @@ jobs:
         run: |
           flutter build windows --release `
             --dart-define=GITHUB_TOKEN=${{ secrets.UPDATE_PAT }} `
+            --dart-define=ADMIN_EMAIL=${{ secrets.ADMIN_EMAIL }} `
+            --dart-define=ADMIN_PASS1=${{ secrets.ADMIN_PASS1 }} `
+            --dart-define=ADMIN_PASS2=${{ secrets.ADMIN_PASS2 }} `
+            --dart-define=ADMIN_PASS3=${{ secrets.ADMIN_PASS3 }} `
+            --dart-define=AES_KEY=${{ secrets.AES_KEY }} `
             --build-name=${{ needs.tag-version.outputs.version }} `
             --build-number=${{ github.run_number }}
 
@@ -169,6 +179,11 @@ jobs:
         run: |
           flutter build macos --release \
             --dart-define=GITHUB_TOKEN=${{ secrets.UPDATE_PAT }} \
+            --dart-define=ADMIN_EMAIL=${{ secrets.ADMIN_EMAIL }} \
+            --dart-define=ADMIN_PASS1=${{ secrets.ADMIN_PASS1 }} \
+            --dart-define=ADMIN_PASS2=${{ secrets.ADMIN_PASS2 }} \
+            --dart-define=ADMIN_PASS3=${{ secrets.ADMIN_PASS3 }} \
+            --dart-define=AES_KEY=${{ secrets.AES_KEY }} \
             --build-name=${{ needs.tag-version.outputs.version }} \
             --build-number=${{ github.run_number }}
 
