@@ -1,22 +1,36 @@
 import 'dart:html' as html;
-import 'dart:js_util' as js_util;
 
-void setupVaultListener(Function(Map<String, dynamic> data, bool autoSubmit) onAutoFill, Function(bool) onConnectionChanged) {
+void setupVaultListener(
+  Function(Map<String, dynamic> data, bool autoSubmit) onAutoFill,
+  Function(bool) onConnectionChanged,
+) {
   html.window.onMessage.listen((event) {
-    var data = event.data;
-    if (data == null) return;
-    
-    // Convert JS Object to Map safely if needed
-    final mapData = js_util.dartify(data) as Map<dynamic, dynamic>?;
+    final raw = event.data;
+    if (raw == null) return;
+
+    // Safely convert the JS MessageEvent.data object to a Dart Map
+    Map<dynamic, dynamic>? mapData;
+    try {
+      if (raw is Map) {
+        mapData = raw;
+      } else {
+        // For JS interop objects arriving as JsObject
+        final type = raw['type'];
+        if (type == null) return;
+        mapData = {'type': type, 'payload': raw['payload'], 'autoSubmit': raw['autoSubmit']};
+      }
+    } catch (_) {
+      return;
+    }
+
     if (mapData == null) return;
 
     if (mapData['type'] == 'EBM_VAULT_READY') {
       onConnectionChanged(true);
-    } 
-    else if (mapData['type'] == 'EBM_EXTENSION_AUTOFILL') {
+    } else if (mapData['type'] == 'EBM_EXTENSION_AUTOFILL') {
       final payload = mapData['payload'];
       final bool autoSubmit = mapData['autoSubmit'] == true;
-      
+
       final safePayload = <String, dynamic>{};
       if (payload != null && payload is Map) {
         safePayload['ebmEmail'] = payload['ebmEmail'] ?? '';
@@ -43,9 +57,9 @@ void triggerVaultSave(Map<String, String> credentials) {
 
 /// ✅ Sends login attempt result to the Extension Background for audit logging
 void triggerAuditLog({
-  required String status,   // SUCCESS | FAILED | BLOCKED
+  required String status,  // SUCCESS | FAILED | BLOCKED
   required String email,
-  required String method,   // MANUAL | VAULT_AUTOFILL
+  required String method,  // MANUAL | VAULT_AUTOFILL
   required int attempts,
   required bool vaultUsed,
 }) {
