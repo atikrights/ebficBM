@@ -3,35 +3,73 @@ name: Deploy EBM Control Panel to Hostinger
 on:
   push:
     paths:
-      - 'ebm_control/**' # শুধুমাত্র এই ফোল্ডারে কাজ করলে এটি রান হবে
+      - 'ebm_control/**'
+      - 'ebm_identity_vault/**'  # Extension পরিবর্তন হলেও রি-ডিপ্লয়
     branches:
       - main
 
 jobs:
   build-and-deploy-admin:
+    name: 🔐 Build & Deploy Super Admin Panel
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Install Flutter
+      - name: Install Flutter (Stable)
         uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
+          cache: true
 
-      - name: Build Admin Panel
+      - name: Get Dependencies
         run: |
           cd ebm_control
           flutter pub get
-          flutter build web --release --base-href "/"
 
-      - name: Deploy to Hostinger via SSH
+      - name: Flutter Analyze (Non-Fatal)
+        run: |
+          cd ebm_control
+          flutter analyze --no-fatal-infos
+        continue-on-error: true
+
+      - name: Build Admin Panel (Web Release)
+        run: |
+          cd ebm_control
+          flutter build web --release \
+            --base-href "/" \
+            --dart-define=ADMIN_EMAIL=${{ secrets.ADMIN_EMAIL }} \
+            --dart-define=ADMIN_PASS1=${{ secrets.ADMIN_PASS1 }} \
+            --dart-define=ADMIN_PASS2=${{ secrets.ADMIN_PASS2 }} \
+            --dart-define=ADMIN_PASS3=${{ secrets.ADMIN_PASS3 }} \
+            --dart-define=AES_KEY=${{ secrets.AES_KEY }}
+
+      - name: Deploy Admin Panel to com.ebfic.store
         uses: easingthemes/ssh-deploy@main
         env:
           SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
-          ARGS: "-rlgoDzvc -i --delete --timeout=60"
+          ARGS: "-rlgoDzvc -i --delete --timeout=120"
           REMOTE_HOST: ${{ secrets.REMOTE_HOST }}
           REMOTE_USER: ${{ secrets.REMOTE_USER }}
-          REMOTE_PORT: ${{ secrets.REMOTE_PORT }}
+          REMOTE_PORT: 65002
           TARGET: "/home/u200841033/domains/ebfic.store/public_html/com/"
           SOURCE: "ebm_control/build/web/"
+
+  deploy-extension:
+    name: 🧩 Archive & Deploy Identity Vault Extension
+    runs-on: ubuntu-latest
+    needs: build-and-deploy-admin
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Deploy Extension files to Server (for reference/download)
+        uses: easingthemes/ssh-deploy@main
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          ARGS: "-rlgoDzvc -i --delete --timeout=120"
+          REMOTE_HOST: ${{ secrets.REMOTE_HOST }}
+          REMOTE_USER: ${{ secrets.REMOTE_USER }}
+          REMOTE_PORT: 65002
+          TARGET: "/home/u200841033/domains/ebfic.store/public_html/vault-extension/"
+          SOURCE: "ebm_identity_vault/"

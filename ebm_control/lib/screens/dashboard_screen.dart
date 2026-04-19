@@ -8,6 +8,7 @@ import 'package:go_router/go_router.dart';
 import '../core/theme.dart';
 import '../widgets/glass_box.dart';
 import '../widgets/control_core.dart';
+import 'super_audit_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -197,9 +198,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       Expanded(
                         child: SingleChildScrollView(
                           padding: EdgeInsets.all(isDesktop ? 32 : 16),
-                          child: _selectedIndex == 1 
-                            ? _buildPowerUserPanel(context) 
-                            : _buildMainOverview(context),
+                          child: _selectedIndex == 4
+                            ? const SuperAuditScreen()
+                            : _selectedIndex == 1 
+                              ? _buildPowerUserPanel(context) 
+                              : _buildMainOverview(context),
                         ),
                       ),
                     ],
@@ -536,6 +539,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           _sidebarItem(context, IconsaxPlusLinear.element_3, "Dashboard", 0, isExpanded, isDrawer: isDrawer),
           _sidebarItem(context, IconsaxPlusLinear.profile_2user, "Identities", 1, isExpanded, isDrawer: isDrawer),
           _sidebarItem(context, IconsaxPlusLinear.monitor, "Monitoring", 2, isExpanded, isDrawer: isDrawer),
+          _sidebarItem(context, IconsaxPlusLinear.shield_security, "Super Audit", 4, isExpanded, isDrawer: isDrawer, color: Colors.redAccent.withOpacity(0.85)),
           _sidebarItem(context, IconsaxPlusLinear.setting_2, "Network Hub", 3, isExpanded, isDrawer: isDrawer),
           const Spacer(),
           

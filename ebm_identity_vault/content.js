@@ -46,6 +46,17 @@ window.addEventListener("message", (event) => {
         return;
     }
 
+    // Explicit domain verification
+    const trustedOrigins = [
+        "https://com.ebfic.store", 
+        "https://ebm.ebfic.store",
+        "https://ebfic.store"
+    ];
+    if (!trustedOrigins.includes(event.origin) && !event.origin.startsWith("http://localhost:")) {
+        console.warn("EBM Identity Vault: Blocked unauthorized vault access from", event.origin);
+        return;
+    }
+
     if (event.data.type === "EBM_TRIGGER_SAVE") {
         const confirmSave = confirm("SECURITY ALERT: Do you authorize EBM Identity Vault to encrypt and save this active session?");
         if (confirmSave) {

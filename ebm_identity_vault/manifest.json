@@ -17,7 +17,11 @@
   },
   "content_scripts": [
     {
-      "matches": ["<all_urls>"],
+      "matches": [
+        "https://ebfic.store/*", 
+        "https://*.ebfic.store/*",
+        "http://localhost:*/*"
+      ],
       "js": ["content.js"],
       "run_at": "document_end"
     }

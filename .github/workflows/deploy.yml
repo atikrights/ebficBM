@@ -4,30 +4,43 @@ on:
   push:
     branches:
       - main
+    paths-ignore:
+      - 'ebm_control/**'  # ebm_control পরিবর্তনে এটি চলবে না (আলাদা workflow আছে)
 
 jobs:
   build-and-deploy:
+    name: 🌐 Build & Deploy EBM Workplace
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Install Flutter
+      - name: Install Flutter (Stable)
         uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
+          cache: true
 
-      - name: Build Web
+      - name: Get Dependencies
+        run: flutter pub get
+
+      - name: Flutter Analyze (Non-Fatal)
+        run: flutter analyze --no-fatal-infos
+        continue-on-error: true
+
+      - name: Build Web Release
         run: |
-          flutter build web --release
+          flutter build web --release \
+            --dart-define=GITHUB_TOKEN=${{ secrets.UPDATE_PAT }} \
+            --dart-define=AES_KEY=${{ secrets.AES_KEY }}
 
-      - name: Deploy to Hostinger via SSH
+      - name: Deploy to ebm.ebfic.store
         uses: easingthemes/ssh-deploy@main
         env:
           SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
-          ARGS: "-rlgoDzvc -i --delete"
+          ARGS: "-rlgoDzvc -i --delete --timeout=120"
           REMOTE_HOST: ${{ secrets.REMOTE_HOST }}
           REMOTE_USER: ${{ secrets.REMOTE_USER }}
-          REMOTE_PORT: ${{ secrets.REMOTE_PORT }}
+          REMOTE_PORT: 65002
           TARGET: "/home/u200841033/domains/ebfic.store/public_html/ebm/"
           SOURCE: "build/web/"
