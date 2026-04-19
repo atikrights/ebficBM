@@ -118,7 +118,39 @@
             box-shadow: inset 0 0 40px rgba(0,0,0,0.6);
         }
 
-        /* Elite Header */
+        /* ── Modern Window Header (Mock Desktop Bar) ── */
+        .mock-title-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 16px;
+            background: rgba(0,0,0,0.2);
+            border-bottom: 1px solid var(--border-light);
+            margin: -24px -24px 20px -24px; /* Pull into padding area */
+            border-top-left-radius: 8px;
+            border-top-right-radius: 8px;
+        }
+        .mock-title-text {
+            font-size: 10px;
+            font-weight: 700;
+            color: var(--text-dim);
+            text-transform: none;
+            letter-spacing: 0.5px;
+        }
+        .dot-controls {
+            display: flex;
+            gap: 6px;
+        }
+        .dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+        }
+        .dot.red { background: #ff5f56; }
+        .dot.yellow { background: #ffbd2e; }
+        .dot.green { background: #27c93f; }
+
+        /* Elite Content Header */
         .header {
             display: flex;
             align-items: center;
@@ -496,6 +528,16 @@
     <div class="app-content">
         <div class="snake-wire"></div>
         
+        <!-- Mock Desktop Window Header -->
+        <div class="mock-title-bar" style="position:relative; z-index:30;">
+            <div class="mock-title-text">ebfic Business Manager</div>
+            <div class="dot-controls">
+                <div class="dot red"></div>
+                <div class="dot yellow"></div>
+                <div class="dot green"></div>
+            </div>
+        </div>
+
         <div class="header" style="position:relative; z-index:20;">
             <div class="header-left">
                 <div class="icon">🛡️</div>
