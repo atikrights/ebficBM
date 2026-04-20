@@ -98,7 +98,7 @@ int _mobileNavIndex(int screenIndex) {
   if (screenIndex == 4) return 1; // Tasks
   if (screenIndex == 5) return 2; // Finance
   if (screenIndex == 7) return 3; // Notices
-  if (!kIsWeb && screenIndex == 10) return 4; // Update
+  if (!kIsWeb && screenIndex == 11) return 4; // Update
   return 0;
 }
 
@@ -108,7 +108,7 @@ int _mobileNavToScreenIndex({required int navIndex}) {
   if (navIndex == 1) return 4; // Tasks
   if (navIndex == 2) return 5; // Finance
   if (navIndex == 3) return 7; // Notices
-  if (!kIsWeb && navIndex == 4) return 10; // Update
+  if (!kIsWeb && navIndex == 4) return 11; // Update
   return 0;
 }
 
@@ -224,29 +224,37 @@ class _Sidebar extends StatelessWidget {
                   onTap: () => onNavigationChanged(9),
                   isDark: isDark,
                 ),
+                _NavItem(
+                  icon: IconsaxPlusLinear.folder_cloud,
+                  label: 'Asset Library',
+                  isSelected: selectedIndex == 10,
+                  isCollapsed: isCollapsed,
+                  onTap: () => onNavigationChanged(10),
+                  isDark: isDark,
+                ),
                 if (!kIsWeb)
                   _NavItem(
                     icon: IconsaxPlusLinear.refresh,
                     label: 'Update',
-                    isSelected: selectedIndex == 10,
+                    isSelected: selectedIndex == 11,
                     isCollapsed: isCollapsed,
-                    onTap: () => onNavigationChanged(10),
+                    onTap: () => onNavigationChanged(11),
                     isDark: isDark,
                   ),
                 _NavItem(
                   icon: IconsaxPlusLinear.book,
                   label: 'Guidelines',
-                  isSelected: selectedIndex == (kIsWeb ? 10 : 11),
+                  isSelected: selectedIndex == (kIsWeb ? 11 : 12),
                   isCollapsed: isCollapsed,
-                  onTap: () => onNavigationChanged(kIsWeb ? 10 : 11),
+                  onTap: () => onNavigationChanged(kIsWeb ? 11 : 12),
                   isDark: isDark,
                 ),
                 _NavItem(
                   icon: IconsaxPlusLinear.category,
                   label: 'Modules',
-                  isSelected: selectedIndex == (kIsWeb ? 11 : 12),
+                  isSelected: selectedIndex == (kIsWeb ? 12 : 13),
                   isCollapsed: isCollapsed,
-                  onTap: () => onNavigationChanged(kIsWeb ? 11 : 12),
+                  onTap: () => onNavigationChanged(kIsWeb ? 12 : 13),
                   isDark: isDark,
                 ),
 

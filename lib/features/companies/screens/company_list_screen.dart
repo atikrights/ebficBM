@@ -7,9 +7,12 @@ import 'package:responsive_framework/responsive_framework.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 import 'package:ebficbm/core/theme/colors.dart';
 import 'package:ebficbm/widgets/glass_container.dart';
+import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:ebficbm/features/companies/models/company.dart';
 import 'package:ebficbm/features/companies/providers/company_provider.dart';
 import 'package:ebficbm/features/companies/screens/company_manage_screen.dart';
+import 'package:ebficbm/core/utils/clipboard_helper.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 
 class CompanyListScreen extends StatelessWidget {
@@ -339,6 +342,7 @@ class CompanyListScreen extends StatelessWidget {
   void _showCategoryManagePopup(BuildContext context, bool isDark, Color textColor, {String? existingCategory}) {
     final provider = context.read<CompanyProvider>();
     String categoryName = existingCategory ?? '';
+    String popupSearchQuery = '';
     
     // Find companies that ALREADY have this category
     List<String> assignedCompanyIds = provider.allCompanies
@@ -351,79 +355,126 @@ class CompanyListScreen extends StatelessWidget {
       barrierLabel: 'Manage Category',
       pageBuilder: (context, animation, secondaryAnimation) {
         return Center(
-          child: Material(
-            color: Colors.transparent,
-            child: StatefulBuilder(
-              builder: (context, setState) {
-                return GlassContainer(
-                  width: 450,
-                  padding: const EdgeInsets.all(24),
-                  borderRadius: 24,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(existingCategory == null ? 'Create Category' : 'Modify Category', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: textColor)),
-                          IconButton(icon: Icon(IconsaxPlusLinear.close_circle, color: textColor), onPressed: () => Navigator.pop(context)),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      Container(
-                        decoration: BoxDecoration(
-                          color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.03),
-                          borderRadius: BorderRadius.circular(12),
+          child: SingleChildScrollView(
+            child: Material(
+              color: Colors.transparent,
+              child: StatefulBuilder(
+                builder: (context, setState) {
+                  return GlassContainer(
+                    width: ResponsiveBreakpoints.of(context).isMobile ? MediaQuery.of(context).size.width * 0.9 : 450,
+                    padding: const EdgeInsets.all(24),
+                    borderRadius: 24,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(existingCategory == null ? 'Create Category' : 'Modify Category', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: textColor)),
+                            IconButton(icon: Icon(IconsaxPlusLinear.close_circle, color: textColor), onPressed: () => Navigator.pop(context)),
+                          ],
                         ),
-                        child: TextFormField(
-                          initialValue: categoryName,
-                          onChanged: (val) => categoryName = val,
-                          style: TextStyle(color: isDark ? Colors.white : Colors.black),
-                          decoration: InputDecoration(
-                            hintText: 'e.g., Artificial Intelligence',
-                            hintStyle: TextStyle(color: isDark ? Colors.white54 : Colors.black54),
-                            prefixIcon: Icon(IconsaxPlusLinear.folder_add, color: isDark ? Colors.white54 : Colors.black54, size: 20),
-                            border: InputBorder.none,
-                            contentPadding: const EdgeInsets.symmetric(vertical: 16),
+                        const SizedBox(height: 16),
+                        Container(
+                          decoration: BoxDecoration(
+                            color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.03),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: TextFormField(
+                            initialValue: categoryName,
+                            onChanged: (val) => categoryName = val,
+                            style: TextStyle(color: isDark ? Colors.white : Colors.black),
+                            decoration: InputDecoration(
+                              hintText: 'e.g., Artificial Intelligence',
+                              hintStyle: TextStyle(color: isDark ? Colors.white54 : Colors.black54),
+                              prefixIcon: Icon(IconsaxPlusLinear.folder_add, color: isDark ? Colors.white54 : Colors.black54, size: 20),
+                              border: InputBorder.none,
+                              contentPadding: const EdgeInsets.symmetric(vertical: 16),
+                            ),
                           ),
                         ),
-                      ),
-                      const SizedBox(height: 16),
-                      Text('Assign Active Organizations:', style: TextStyle(fontWeight: FontWeight.bold, color: isDark ? Colors.white70 : Colors.black87, fontSize: 13)),
-                      const SizedBox(height: 8),
-                      // Companies List Checkboxes
-                      Container(
-                        height: 160,
-                        decoration: BoxDecoration(
-                          color: isDark ? Colors.white.withValues(alpha: 0.02) : Colors.black.withValues(alpha: 0.02),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: isDark ? Colors.white10 : Colors.black12)
+                        const SizedBox(height: 16),
+                        Text('Assign Active Organizations:', style: TextStyle(fontWeight: FontWeight.bold, color: isDark ? Colors.white70 : Colors.black87, fontSize: 13)),
+                        const SizedBox(height: 8),
+                        
+                        // Real-Time Search Field
+                        Container(
+                          margin: const EdgeInsets.only(bottom: 8),
+                          decoration: BoxDecoration(
+                            color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.03),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: TextField(
+                            onChanged: (val) => setState(() => popupSearchQuery = val),
+                            style: TextStyle(color: textColor, fontSize: 12),
+                            decoration: InputDecoration(
+                              hintText: 'Search by Name or CID...',
+                              hintStyle: TextStyle(color: isDark ? Colors.white54 : Colors.black54, fontSize: 11),
+                              prefixIcon: Icon(IconsaxPlusLinear.search_normal_1, color: isDark ? Colors.white54 : Colors.black54, size: 16),
+                              border: InputBorder.none,
+                              contentPadding: const EdgeInsets.symmetric(vertical: 10),
+                              isDense: true,
+                            ),
+                          ),
                         ),
-                        child: ListView.builder(
-                          itemCount: provider.allCompanies.length,
-                          itemBuilder: (context, i) {
-                            final c = provider.allCompanies[i];
-                            final isAssigned = assignedCompanyIds.contains(c.id);
-                            return CheckboxListTile(
-                              value: isAssigned,
-                              activeColor: AppColors.primary,
-                              title: Text(c.name, style: TextStyle(color: textColor, fontSize: 13, fontWeight: FontWeight.w600)),
-                              subtitle: Text(c.categories.join(', '), style: TextStyle(color: isDark ? Colors.white54 : Colors.black54, fontSize: 11)),
-                              onChanged: (val) {
-                                setState(() {
-                                  if (val == true) {
-                                    assignedCompanyIds.add(c.id);
-                                  } else {
-                                    assignedCompanyIds.remove(c.id);
-                                  }
-                                });
-                              },
-                            );
-                          },
+
+                        // Companies List Checkboxes
+                        Container(
+                          height: 180,
+                          decoration: BoxDecoration(
+                            color: isDark ? Colors.white.withValues(alpha: 0.02) : Colors.black.withValues(alpha: 0.02),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: isDark ? Colors.white10 : Colors.black12)
+                          ),
+                          child: Builder(
+                            builder: (context) {
+                              final query = popupSearchQuery.toLowerCase();
+                              final filtered = provider.allCompanies.where((c) => 
+                                c.name.toLowerCase().contains(query) || c.id.toLowerCase().contains(query)).toList();
+                                
+                              if (filtered.isEmpty) {
+                                return Center(child: Text("No items match your search", style: TextStyle(fontSize: 11, color: isDark ? Colors.white38 : Colors.black38)));
+                              }
+
+                              return ListView.builder(
+                                itemCount: filtered.length,
+                                itemBuilder: (context, i) {
+                                  final c = filtered[i];
+                                  final isAssigned = assignedCompanyIds.contains(c.id);
+                                  return CheckboxListTile(
+                                    contentPadding: const EdgeInsets.all(5),
+                                    value: isAssigned,
+                                    activeColor: AppColors.primary,
+                                    dense: true,
+                                    title: Row(
+                                      children: [
+                                        Expanded(child: Text(c.name, style: TextStyle(color: textColor, fontSize: 12, fontWeight: FontWeight.w600), maxLines: 1, overflow: TextOverflow.ellipsis)),
+                                        const SizedBox(width: 4),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                          decoration: BoxDecoration(color: AppColors.primary.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(6)),
+                                          child: Text(c.id, style: const TextStyle(color: AppColors.primary, fontSize: 9, fontWeight: FontWeight.bold, letterSpacing: 0.5)),
+                                        ),
+                                      ],
+                                    ),
+                                    subtitle: Text(c.categories.join(', '), style: TextStyle(color: isDark ? Colors.white54 : Colors.black54, fontSize: 10)),
+                                    onChanged: (val) {
+                                      setState(() {
+                                        if (val == true) {
+                                          assignedCompanyIds.add(c.id);
+                                        } else {
+                                          assignedCompanyIds.remove(c.id);
+                                        }
+                                      });
+                                    },
+                                  );
+                                },
+                              );
+                            }
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 24),
+                        const SizedBox(height: 24),
                       Row(
                         children: [
                           if (existingCategory != null) ...[
@@ -466,6 +517,7 @@ class CompanyListScreen extends StatelessWidget {
                 );
               }
             ),
+          ),
           ),
         ).animate().scale(curve: Curves.easeOutBack, duration: 400.ms).fadeIn();
       },
@@ -555,8 +607,12 @@ class CompanyListScreen extends StatelessWidget {
                           onPressed: () {
                              if (nameController.text.trim().isEmpty) return;
                              
+                             int randomId = 100000 + Random().nextInt(1000);
+                             while(provider.allCompanies.any((c) => c.id == 'CID-$randomId')) {
+                               randomId = 100000 + Random().nextInt(1000);
+                             }
                              final newCompany = Company(
-                               id: 'CID-${100000 + Random().nextInt(900000)}',
+                               id: 'CID-$randomId',
                                name: nameController.text.trim(),
                                website: websiteController.text.trim(),
                                categories: [selectedCategory!],
@@ -622,6 +678,19 @@ class _PremiumCompanyCard extends StatelessWidget {
 
   const _PremiumCompanyCard({required this.company, required this.isDark});
 
+  Widget _defaultIcon(double size) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        gradient: AppColors.primaryGradient,
+        shape: BoxShape.circle,
+        boxShadow: [BoxShadow(color: AppColors.primary.withValues(alpha: 0.3), blurRadius: 8, offset: const Offset(0, 4))],
+      ),
+      child: Icon(IconsaxPlusLinear.building_3, color: Colors.white, size: size * 0.5),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final textColor = isDark ? Colors.white : AppColors.textDark;
@@ -639,31 +708,44 @@ class _PremiumCompanyCard extends StatelessWidget {
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  gradient: AppColors.primaryGradient,
-                  borderRadius: BorderRadius.circular(14),
-                  boxShadow: [
-                    BoxShadow(color: AppColors.primary.withValues(alpha: 0.3), blurRadius: 10, offset: const Offset(0, 4))
-                  ],
-                ),
-                child: const Icon(IconsaxPlusLinear.building_3, color: Colors.white),
+              Builder(
+                builder: (context) {
+                  const size = 48.0;
+                  if (company.logoUrl != null && company.logoUrl!.isNotEmpty) {
+                    bool isWebLink = company.logoUrl!.startsWith('http') || company.logoUrl!.startsWith('data:image');
+                    return Container(
+                      width: size,
+                      height: size,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        boxShadow: [BoxShadow(color: AppColors.primary.withValues(alpha: 0.3), blurRadius: 8, offset: const Offset(0, 4))],
+                      ),
+                      child: ClipOval(
+                        child: SizedBox(
+                          width: size,
+                          height: size,
+                          child: isWebLink 
+                              ? Image.network(company.logoUrl!, fit: BoxFit.cover, errorBuilder: (_,__,___) => _defaultIcon(size)) 
+                              : (!kIsWeb 
+                                  ? Image.file(File(company.logoUrl!), fit: BoxFit.cover, errorBuilder: (_,__,___) => _defaultIcon(size))
+                                  : _defaultIcon(size)),
+                        ),
+                      ),
+                    );
+                  }
+                  return _defaultIcon(size);
+                }
               ),
               const SizedBox(width: 12),
               Tooltip(
                 message: 'Copy CID',
                 child: InkWell(
-                  onTap: () {
-                    Clipboard.setData(ClipboardData(text: company.id));
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('CID Copied to Clipboard!'), behavior: SnackBarBehavior.floating));
-                  },
+                  onTap: () => ClipboardHelper.copy(context, company.id),
                   borderRadius: BorderRadius.circular(8),
                   child: Container(
                     margin: const EdgeInsets.only(top: 8),
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(color: AppColors.primary.withOpacity(0.1), borderRadius: BorderRadius.circular(8), border: Border.all(color: AppColors.primary.withOpacity(0.3))),
+                    decoration: BoxDecoration(color: AppColors.primary.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8), border: Border.all(color: AppColors.primary.withValues(alpha: 0.3))),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [

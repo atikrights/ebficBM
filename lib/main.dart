@@ -9,8 +9,13 @@ import 'package:window_manager/window_manager.dart';
 import 'package:bitsdojo_window/bitsdojo_window.dart';
 import 'dart:io' show Platform;
 
+import 'package:ebficbm/core/config/app_config.dart';
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  
+  // Initialize Global Configurations
+  await AppConfig.instance.init();
   
   // Platform-specific Initialization for Desktop
   if (!kIsWeb && (

@@ -12,6 +12,7 @@ import 'package:ebficbm/features/tasks/models/system_task.dart';
 import 'package:ebficbm/features/tasks/providers/task_provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:ebficbm/features/assets/providers/asset_provider.dart';
 
 class TaskWorkspaceScreen extends StatefulWidget {
   final String taskId;
@@ -1124,8 +1125,13 @@ class _TaskWorkspaceScreenState extends State<TaskWorkspaceScreen> {
       allowedExtensions: allowedExtensions,
     );
     if (result != null && result.files.isNotEmpty) {
+      final assetProvider = Provider.of<AssetProvider>(context, listen: false);
       setState(() {
         for (final f in result.files) {
+          if (f.path != null) {
+            assetProvider.syncFileToLibrary(f.path!, name: 'Task Attachment: ${f.name}');
+          }
+
           final ext = (f.extension ?? 'other').toLowerCase();
           final detectedType = ['pdf', 'png', 'jpg', 'jpeg', 'xls', 'xlsx', 'txt', 'doc', 'docx'].contains(ext)
               ? (ext == 'jpeg' ? 'jpg' : ext == 'docx' ? 'doc' : ext == 'xlsx' ? 'xls' : ext)

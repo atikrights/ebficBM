@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:math';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:ebficbm/features/companies/models/company.dart';
@@ -27,8 +28,15 @@ class CompanyProvider with ChangeNotifier {
     if (jsonStr != null) {
       try {
         final Map<String, dynamic> decoded = json.decode(jsonStr);
-        _companies = (decoded['companies'] as List).map((m) => Company.fromMap(m)).toList();
+        _companies = (decoded['companies'] as List).map((m) {
+           var comp = Company.fromMap(m);
+           if (!comp.id.startsWith('CID-1000')) {
+             return comp.copyWith(id: 'CID-${100000 + Random().nextInt(1000)}');
+           }
+           return comp;
+        }).toList();
         _categories = List<String>.from(decoded['categories']);
+        _saveToStorage();
         notifyListeners();
       } catch (e) {
         if (isComplete != true) _loadDummyData();
@@ -146,6 +154,15 @@ class CompanyProvider with ChangeNotifier {
     }
   }
 
+  void updateCompanyLogo(String id, String logoUrl) {
+    final index = _companies.indexWhere((c) => c.id == id);
+    if (index != -1) {
+      _companies[index] = _companies[index].copyWith(logoUrl: logoUrl);
+      _saveToStorage();
+      notifyListeners();
+    }
+  }
+
   void addCompany(Company company) {
     _companies.add(company);
     _saveToStorage();
@@ -179,7 +196,7 @@ class CompanyProvider with ChangeNotifier {
   void _loadDummyData() {
     _companies = [
       Company(
-        id: '1',
+        id: 'CID-100001',
         name: 'Nexus Tech Global',
         categories: ['Tech'],
         website: 'nexustech.io',
@@ -194,7 +211,7 @@ class CompanyProvider with ChangeNotifier {
         projectIds: ['p1', 'p2', 'p3'],
       ),
       Company(
-        id: '2',
+        id: 'CID-100002',
         name: 'Apex Manufacturing',
         categories: ['Manufacturing'],
         website: 'apex-mfg.com',
@@ -209,7 +226,7 @@ class CompanyProvider with ChangeNotifier {
         projectIds: ['p4'],
       ),
       Company(
-        id: '3',
+        id: 'CID-100003',
         name: 'Zenith Finance Group',
         categories: ['Finance', 'Tech'],
         website: 'zenithfinance.net',
@@ -224,7 +241,7 @@ class CompanyProvider with ChangeNotifier {
         projectIds: ['p5', 'p6'],
       ),
       Company(
-        id: '4',
+        id: 'CID-100004',
         name: 'Pulse HealthCare',
         categories: ['Healthcare'],
         website: 'pulsehealth.org',
@@ -239,7 +256,7 @@ class CompanyProvider with ChangeNotifier {
         projectIds: ['p7'],
       ),
       Company(
-        id: '5',
+        id: 'CID-100005',
         name: 'Lumina Retail Corp',
         categories: ['Retail', 'Tech'],
         website: 'luminaretail.com',

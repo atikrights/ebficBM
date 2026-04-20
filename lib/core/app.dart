@@ -8,6 +8,7 @@ import 'package:ebficbm/core/providers/theme_provider.dart';
 import 'package:ebficbm/features/companies/providers/company_provider.dart';
 import 'package:ebficbm/features/projects/providers/project_provider.dart';
 import 'package:ebficbm/features/tasks/providers/task_provider.dart';
+import 'package:ebficbm/features/assets/providers/asset_provider.dart';
 import 'package:ebficbm/core/services/refresh_service.dart';
 import 'package:ebficbm/core/services/storage_service.dart';
 import 'package:ebficbm/features/onboarding/screens/onboarding_screen.dart';
@@ -30,6 +31,7 @@ class BizOSApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => CompanyProvider()),
         ChangeNotifierProvider(create: (_) => ProjectProvider()),
         ChangeNotifierProvider(create: (_) => TaskProvider()),
+        ChangeNotifierProvider(create: (_) => AssetProvider()),
       ],
       child: Builder(
         builder: (context) {

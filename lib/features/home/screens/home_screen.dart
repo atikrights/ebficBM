@@ -16,8 +16,9 @@ import 'package:flutter/foundation.dart'; // Add this for kIsWeb
 import 'package:ebficbm/features/settings/screens/update_screen.dart';
 import 'package:ebficbm/features/guidelines/screens/guidelines_screen.dart';
 import 'package:ebficbm/features/modules/screens/module_screen.dart';
-import 'package:ebficbm/features/analysis/screens/analysis_screen.dart';
 import 'package:ebficbm/features/notices/screens/notice_screen.dart';
+import 'package:ebficbm/features/assets/screens/asset_library_screen.dart';
+import 'package:ebficbm/features/analysis/screens/analysis_screen.dart';
 
 
 class HomeScreen extends StatefulWidget {
@@ -82,12 +83,13 @@ class _HomeScreenState extends State<HomeScreen> {
       const NoticeScreen(),
       const NotesScreen(),
       const BroadcastScreen(),
+      const AssetLibraryScreen(),
       const UpdateScreen(),
       const GuidelinesScreen(),
       const ModuleScreen(),
     ];
     if (kIsWeb) {
-      screens.removeAt(10); // Remove UpdateScreen
+      screens.removeAt(11); // Remove UpdateScreen
     }
     return screens;
   }
@@ -104,12 +106,13 @@ class _HomeScreenState extends State<HomeScreen> {
       'Official Notices',
       'Notes',
       'Broadcast',
+      'Asset Library',
       'Software Update',
       'System Guidelines',
       'App Modules',
     ];
     if (kIsWeb) {
-      titles.removeAt(10); // Remove Software Update title
+      titles.removeAt(11); // Remove Software Update title
     }
     return titles;
   }

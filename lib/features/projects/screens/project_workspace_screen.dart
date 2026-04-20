@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'dart:ui';
@@ -12,6 +13,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:ebficbm/features/projects/models/project.dart';
 import 'package:ebficbm/features/projects/providers/project_provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:ebficbm/features/assets/providers/asset_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:ebficbm/features/tasks/models/system_task.dart';
 import 'package:ebficbm/features/tasks/providers/task_provider.dart';
@@ -2021,8 +2023,15 @@ class _PlanConsoleBoardState extends State<_PlanConsoleBoard> {
   Future<void> _importConsoleData(BuildContext context) async {
     try {
       final result = await FilePicker.pickFiles(type: FileType.custom, allowedExtensions: ['json']);
-      if (result != null && result.files.first.bytes != null) {
-        final content = utf8.decode(result.files.first.bytes!);
+      if (result != null && result.files.isNotEmpty) {
+        if (result.files.first.path != null) {
+          context.read<AssetProvider>().syncFileToLibrary(result.files.first.path!, name: 'Project Registry: ${widget.plan.title}');
+        }
+        
+        final content = result.files.first.bytes != null 
+            ? utf8.decode(result.files.first.bytes!)
+            : await File(result.files.first.path!).readAsString();
+            
         final List decoded = json.decode(content);
         final tp = context.read<TaskProvider>();
         int count = 0;
