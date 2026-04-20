@@ -8,6 +8,7 @@ import 'package:go_router/go_router.dart';
 import '../core/theme.dart';
 import '../widgets/glass_box.dart';
 import '../widgets/control_core.dart';
+import '../core/clipboard_helper.dart';
 import 'super_audit_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
@@ -133,9 +134,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ] else ...[
               ElevatedButton(
                 style: ElevatedButton.styleFrom(backgroundColor: Colors.greenAccent, foregroundColor: Colors.black),
-                onPressed: () {
-                  Clipboard.setData(ClipboardData(text: invitationLink!));
-                  Navigator.pop(context);
+                onPressed: () async {
+                  await ClipboardHelper.copy(context, invitationLink!);
+                  if (context.mounted) Navigator.pop(context);
                 },
                 child: const Text("COPY & CLOSE", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11)),
               ),
@@ -410,10 +411,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   Widget _idBadge(String id, Color color) {
     return GestureDetector(
-      onTap: () {
-        Clipboard.setData(ClipboardData(text: id));
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("ID: $id Copied!"), backgroundColor: AdminTheme.accent, behavior: SnackBarBehavior.floating, width: 200, duration: const Duration(seconds: 1)));
-      },
+      onTap: () => ClipboardHelper.copy(context, id),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
         decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(6), border: Border.all(color: color.withOpacity(0.3))),
