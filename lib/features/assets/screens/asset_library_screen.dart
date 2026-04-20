@@ -182,7 +182,7 @@ class _AssetLibraryScreenState extends State<AssetLibraryScreen> {
                   ),
                 ),
               ),
-              if (!isMobile) ...[
+              if (bp.largerThan(TABLET)) ...[
                 const SizedBox(width: 16),
                 _buildDraftsToggle(isDark, provider),
                 if (!_showDrafts) ...[
@@ -197,7 +197,7 @@ class _AssetLibraryScreenState extends State<AssetLibraryScreen> {
         Row(
           children: [
             Expanded(child: _buildSearchBox(isDark)),
-            if (isMobile) ...[
+            if (!bp.largerThan(TABLET)) ...[
               const SizedBox(width: 10),
               _buildDraftsToggle(isDark, provider),
               if (!_showDrafts) ...[
