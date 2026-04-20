@@ -54,6 +54,7 @@ class _AssetLibraryScreenState extends State<AssetLibraryScreen> {
   }
 
   List<AssetModel> _getFiltered(List<AssetModel> all) {
+    final query = _searchQuery.toLowerCase().trim();
     return all.where((a) {
       // 1. Filter by Custom Folder (if a folder is selected)
       if (_selectedFolderId != 'all' && _selectedFolderId != 'trash') {
@@ -65,10 +66,14 @@ class _AssetLibraryScreenState extends State<AssetLibraryScreen> {
         if (!folder.assetIds.contains(a.id)) return false;
       }
 
-      // 2. Filter by Search Query
-      final matchesSearch =
-          a.name.toLowerCase().contains(_searchQuery.toLowerCase());
-      if (!matchesSearch) return false;
+      // 2. Multi-Field Search (Name, ID, Link/Path)
+      if (query.isNotEmpty) {
+        final matchesName = a.name.toLowerCase().contains(query);
+        final matchesId = a.id.toLowerCase().contains(query);
+        final matchesPath = a.path.toLowerCase().contains(query);
+        
+        if (!matchesName && !matchesId && !matchesPath) return false;
+      }
 
       return true;
     }).toList();
@@ -78,79 +83,170 @@ class _AssetLibraryScreenState extends State<AssetLibraryScreen> {
   Widget build(BuildContext context) {
     final provider = context.watch<AssetProvider>();
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bp = ResponsiveBreakpoints.of(context);
 
     final filtered = _getFiltered(_showDrafts ? provider.draftAssets : provider.activeAssets);
     final paged = provider.pagedAssets(filtered);
 
     return Scaffold(
       backgroundColor: Colors.transparent,
-      body: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 24.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // ── Header bar
-            _buildHeaderBar(isDark, provider),
+      body: LayoutBuilder(
+        builder: (context, constraints) => Padding(
+          padding: EdgeInsets.symmetric(
+            horizontal: bp.isMobile ? 16.0 : 24.0, 
+            vertical: bp.isMobile ? 12.0 : 20.0
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // ── Top Actionable Area (Scrollable if height is restricted)
+              SingleChildScrollView(
+                physics: const ClampingScrollPhysics(),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // ── Header bar (Storage + Stats integrated)
+                    _buildHeaderBar(isDark, provider),
 
-            const SizedBox(height: 24),
+                    const SizedBox(height: 12),
 
-            // ── Stats row (Dynamic Badges)
-            _buildStatsRow(provider, isDark),
+                    // ── Filter tabs (Only in Active View)
+                    if (!_showDrafts) ...[
+                      _buildFilterTabs(isDark),
+                      const SizedBox(height: 12),
+                    ],
 
-            const SizedBox(height: 16),
+                    // ── Upload Progress
+                    if (provider.isUploading) ...[
+                      _buildUploadProgress(provider, isDark),
+                      const SizedBox(height: 12),
+                    ],
+                  ],
+                ),
+              ),
 
-            // ── Filter tabs
-            _buildFilterTabs(isDark),
-
-            const SizedBox(height: 24),
-
-            // ── Upload Progress
-            if (provider.isUploading) ...[
-              _buildUploadProgress(provider, isDark),
-              const SizedBox(height: 16),
+              // ── Main grid (Fixed height, self-scrollable)
+              Expanded(
+                child: provider.isLoading
+                    ? _buildLoadingSkeleton()
+                    : filtered.isEmpty
+                        ? _buildEmptyState(isDark)
+                        : _buildAssetGrid(paged, filtered, isDark, provider),
+              ),
             ],
-
-            // ── Main grid
-            Expanded(
-              child: provider.isLoading
-                  ? _buildLoadingSkeleton()
-                  : filtered.isEmpty
-                      ? _buildEmptyState(isDark)
-                      : _buildAssetGrid(paged, filtered, isDark, provider),
-            ),
-          ],
-        ).animate().fadeIn(duration: 400.ms),
-      ),
+          ),
+        ),
+      ).animate().fadeIn(duration: 400.ms),
     );
   }
 
   // ── Header ────────────────────────────────────────────────────────────────
 
   Widget _buildHeaderBar(bool isDark, AssetProvider provider) {
-    return SizedBox(
-      width: double.infinity,
-      child: Wrap(
-        spacing: 16,
-        runSpacing: 16,
-        crossAxisAlignment: WrapCrossAlignment.center,
-        alignment: WrapAlignment.spaceBetween,
-        children: [
-          _buildStorageBadge(isDark, provider),
-          Wrap(
-            spacing: 12,
-            runSpacing: 12,
-            crossAxisAlignment: WrapCrossAlignment.center,
+    final bp = ResponsiveBreakpoints.of(context);
+    final isMobile = bp.isMobile;
+
+    return Column(
+      children: [
+        SizedBox(
+          width: double.infinity,
+          child: Row(
             children: [
-              _buildSearchBox(isDark),
-              _buildDraftsToggle(isDark, provider),
-              if (!ResponsiveBreakpoints.of(context).largerThan(TABLET))
-                _buildIconUploadButton(provider)
-              else
-                _buildUploadButton(provider),
+              Expanded(
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  physics: const BouncingScrollPhysics(),
+                  child: Row(
+                    children: [
+                      if (_showDrafts) ...[
+                        IconButton(
+                          onPressed: () => setState(() => _showDrafts = false),
+                          icon: Icon(IconsaxPlusLinear.arrow_left_2, 
+                            color: isDark ? Colors.white : Colors.black, size: 20),
+                          tooltip: 'Back to Library',
+                        ),
+                        const SizedBox(width: 8),
+                        Text('Recycle Bin', 
+                          style: TextStyle(
+                            fontSize: 16, 
+                            fontWeight: FontWeight.bold, 
+                            color: isDark ? Colors.white : Colors.black87
+                          ),
+                        ),
+                      ] else ...[
+                        _buildStorageBadge(isDark, provider),
+                        const SizedBox(width: 12),
+                        _buildCombinedStatsRow(provider, isDark),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+              if (!isMobile) ...[
+                const SizedBox(width: 16),
+                _buildDraftsToggle(isDark, provider),
+                if (!_showDrafts) ...[
+                  const SizedBox(width: 12),
+                  _buildUploadButton(provider),
+                ],
+              ],
             ],
           ),
-        ],
-      ),
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(child: _buildSearchBox(isDark)),
+            if (isMobile) ...[
+              const SizedBox(width: 10),
+              _buildDraftsToggle(isDark, provider),
+              if (!_showDrafts) ...[
+                const SizedBox(width: 10),
+                _buildIconUploadButton(provider),
+              ],
+            ],
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCombinedStatsRow(AssetProvider provider, bool isDark) {
+    final assets = provider.activeAssets;
+    final Map<String, int> extCounts = {};
+    for (var a in assets) {
+      final ext = a.path.split('.').last.toUpperCase();
+      if (ext.length < 5) {
+        extCounts[ext] = (extCounts[ext] ?? 0) + 1;
+      }
+    }
+    final sortedExts = extCounts.keys.toList()..sort();
+
+    return Row(
+      children: [
+        _buildStatPill(
+          '${assets.length} Total',
+          IconsaxPlusLinear.category_2,
+          AppColors.primary,
+          isDark,
+          onTap: () => _showExtensionItemsPopup(context, 'All', assets, isDark),
+        ),
+        const SizedBox(width: 8),
+        ...sortedExts.map((ext) {
+          final count = extCounts[ext];
+          final filtered = assets.where((a) => a.path.toUpperCase().endsWith('.$ext')).toList();
+          return Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: _buildStatPill(
+              '$count $ext',
+              _getIconForExt(ext),
+              _getColorForExt(ext),
+              isDark,
+              onTap: () => _showExtensionItemsPopup(context, ext, filtered, isDark),
+            ),
+          );
+        }),
+      ],
     );
   }
 
@@ -161,7 +257,9 @@ class _AssetLibraryScreenState extends State<AssetLibraryScreen> {
         borderRadius: BorderRadius.circular(12),
       ),
       child: IconButton(
-        onPressed: provider.isUploading ? null : () => provider.pickAndImportAssets(),
+        onPressed: provider.isUploading
+            ? null
+            : () => provider.pickAndImportAssets(folderId: _selectedFolderId),
         icon: const Icon(IconsaxPlusLinear.document_upload,
             color: Colors.white, size: 20),
         padding: const EdgeInsets.all(12),
@@ -175,74 +273,91 @@ class _AssetLibraryScreenState extends State<AssetLibraryScreen> {
       style: ElevatedButton.styleFrom(
         backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        elevation: 0,
       ),
-      onPressed: provider.isUploading ? null : () => provider.pickAndImportAssets(),
-      icon: const Icon(IconsaxPlusLinear.document_upload, size: 20),
+      onPressed: provider.isUploading
+          ? null
+          : () => provider.pickAndImportAssets(folderId: _selectedFolderId),
+      icon: const Icon(IconsaxPlusLinear.document_upload, size: 18),
       label: const Text('Upload Media',
-          style: TextStyle(fontWeight: FontWeight.bold)),
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
     );
   }
 
-  // ── Dynamic Dynamic Stats Bar ──────────────────────────────────────────────
-  
-  Widget _buildStatsRow(AssetProvider provider, bool isDark) {
-    // 1. Calculate statistics dynamically
-    final assets = provider.activeAssets;
-    final Map<String, int> extCounts = {};
-    for (var a in assets) {
-      final ext = a.path.split('.').last.toUpperCase();
-      if (ext.length < 5) { // Sanity check for valid extensions
-         extCounts[ext] = (extCounts[ext] ?? 0) + 1;
-      }
-    }
 
-    // Sort extensions alphabetically
-    final sortedExts = extCounts.keys.toList()..sort();
+  void _showExtensionItemsPopup(BuildContext context, String title, List<AssetModel> assets, bool isDark) {
+    final textColor = isDark ? Colors.white : Colors.black87;
+    final subColor = isDark ? Colors.white54 : Colors.black54;
+    final itemBg = isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.03);
+    final borderColor = isDark ? Colors.white10 : Colors.black12;
 
-    final savedMB = (provider.totalBytesSaved / (1024 * 1024));
-    final savedStr = savedMB >= 1
-        ? '${savedMB.toStringAsFixed(1)} MB saved'
-        : '${(provider.totalBytesSaved / 1024).toStringAsFixed(0)} KB saved';
-
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      physics: const BouncingScrollPhysics(),
-      child: Row(
-        children: [
-          // Total Badge
-          _buildStatPill(
-            '${assets.length} Total Assets',
-            IconsaxPlusLinear.category_2,
-            AppColors.primary,
-            isDark,
-          ),
-          const SizedBox(width: 10),
-
-          // Dynamic Type Badges
-          ...sortedExts.map((ext) {
-            final count = extCounts[ext];
-            return Padding(
-              padding: const EdgeInsets.only(right: 10),
-              child: _buildStatPill(
-                '$count $ext',
-                _getIconForExt(ext),
-                _getColorForExt(ext),
-                isDark,
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (ctx) => DraggableScrollableSheet(
+        initialChildSize: 0.6,
+        maxChildSize: 0.9,
+        minChildSize: 0.4,
+        builder: (context, scrollController) => GlassContainer(
+          borderRadius: 24,
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text('$title Assets (${assets.length})', 
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: textColor)),
+                  IconButton(
+                    onPressed: () => Navigator.pop(ctx),
+                    icon: Icon(IconsaxPlusLinear.close_square, color: subColor),
+                  ),
+                ],
               ),
-            );
-          }),
-
-          // Savings Badge
-          if (provider.totalBytesSaved > 0)
-            _buildStatPill(
-              savedStr,
-              IconsaxPlusLinear.flash_1,
-              Colors.green,
-              isDark,
-            ),
-        ],
+              const SizedBox(height: 16),
+              Expanded(
+                child: ListView.separated(
+                  controller: scrollController,
+                  itemCount: assets.length,
+                  separatorBuilder: (_, __) => const SizedBox(height: 10),
+                  itemBuilder: (ctx, index) {
+                    final asset = assets[index];
+                    return Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: itemBg,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: borderColor),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(_getIconForExt(asset.path.split('.').last.toUpperCase()), 
+                            size: 18, color: AppColors.primary),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(asset.name, maxLines: 1, overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: textColor)),
+                                const SizedBox(height: 4),
+                                _buildCopyRow(asset.id, isDark, IconsaxPlusLinear.copy, small: true),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -265,25 +380,40 @@ class _AssetLibraryScreenState extends State<AssetLibraryScreen> {
   }
 
   Widget _buildStatPill(
-      String label, IconData icon, Color color, bool isDark) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(30),
-        border: Border.all(color: color.withValues(alpha: 0.18)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 13, color: color),
-          const SizedBox(width: 6),
-          Text(label,
-              style: TextStyle(
-                  fontSize: 12,
+      String label, IconData icon, Color color, bool isDark, {VoidCallback? onTap}) {
+    final bp = ResponsiveBreakpoints.of(context);
+    final isMobile = bp.isMobile;
+
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(30),
+      child: Container(
+        padding: EdgeInsets.symmetric(
+          horizontal: isMobile ? 8 : 10, 
+          vertical: 5
+        ),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(30),
+          border: Border.all(color: color.withValues(alpha: 0.18)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 11, color: color),
+            if (!isMobile) ...[
+              const SizedBox(width: 5),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 10,
                   color: color,
-                  fontWeight: FontWeight.w600)),
-        ],
+                  fontWeight: FontWeight.w600
+                ),
+              ),
+            ],
+          ],
+        ),
       ),
     );
   }
@@ -319,8 +449,6 @@ class _AssetLibraryScreenState extends State<AssetLibraryScreen> {
     ).animate().slideY(begin: -0.3, duration: 300.ms);
   }
 
-  // ── Filter Tabs ───────────────────────────────────────────────────────────
-
   Widget _buildFilterTabs(bool isDark) {
     final provider = context.watch<AssetProvider>();
     
@@ -332,11 +460,11 @@ class _AssetLibraryScreenState extends State<AssetLibraryScreen> {
           // ── All Assets Tab
           _buildTabItem('All Assets', 'all', IconsaxPlusLinear.grid_1, isDark),
           
-          // ── Vertical Divider
+          // ── Divider
           Container(
-            height: 20,
+            height: 14,
             width: 1,
-            margin: const EdgeInsets.symmetric(horizontal: 10),
+            margin: const EdgeInsets.symmetric(horizontal: 12),
             color: isDark ? Colors.white12 : Colors.black12,
           ),
 
@@ -346,17 +474,22 @@ class _AssetLibraryScreenState extends State<AssetLibraryScreen> {
             folder.id, 
             IconsaxPlusLinear.folder_2, 
             isDark,
-            onLongPress: () => _confirmDeleteFolder(folder),
+            onLongPress: () => _showFolderOptionsDialog(folder),
           )),
 
-          // ── Add Folder Button
-          Padding(
-            padding: const EdgeInsets.only(left: 4),
-            child: IconButton(
-              onPressed: () => _showCreateFolderDialog(),
-              icon: Icon(IconsaxPlusLinear.add_square, 
-                size: 22, color: AppColors.primary),
-              tooltip: 'New Folder',
+          // ── Add Folder Small Button
+          const SizedBox(width: 4),
+          InkWell(
+            onTap: () => _showCreateFolderDialog(),
+            borderRadius: BorderRadius.circular(8),
+            child: Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(IconsaxPlusLinear.add, 
+                size: 16, color: AppColors.primary),
             ),
           ),
         ],
@@ -366,44 +499,50 @@ class _AssetLibraryScreenState extends State<AssetLibraryScreen> {
 
   Widget _buildTabItem(String label, String id, IconData icon, bool isDark, {VoidCallback? onLongPress}) {
     final isSelected = _selectedFolderId == id;
+    final bp = ResponsiveBreakpoints.of(context);
+    final isMobile = bp.isMobile;
+    final activeColor = AppColors.primary;
+    final inactiveBg = isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.04);
+    final inactiveText = isDark ? Colors.white54 : Colors.black54;
+
     return Padding(
-      padding: const EdgeInsets.only(right: 10),
+      padding: const EdgeInsets.only(right: 6),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
           onTap: () => setState(() => _selectedFolderId = id),
           onLongPress: onLongPress,
-          borderRadius: BorderRadius.circular(30),
+          borderRadius: BorderRadius.circular(8),
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 200),
-            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+            padding: EdgeInsets.symmetric(
+              horizontal: (isMobile && !isSelected) ? 8 : 10, 
+              vertical: 6
+            ),
             decoration: BoxDecoration(
-              color: isSelected
-                  ? AppColors.primary
-                  : (isDark
-                      ? Colors.white.withValues(alpha: 0.05)
-                      : Colors.black.withValues(alpha: 0.05)),
-              borderRadius: BorderRadius.circular(30),
+              color: isSelected ? activeColor : inactiveBg,
+              borderRadius: BorderRadius.circular(8),
               border: Border.all(
-                color: isSelected
-                    ? Colors.transparent
-                    : (isDark ? Colors.white10 : Colors.black12),
+                color: isSelected ? activeColor : Colors.transparent,
               ),
             ),
             child: Row(
+              mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(icon, size: 14, color: isSelected ? Colors.white : (isDark ? Colors.white54 : Colors.black54)),
-                const SizedBox(width: 8),
-                Text(
-                  label,
-                  style: TextStyle(
-                    color: isSelected
-                        ? Colors.white
-                        : (isDark ? Colors.white70 : Colors.black87),
-                    fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                    fontSize: 12,
+                Icon(icon, 
+                  size: 12, 
+                  color: isSelected ? Colors.white : inactiveText),
+                if (!isMobile || isSelected) ...[
+                  const SizedBox(width: 6),
+                  Text(
+                    label,
+                    style: TextStyle(
+                      color: isSelected ? Colors.white : inactiveText,
+                      fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                      fontSize: 10,
+                    ),
                   ),
-                ),
+                ],
               ],
             ),
           ),
@@ -439,12 +578,78 @@ class _AssetLibraryScreenState extends State<AssetLibraryScreen> {
     );
   }
 
+  void _showFolderOptionsDialog(AssetFolderModel folder) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textColor = isDark ? Colors.white : Colors.black87;
+    
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => GlassContainer(
+        borderRadius: 24,
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('Manage "${folder.name}"', 
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: textColor)),
+            const SizedBox(height: 20),
+            ListTile(
+              leading: const Icon(IconsaxPlusLinear.edit, color: Colors.blue),
+              title: Text('Rename Folder', style: TextStyle(color: textColor)),
+              onTap: () {
+                Navigator.pop(ctx);
+                _showRenameFolderDialog(folder);
+              },
+            ),
+            ListTile(
+              leading: const Icon(IconsaxPlusLinear.trash, color: Colors.red),
+              title: const Text('Delete Folder', style: TextStyle(color: Colors.red)),
+              onTap: () {
+                Navigator.pop(ctx);
+                _confirmDeleteFolder(folder);
+              },
+            ),
+            const SizedBox(height: 10),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showRenameFolderDialog(AssetFolderModel folder) {
+    final controller = TextEditingController(text: folder.name);
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Rename Folder'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          decoration: const InputDecoration(hintText: 'Enter new name'),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          ElevatedButton(
+            onPressed: () {
+              if (controller.text.isNotEmpty) {
+                context.read<AssetProvider>().renameFolder(folder.id, controller.text);
+              }
+              Navigator.pop(ctx);
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _confirmDeleteFolder(AssetFolderModel folder) {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
         title: Text('Delete "${folder.name}"?'),
-        content: const Text('This will only remove the folder, not the assets inside.'),
+        content: const Text('This will only remove the folder category, not the actual assets inside.'),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
           TextButton(
@@ -465,18 +670,26 @@ class _AssetLibraryScreenState extends State<AssetLibraryScreen> {
   // ── Loading skeleton ──────────────────────────────────────────────────────
 
   Widget _buildLoadingSkeleton() {
+    final bp = ResponsiveBreakpoints.of(context);
+    int crossAxisCount = 3;
+    if (bp.largerThan(MOBILE)) crossAxisCount = 6;
+    if (bp.largerThan(TABLET)) crossAxisCount = 8;
+    if (bp.largerThan(DESKTOP)) crossAxisCount = 10;
+
     return GridView.builder(
       physics: const BouncingScrollPhysics(),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 5,
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: crossAxisCount,
         crossAxisSpacing: 12,
         mainAxisSpacing: 12,
         childAspectRatio: 0.85,
       ),
-      itemCount: 10,
+      itemCount: crossAxisCount * 2,
       itemBuilder: (_, __) => Container(
         decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.05),
+          color: Theme.of(context).brightness == Brightness.dark
+              ? Colors.white.withValues(alpha: 0.05)
+              : Colors.black.withValues(alpha: 0.05),
           borderRadius: BorderRadius.circular(16),
         ),
       )
@@ -514,8 +727,10 @@ class _AssetLibraryScreenState extends State<AssetLibraryScreen> {
 
   Widget _buildStorageBadge(bool isDark, AssetProvider provider) {
     final usedStr = _formatBytes(provider.totalStorageBytes, 2);
+    final isMobile = ResponsiveBreakpoints.of(context).isMobile;
+
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      padding: EdgeInsets.symmetric(horizontal: isMobile ? 12 : 16, vertical: 8),
       decoration: BoxDecoration(
         color: isDark
             ? Colors.white.withValues(alpha: 0.03)
@@ -527,24 +742,25 @@ class _AssetLibraryScreenState extends State<AssetLibraryScreen> {
         mainAxisSize: MainAxisSize.min,
         children: [
           Container(
-            padding: const EdgeInsets.all(8),
+            padding: const EdgeInsets.all(6),
             decoration: BoxDecoration(
               color: AppColors.primary.withValues(alpha: 0.1),
               shape: BoxShape.circle,
             ),
             child: Icon(IconsaxPlusLinear.cloud_change,
-                size: 18, color: AppColors.primary),
+                size: 16, color: AppColors.primary),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 10),
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
             children: [
-              Text('Storage Capacity',
-                  style: TextStyle(
-                      fontSize: 11,
-                      color: isDark ? Colors.white54 : Colors.black54,
-                      fontWeight: FontWeight.w500)),
-              const SizedBox(height: 2),
+              if (!isMobile)
+                Text('Storage Capacity',
+                    style: TextStyle(
+                        fontSize: 10,
+                        color: isDark ? Colors.white54 : Colors.black54,
+                        fontWeight: FontWeight.w500)),
               RichText(
                 text: TextSpan(children: [
                   TextSpan(
@@ -552,17 +768,18 @@ class _AssetLibraryScreenState extends State<AssetLibraryScreen> {
                     style: TextStyle(
                         color:
                             isDark ? Colors.white : Colors.black,
-                        fontSize: 14,
+                        fontSize: 13,
                         fontWeight: FontWeight.bold),
                   ),
-                  TextSpan(
-                    text: '/ 10 GB',
-                    style: TextStyle(
-                        color: isDark
-                            ? Colors.white54
-                            : Colors.black54,
-                        fontSize: 12),
-                  ),
+                  if (!isMobile)
+                    TextSpan(
+                      text: '/ 10 GB',
+                      style: TextStyle(
+                          color: isDark
+                              ? Colors.white54
+                              : Colors.black54,
+                          fontSize: 11),
+                    ),
                 ]),
               ),
             ],
@@ -589,18 +806,24 @@ class _AssetLibraryScreenState extends State<AssetLibraryScreen> {
         ),
       ),
       child: TextField(
-        style: TextStyle(color: isDark ? Colors.white : Colors.black),
+        style: TextStyle(color: isDark ? Colors.white : Colors.black, fontSize: 13),
         onChanged: (val) => setState(() => _searchQuery = val),
         decoration: InputDecoration(
-          hintText: 'Search stored assets…',
+          hintText: 'Search by Title, ID, or Link…',
           hintStyle: TextStyle(
+              color: isDark ? Colors.white38 : Colors.black38,
+              fontSize: 12),
+          prefixIcon: Icon(IconsaxPlusLinear.search_normal_1,
               color: isDark ? Colors.white54 : Colors.black54,
-              fontSize: 13),
-          prefixIcon: Icon(IconsaxPlusLinear.search_normal,
-              color: isDark ? Colors.white54 : Colors.black54,
-              size: 18),
+              size: 16),
+          suffixIcon: _searchQuery.isNotEmpty 
+            ? IconButton(
+                icon: const Icon(IconsaxPlusLinear.close_circle, size: 14),
+                onPressed: () => setState(() => _searchQuery = ''),
+              )
+            : null,
           border: InputBorder.none,
-          contentPadding: const EdgeInsets.symmetric(vertical: 14),
+          contentPadding: const EdgeInsets.symmetric(vertical: 12),
         ),
       ),
     );
@@ -957,71 +1180,55 @@ class _AssetLibraryScreenState extends State<AssetLibraryScreen> {
     );
   }
 
-  Widget _buildCopyRow(String text, bool isDark, IconData icon) {
-    return Row(
-      children: [
-        Expanded(
-          child: Container(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-            decoration: BoxDecoration(
-              color: isDark
-                  ? Colors.white.withValues(alpha: 0.03)
-                  : Colors.black.withValues(alpha: 0.03),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                  color: isDark ? Colors.white10 : Colors.black12),
-            ),
-            child: Row(
+  Widget _buildCopyRow(String text, bool isDark, IconData icon, {bool small = false}) {
+    return InkWell(
+      onTap: () {
+        Clipboard.setData(ClipboardData(text: text));
+        ScaffoldMessenger.of(context).clearSnackBars();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
               children: [
-                Icon(icon, size: 15, color: AppColors.primary),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    text,
-                    style: TextStyle(
-                        color: isDark
-                            ? Colors.white70
-                            : Colors.black87,
-                        fontSize: 12),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
+                const Icon(IconsaxPlusLinear.tick_circle, color: Colors.white, size: 18),
+                const SizedBox(width: 12),
+                Text('Copied: $text', style: const TextStyle(color: Colors.white, fontSize: 13)),
               ],
             ),
+            backgroundColor: AppColors.primary,
+            behavior: SnackBarBehavior.floating,
+            duration: const Duration(milliseconds: 1500),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
           ),
-        ),
-        const SizedBox(width: 10),
-        InkWell(
-          onTap: () {
-            Clipboard.setData(ClipboardData(text: text));
-            if (mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: const Text('Copied to clipboard'),
-                  behavior: SnackBarBehavior.floating,
-                  backgroundColor: AppColors.primary,
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10)),
-                  duration: const Duration(seconds: 2),
-                ),
-              );
-            }
-          },
+        );
+      },
+      borderRadius: BorderRadius.circular(10),
+      child: Container(
+        padding: EdgeInsets.symmetric(horizontal: small ? 10 : 14, vertical: small ? 8 : 12),
+        decoration: BoxDecoration(
+          color: isDark ? Colors.white.withValues(alpha: 0.04) : Colors.black.withValues(alpha: 0.03),
           borderRadius: BorderRadius.circular(12),
-          child: Container(
-            padding: const EdgeInsets.all(11),
-            decoration: BoxDecoration(
-              color: AppColors.primary.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                  color: AppColors.primary.withValues(alpha: 0.2)),
-            ),
-            child: Icon(IconsaxPlusLinear.copy,
-                size: 16, color: AppColors.primary),
-          ),
+          border: Border.all(color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.05)),
         ),
-      ],
+        child: Row(
+          children: [
+            Icon(icon, size: small ? 13 : 15, color: AppColors.primary),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                text,
+                style: TextStyle(
+                  color: isDark ? Colors.white70 : Colors.black87,
+                  fontSize: small ? 11 : 12,
+                  fontFamily: 'monospace',
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            const SizedBox(width: 8),
+            Icon(IconsaxPlusLinear.copy, size: small ? 12 : 14, color: isDark ? Colors.white24 : Colors.black26),
+          ],
+        ),
+      ),
     );
   }
 
@@ -1117,13 +1324,13 @@ class _AssetCard extends StatelessWidget {
 
                 // Footer info
                 Container(
-                  height: 50,
-                  padding: const EdgeInsets.fromLTRB(8, 6, 8, 6),
+                  height: 42,
+                  padding: const EdgeInsets.fromLTRB(6, 4, 6, 4),
                   child: Row(
                     children: [
                       Icon(_getIconForType(asset.type),
-                          size: 13, color: AppColors.primary),
-                      const SizedBox(width: 6),
+                          size: 11, color: AppColors.primary),
+                      const SizedBox(width: 4),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1134,20 +1341,19 @@ class _AssetCard extends StatelessWidget {
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(
-                                fontSize: 10,
+                                fontSize: 9,
                                 fontWeight: FontWeight.bold,
                                 color:
                                     isDark ? Colors.white : Colors.black,
                               ),
                             ),
-                            const SizedBox(height: 2),
                             Text(
                               _formatBytes(asset.sizeBytes, 1),
                               style: TextStyle(
-                                fontSize: 9,
+                                fontSize: 8,
                                 color: isDark
-                                    ? Colors.white54
-                                    : Colors.black54,
+                                    ? Colors.white38
+                                    : Colors.black38,
                               ),
                             ),
                           ],

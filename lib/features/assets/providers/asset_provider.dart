@@ -155,7 +155,7 @@ class AssetProvider extends ChangeNotifier {
   // ── Central Sync Hook ───────────────────────────────────────────────────
 
   /// Use this to automatically store any manually uploaded file into the library.
-  Future<String?> syncFileToLibrary(String path, {String? name}) async {
+  Future<String?> syncFileToLibrary(String path, {String? name, String? folderId}) async {
     try {
       final file = File(path);
       if (!file.existsSync()) return null;
@@ -252,7 +252,7 @@ class AssetProvider extends ChangeNotifier {
 
   // ── Pick & Import ─────────────────────────────────────────────────────────
 
-  Future<void> pickAndImportAssets() async {
+  Future<void> pickAndImportAssets({String? folderId}) async {
     try {
       final result = await FilePicker.pickFiles(allowMultiple: true);
       if (result == null) return;
@@ -314,6 +314,17 @@ class AssetProvider extends ChangeNotifier {
             isCompressed: compressed,
           ),
         );
+
+        // 📁 Auto-assign to folder if provided
+        if (folderId != null && folderId != 'all' && folderId != 'trash') {
+          final fIdx = _folders.indexWhere((f) => f.id == folderId);
+          if (fIdx != -1) {
+            final updatedFolder = _folders[fIdx].copyWith(
+              assetIds: [..._folders[fIdx].assetIds, newId],
+            );
+            _folders[fIdx] = updatedFolder;
+          }
+        }
 
         _uploadStatus = 'Processed: ${file.name}';
         notifyListeners();
