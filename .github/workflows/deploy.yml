@@ -7,10 +7,8 @@ on:
 
 jobs:
   build-linux-web-android:
-    name: 🌐 Web, Android & Deploy
+    name: 🌐 Web & Android Build
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -53,11 +51,14 @@ jobs:
         run: |
           flutter pub get
           flutter build windows --release --dart-define=PUSHER_KEY=${{ secrets.PUSHER_KEY }}
+      - name: Package Windows Build (Zip)
+        run: Compress-Archive -Path build/windows/x64/runner/Release/* -DestinationPath ebm-windows.zip
+        shell: pwsh
       - name: Upload Windows Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: windows-exe
-          path: build/windows/x64/runner/Release/
+          name: windows-zip
+          path: ebm-windows.zip
 
   build-macos-ios:
     name: 🍎 Mac & iOS Build
@@ -73,18 +74,14 @@ jobs:
         run: |
           flutter pub get
           flutter build macos --release
-      - name: Build iOS (No Codesign)
-        run: flutter build ios --release --no-codesign
+      - name: Package MacOS Build (Zip)
+        run: Compress-Archive -Path build/macos/Build/Products/Release/* -DestinationPath ebm-macos.zip
+        shell: pwsh
       - name: Upload MacOS Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: mac-app
-          path: build/macos/Build/Products/Release/
-      - name: Upload iOS Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: ios-app
-          path: build/ios/iphoneos/
+          name: macos-zip
+          path: ebm-macos.zip
 
   create-release:
     name: 🚀 Create Multi-Platform Release
@@ -97,16 +94,18 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           path: release-files
+      - name: Flatten Files for Release
+        run: |
+          mkdir final-release
+          find release-files -name "*.apk" -exec cp {} final-release/ebm-android.apk \;
+          find release-files -name "ebm-windows.zip" -exec cp {} final-release/ \;
+          find release-files -name "ebm-macos.zip" -exec cp {} final-release/ \;
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v1.0.${{ github.run_number }}
-          name: "Full Release v1.0.${{ github.run_number }}"
-          body: "Multi-platform automated build (Web, Android, Windows, Mac, iOS)."
-          files: |
-            release-files/**/*.apk
-            release-files/**/*.exe
-            release-files/**/*.app
-            release-files/**/*.ipa
+          name: "EBM Release v1.0.${{ github.run_number }}"
+          body: "Multi-platform automated build (Web, Android, Windows, Mac)."
+          files: final-release/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
