@@ -4,8 +4,6 @@ on:
   push:
     branches:
       - main
-    paths-ignore:
-      - 'ebm_control/**'  # ebm_control পরিবর্তনে এটি চলবে না (আলাদা workflow আছে)
 
 jobs:
   build-and-deploy:
