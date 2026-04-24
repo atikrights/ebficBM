@@ -1,19 +1,21 @@
-name: Deploy Flutter Web to Hostinger
+name: Multi-Platform Release (Web, Android, Windows)
 
 on:
   push:
     branches:
       - main
+    tags:
+      - 'v*'
 
 jobs:
   build-and-deploy:
-    name: 🌐 Build & Deploy EBM Workplace
+    name: 🌐 Web, Android & Deploy
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Install Flutter (Stable)
+      - name: Install Flutter
         uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
@@ -22,18 +24,17 @@ jobs:
       - name: Get Dependencies
         run: flutter pub get
 
-      - name: Flutter Analyze (Non-Fatal)
-        run: flutter analyze --no-fatal-infos
-        continue-on-error: true
-
-      - name: Build Web Release
+      - name: Build Web
         run: |
           flutter build web --release \
             --dart-define=GITHUB_TOKEN=${{ secrets.UPDATE_PAT }} \
             --dart-define=AES_KEY=${{ secrets.AES_KEY }} \
             --dart-define=PUSHER_KEY=${{ secrets.PUSHER_KEY }}
 
-      - name: Deploy to ebm.ebfic.store
+      - name: Build Android APK
+        run: flutter build apk --release --no-tree-shake-icons
+
+      - name: Deploy Web to Server
         uses: easingthemes/ssh-deploy@main
         env:
           SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
@@ -43,3 +44,40 @@ jobs:
           REMOTE_PORT: 65002
           TARGET: "/home/u200841033/domains/ebfic.store/public_html/ebm/"
           SOURCE: "build/web/"
+
+      - name: Deploy APK to Server
+        uses: easingthemes/ssh-deploy@main
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          ARGS: "-avz"
+          REMOTE_HOST: ${{ secrets.REMOTE_HOST }}
+          REMOTE_USER: ${{ secrets.REMOTE_USER }}
+          REMOTE_PORT: 65002
+          TARGET: "/home/u200841033/domains/ebfic.store/public_html/ebm/"
+          SOURCE: "build/app/outputs/flutter-apk/app-release.apk"
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-apk
+          path: build/app/outputs/flutter-apk/app-release.apk
+
+  build-windows:
+    name: 🪟 Build Windows
+    runs-on: windows-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+      - name: Install Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+      - name: Build Windows
+        run: |
+          flutter pub get
+          flutter build windows --release --dart-define=PUSHER_KEY=${{ secrets.PUSHER_KEY }}
+      - name: Upload Windows Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-exe
+          path: build/windows/x64/runner/Release/
