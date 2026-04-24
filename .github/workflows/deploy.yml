@@ -30,7 +30,8 @@ jobs:
         run: |
           flutter build web --release \
             --dart-define=GITHUB_TOKEN=${{ secrets.UPDATE_PAT }} \
-            --dart-define=AES_KEY=${{ secrets.AES_KEY }}
+            --dart-define=AES_KEY=${{ secrets.AES_KEY }} \
+            --dart-define=PUSHER_KEY=${{ secrets.PUSHER_KEY }}
 
       - name: Deploy to ebm.ebfic.store
         uses: easingthemes/ssh-deploy@main
