@@ -1,4 +1,4 @@
-name: Multi-Platform Release (Web, Android, Windows)
+name: Multi-Platform Release (All Platforms)
 
 on:
   push:
@@ -6,32 +6,23 @@ on:
       - main
 
 jobs:
-  build-and-deploy:
+  build-linux-web-android:
     name: 🌐 Web, Android & Deploy
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
-
       - name: Install Flutter
         uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
           cache: true
-
-      - name: Get Dependencies
-        run: flutter pub get
-
       - name: Build Web
-        run: |
-          flutter build web --release \
-            --dart-define=GITHUB_TOKEN=${{ secrets.UPDATE_PAT }} \
-            --dart-define=AES_KEY=${{ secrets.AES_KEY }} \
-            --dart-define=PUSHER_KEY=${{ secrets.PUSHER_KEY }}
-
+        run: flutter build web --release --dart-define=PUSHER_KEY=${{ secrets.PUSHER_KEY }}
       - name: Build Android APK
         run: flutter build apk --release --no-tree-shake-icons
-
       - name: Deploy Web to Server
         uses: easingthemes/ssh-deploy@main
         env:
@@ -42,18 +33,6 @@ jobs:
           REMOTE_PORT: 65002
           TARGET: "/home/u200841033/domains/ebfic.store/public_html/ebm/"
           SOURCE: "build/web/"
-
-      - name: Deploy APK to Server
-        uses: easingthemes/ssh-deploy@main
-        env:
-          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
-          ARGS: "-avz"
-          REMOTE_HOST: ${{ secrets.REMOTE_HOST }}
-          REMOTE_USER: ${{ secrets.REMOTE_USER }}
-          REMOTE_PORT: 65002
-          TARGET: "/home/u200841033/domains/ebfic.store/public_html/ebm/"
-          SOURCE: "build/app/outputs/flutter-apk/app-release.apk"
-
       - name: Upload Android Artifact
         uses: actions/upload-artifact@v4
         with:
@@ -61,7 +40,7 @@ jobs:
           path: build/app/outputs/flutter-apk/app-release.apk
 
   build-windows:
-    name: 🪟 Build Windows
+    name: 🪟 Windows Build
     runs-on: windows-latest
     steps:
       - name: Checkout Code
@@ -80,33 +59,54 @@ jobs:
           name: windows-exe
           path: build/windows/x64/runner/Release/
 
-  create-release:
-    name: 🚀 Create GitHub Release
-    needs: [build-and-deploy, build-windows]
-    runs-on: ubuntu-latest
+  build-macos-ios:
+    name: 🍎 Mac & iOS Build
+    runs-on: macos-latest
     steps:
-      - name: Download Android APK
+      - name: Checkout Code
+        uses: actions/checkout@v4
+      - name: Install Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+      - name: Build MacOS
+        run: |
+          flutter pub get
+          flutter build macos --release --no-codesign
+      - name: Build iOS (No Codesign)
+        run: flutter build ios --release --no-codesign
+      - name: Upload MacOS Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: mac-app
+          path: build/macos/Build/Products/Release/
+      - name: Upload iOS Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-app
+          path: build/ios/iphoneos/
+
+  create-release:
+    name: 🚀 Create Multi-Platform Release
+    needs: [build-linux-web-android, build-windows, build-macos-ios]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download All Artifacts
         uses: actions/download-artifact@v4
         with:
-          name: android-apk
           path: release-files
-
-      - name: Download Windows EXE
-        uses: actions/download-artifact@v4
-        with:
-          name: windows-exe
-          path: release-files
-
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v1.0.${{ github.run_number }}
-          name: "Release v1.0.${{ github.run_number }}"
-          body: "Automated multi-platform build. Version: 1.0.${{ github.run_number }}"
-          draft: false
-          prerelease: false
+          name: "Full Release v1.0.${{ github.run_number }}"
+          body: "Multi-platform automated build (Web, Android, Windows, Mac, iOS)."
           files: |
-            release-files/*.apk
-            release-files/*.exe
+            release-files/**/*.apk
+            release-files/**/*.exe
+            release-files/**/*.app
+            release-files/**/*.ipa
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
