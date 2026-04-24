@@ -17,6 +17,7 @@ import 'package:ebficbm/features/tasks/providers/task_provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:ebficbm/features/assets/providers/asset_provider.dart';
 import 'package:ebficbm/features/assets/models/asset_model.dart';
+import 'package:ebficbm/features/assets/screens/asset_library_screen.dart';
 import 'package:ebficbm/core/config/app_config.dart';
 
 class CompanyManageScreen extends StatefulWidget {
@@ -726,7 +727,7 @@ class _CompanyManageScreenState extends State<CompanyManageScreen> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text('Asset Configuration',
+                        Text('Branding Identity',
                             style: TextStyle(
                                 fontSize: 18,
                                 fontWeight: FontWeight.bold,
@@ -942,24 +943,42 @@ class _CompanyManageScreenState extends State<CompanyManageScreen> {
                           );
                         }
 
-                        return SizedBox(
-                          height: 160,
-                          child: GridView.builder(
-                            scrollDirection: Axis.horizontal,
-                            gridDelegate:
-                                const SliverGridDelegateWithFixedCrossAxisCount(
-                              crossAxisCount: 2,
-                              crossAxisSpacing: 8,
-                              mainAxisSpacing: 8,
-                              childAspectRatio: 1,
+                        return Column(
+                          children: [
+                            SizedBox(
+                              height: 160,
+                              child: GridView.builder(
+                                scrollDirection: Axis.horizontal,
+                                gridDelegate:
+                                    const SliverGridDelegateWithFixedCrossAxisCount(
+                                  crossAxisCount: 2,
+                                  crossAxisSpacing: 8,
+                                  mainAxisSpacing: 8,
+                                  childAspectRatio: 1,
+                                ),
+                                itemCount: imageAssets.length > 10 ? 10 : imageAssets.length,
+                                itemBuilder: (context, index) {
+                                  final asset = imageAssets[index];
+                                  return _buildAssetPickerTile(
+                                      asset, company, isDark, ctx);
+                                },
+                              ),
                             ),
-                            itemCount: imageAssets.length,
-                            itemBuilder: (context, index) {
-                              final asset = imageAssets[index];
-                              return _buildAssetPickerTile(
-                                  asset, company, isDark, ctx);
-                            },
-                          ),
+                            const SizedBox(height: 12),
+                            SizedBox(
+                              width: double.infinity,
+                              child: OutlinedButton.icon(
+                                style: OutlinedButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(vertical: 12),
+                                  side: BorderSide(color: AppColors.primary.withValues(alpha: 0.4)),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))
+                                ),
+                                onPressed: () => _openFullLibraryPicker(context, company, isDark, ctx),
+                                icon: const Icon(IconsaxPlusLinear.grid_9, size: 16),
+                                label: const Text('Browse Full Library', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12))
+                              ),
+                            )
+                          ],
                         );
                       },
                     ),
@@ -1126,6 +1145,76 @@ class _CompanyManageScreenState extends State<CompanyManageScreen> {
         child:
             Icon(IconsaxPlusLinear.gallery, size: 20, color: AppColors.primary),
       ),
+    );
+  }
+  void _openFullLibraryPicker(BuildContext context, Company company, bool isDark, BuildContext dialogCtx) {
+    showGeneralDialog(
+      context: context,
+      barrierDismissible: true,
+      barrierLabel: 'Asset Library Picker',
+      pageBuilder: (ctx, _, __) {
+        return Center(
+          child: Material(
+            color: Colors.transparent,
+            child: GlassContainer(
+              width: MediaQuery.of(ctx).size.width * 0.85,
+              height: MediaQuery.of(ctx).size.height * 0.85,
+              padding: const EdgeInsets.all(0),
+              borderRadius: 24,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(24),
+                child: Scaffold(
+                  backgroundColor: Colors.transparent,
+                  appBar: AppBar(
+                    backgroundColor: Colors.transparent,
+                    elevation: 0,
+                    title: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Pick Organizational Asset', 
+                          style: TextStyle(color: isDark ? Colors.white : Colors.black, fontSize: 16, fontWeight: FontWeight.bold)),
+                        Text('Search and select from your corporate library',
+                          style: TextStyle(color: isDark ? Colors.white54 : Colors.black54, fontSize: 11)),
+                      ],
+                    ),
+                    automaticallyImplyLeading: false,
+                    actions: [
+                      IconButton(
+                        onPressed: () => Navigator.pop(ctx),
+                        icon: Icon(IconsaxPlusLinear.close_circle, color: isDark ? Colors.white : Colors.black),
+                      ),
+                      const SizedBox(width: 8),
+                    ],
+                  ),
+                  body: AssetLibraryScreen(
+                    isPickerMode: true,
+                    onAssetSelected: (asset) {
+                      context.read<CompanyProvider>().updateCompanyLogo(company.id, 'asset://${asset.id}');
+                      Navigator.pop(ctx); // Close library
+                      Navigator.pop(dialogCtx); // Close logo selection dialog
+                      
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Row(
+                            children: [
+                              const Icon(IconsaxPlusLinear.tick_circle, color: Colors.white, size: 18),
+                              const SizedBox(width: 12),
+                              Text('Corporate identity updated with "${asset.name}"'),
+                            ],
+                          ),
+                          backgroundColor: AppColors.success,
+                          behavior: SnackBarBehavior.floating,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 }

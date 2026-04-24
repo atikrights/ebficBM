@@ -13,6 +13,7 @@ import 'package:ebficbm/features/companies/models/company.dart';
 import 'package:ebficbm/features/companies/providers/company_provider.dart';
 import 'package:ebficbm/features/companies/screens/company_manage_screen.dart';
 import 'package:ebficbm/core/utils/clipboard_helper.dart';
+import 'package:ebficbm/widgets/ebm_image.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 
 class CompanyListScreen extends StatelessWidget {
@@ -708,34 +709,31 @@ class _PremiumCompanyCard extends StatelessWidget {
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Builder(
-                builder: (context) {
-                  const size = 48.0;
-                  if (company.logoUrl != null && company.logoUrl!.isNotEmpty) {
-                    bool isWebLink = company.logoUrl!.startsWith('http') || company.logoUrl!.startsWith('data:image');
-                    return Container(
-                      width: size,
-                      height: size,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        boxShadow: [BoxShadow(color: AppColors.primary.withValues(alpha: 0.3), blurRadius: 8, offset: const Offset(0, 4))],
-                      ),
-                      child: ClipOval(
-                        child: SizedBox(
-                          width: size,
-                          height: size,
-                          child: isWebLink 
-                              ? Image.network(company.logoUrl!, fit: BoxFit.cover, errorBuilder: (_,__,___) => _defaultIcon(size)) 
-                              : (!kIsWeb 
-                                  ? Image.file(File(company.logoUrl!), fit: BoxFit.cover, errorBuilder: (_,__,___) => _defaultIcon(size))
-                                  : _defaultIcon(size)),
-                        ),
-                      ),
-                    );
-                  }
-                  return _defaultIcon(size);
-                }
-              ),
+              if (company.logoUrl != null && company.logoUrl!.isNotEmpty)
+                Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                          color: AppColors.primary.withValues(alpha: 0.3),
+                          blurRadius: 8,
+                          offset: const Offset(0, 4))
+                    ],
+                  ),
+                  child: ClipOval(
+                    child: EbmImage(
+                      source: company.logoUrl!,
+                      width: 48,
+                      height: 48,
+                      fit: BoxFit.cover,
+                      errorWidget: _defaultIcon(48),
+                    ),
+                  ),
+                )
+              else
+                _defaultIcon(48),
               const SizedBox(width: 12),
               Tooltip(
                 message: 'Copy CID',

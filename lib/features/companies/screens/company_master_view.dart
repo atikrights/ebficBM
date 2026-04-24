@@ -5,6 +5,7 @@ import 'package:ebficbm/core/theme/colors.dart';
 import 'package:ebficbm/widgets/glass_container.dart';
 import 'package:ebficbm/features/companies/models/company.dart';
 import 'package:ebficbm/features/companies/providers/company_provider.dart';
+import 'package:ebficbm/widgets/ebm_image.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 
 class CompanyMasterView extends StatelessWidget {
@@ -170,7 +171,24 @@ class _CompanyListTile extends StatelessWidget {
                   color: isSelected ? AppColors.primary : AppColors.primary.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Icon(IconsaxPlusLinear.building, color: isSelected ? Colors.white : AppColors.primary),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: company.logoUrl != null && company.logoUrl!.isNotEmpty
+                    ? EbmImage(
+                        source: company.logoUrl!,
+                        width: 48,
+                        height: 48,
+                        fit: BoxFit.cover,
+                        errorWidget: Icon(
+                          IconsaxPlusLinear.building, 
+                          color: isSelected ? Colors.white : AppColors.primary
+                        ),
+                      )
+                    : Icon(
+                        IconsaxPlusLinear.building, 
+                        color: isSelected ? Colors.white : AppColors.primary
+                      ),
+                ),
               ),
               const SizedBox(width: 16),
               Expanded(

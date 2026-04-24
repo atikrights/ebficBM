@@ -17,7 +17,14 @@ import 'asset_editor_screen.dart';
 import 'dart:math';
 
 class AssetLibraryScreen extends StatefulWidget {
-  const AssetLibraryScreen({super.key});
+  final Function(AssetModel)? onAssetSelected;
+  final bool isPickerMode;
+
+  const AssetLibraryScreen({
+    super.key, 
+    this.onAssetSelected,
+    this.isPickerMode = false,
+  });
 
   @override
   State<AssetLibraryScreen> createState() => _AssetLibraryScreenState();
@@ -929,6 +936,8 @@ class _AssetLibraryScreenState extends State<AssetLibraryScreen> {
                 isDark: isDark,
                 provider: provider,
                 isDraftMode: _showDrafts,
+                isPickerMode: widget.isPickerMode,
+                onAssetSelected: widget.onAssetSelected,
                 onShowDetails: () =>
                     _showAssetDetails(context, asset, provider),
               )
@@ -1273,6 +1282,8 @@ class _AssetCard extends StatelessWidget {
   final AssetProvider provider;
   final VoidCallback onShowDetails;
   final bool isDraftMode;
+  final bool isPickerMode;
+  final Function(AssetModel)? onAssetSelected;
 
   const _AssetCard({
     required this.asset,
@@ -1280,6 +1291,8 @@ class _AssetCard extends StatelessWidget {
     required this.provider,
     required this.onShowDetails,
     this.isDraftMode = false,
+    this.isPickerMode = false,
+    this.onAssetSelected,
   });
 
   @override
@@ -1289,6 +1302,10 @@ class _AssetCard extends StatelessWidget {
 
     return GestureDetector(
       onTap: () {
+        if (isPickerMode) {
+          onAssetSelected?.call(asset);
+          return;
+        }
         if (asset.type == AssetType.image) {
           Navigator.push(
             context,
@@ -1298,7 +1315,7 @@ class _AssetCard extends StatelessWidget {
           );
         }
       },
-      onLongPress: isDesktop ? null : onShowDetails,
+      onLongPress: (isDesktop || isPickerMode) ? null : onShowDetails,
       child: GlassContainer(
         padding: const EdgeInsets.all(0),
         borderRadius: 16,
