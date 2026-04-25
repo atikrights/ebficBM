@@ -1,33 +1,41 @@
 {
   "manifest_version": 3,
   "name": "EBM Identity Vault",
-  "version": "1.0",
-  "description": "Offline Secure Zero-Trust Key Storage for EBM Super Admin.",
-  "action": {
-    "default_popup": "popup.html"
-  },
+  "version": "1.0.0",
+  "description": "Secure Enterprise Password Manager with AES-GCM 256 encryption and Flutter interop.",
   "permissions": [
     "storage",
-    "activeTab",
-    "scripting",
-    "tabs"
+    "tabs",
+    "activeTab"
   ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
   "background": {
     "service_worker": "background.js"
   },
   "content_scripts": [
     {
       "matches": [
-        "https://ebfic.store/*", 
-        "https://*.ebfic.store/*",
-        "http://localhost:*/*"
+        "<all_urls>"
       ],
-      "js": ["content.js"],
-      "run_at": "document_end"
+      "js": [
+        "content.js"
+      ],
+      "run_at": "document_idle"
     }
-  ],
-  "host_permissions": [
-    "http://localhost/*",
-    "https://ebfic.store/*"
   ]
 }
