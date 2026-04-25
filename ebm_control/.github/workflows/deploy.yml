@@ -1,0 +1,45 @@
+name: Deploy ebm Control to Hostinger
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build-and-deploy:
+    name: 🚀 Build & Deploy Web (Control)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: Get dependencies
+        run: flutter pub get
+
+      - name: Build Web Release
+        run: flutter build web --release --dart-define=AES_KEY=${{ secrets.AES_KEY }}
+
+      - name: Setup SSH Key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -p 65002 -H ${{ secrets.REMOTE_HOST }} >> ~/.ssh/known_hosts 2>/dev/null || true
+
+      - name: Deploy to Hostinger via rsync
+        run: |
+          rsync -avz --delete --exclude '.env' \
+            -e "ssh -p 65002 -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null" \
+            build/web/ \
+            ${{ secrets.REMOTE_USER }}@${{ secrets.REMOTE_HOST }}:/home/u200841033/domains/ebfic.store/public_html/com/
+
+      - name: Cleanup SSH Key
+        if: always()
+        run: rm -f ~/.ssh/id_rsa
