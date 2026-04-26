@@ -12,6 +12,7 @@ import 'package:ebficbm/features/assets/providers/asset_provider.dart';
 import 'package:ebficbm/core/services/refresh_service.dart';
 import 'package:ebficbm/core/services/storage_service.dart';
 import 'package:ebficbm/features/onboarding/screens/onboarding_screen.dart';
+import 'package:ebficbm/widgets/real_time_sync_wrapper.dart';
 
 import 'package:ebficbm/widgets/custom_title_bar.dart';
 
@@ -100,7 +101,9 @@ class BizOSApp extends StatelessWidget {
                       colorScheme: ColorScheme.fromSeed(seedColor: AppColors.primary, brightness: Brightness.dark),
                     ),
                     home: storageService.isSetupComplete 
-                        ? const GlobalRefreshWrapper(child: HomeScreen())
+                        ? GlobalRefreshWrapper(
+                            child: RealTimeSyncWrapper(child: const HomeScreen())
+                          )
                         : const OnboardingScreen(),
                   );
                 },

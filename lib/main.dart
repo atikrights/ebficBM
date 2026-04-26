@@ -10,12 +10,16 @@ import 'package:bitsdojo_window/bitsdojo_window.dart';
 import 'dart:io' show Platform;
 
 import 'package:ebficbm/core/config/app_config.dart';
+import 'package:ebficbm/core/services/pusher_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
   // Initialize Global Configurations
   await AppConfig.instance.init();
+  
+  // Initialize Real-time Sync
+  await PusherService().init();
   
   // Platform-specific Initialization for Desktop
   if (!kIsWeb && (
@@ -26,7 +30,6 @@ void main() async {
       // Initialize window manager
       await windowManager.ensureInitialized();
 
-      
       WindowOptions windowOptions = const WindowOptions(
         size: Size(1280, 800),
         minimumSize: Size(800, 600),
@@ -41,7 +44,7 @@ void main() async {
         await windowManager.focus();
       });
 
-      // Bitsdojo Window Control (Definitive Solution)
+      // Bitsdojo Window Control
       doWhenWindowReady(() {
         final win = appWindow;
         win.minSize = const Size(800, 600);
@@ -64,5 +67,3 @@ void main() async {
     ),
   );
 }
-
-

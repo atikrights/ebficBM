@@ -8,6 +8,8 @@ class PusherService {
 
   PusherChannelsFlutter pusher = PusherChannelsFlutter.getInstance();
 
+  final List<Function(PusherEvent)> _listeners = [];
+
   Future<void> init() async {
     try {
       await pusher.init(
@@ -15,6 +17,9 @@ class PusherService {
         cluster: "ap2",
         onEvent: (event) {
           log("Pusher Event: ${event.eventName} data: ${event.data}");
+          for (var listener in _listeners) {
+            listener(event);
+          }
         },
         onError: (message, code, e) {
           log("Pusher Error: $message code: $code exception: $e");
@@ -32,7 +37,11 @@ class PusherService {
     }
   }
 
-  void onEvent(String eventName, Function(dynamic) callback) {
-    // Custom logic to handle specific events can be added here
+  void addListener(Function(PusherEvent) callback) {
+    _listeners.add(callback);
+  }
+
+  void removeListener(Function(PusherEvent) callback) {
+    _listeners.remove(callback);
   }
 }
