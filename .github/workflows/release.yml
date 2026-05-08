@@ -1,0 +1,262 @@
+name: ebficBM CI/CD — Auto Build & Release
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  # ─────────────────────────────────────────────────────────────────────────────
+  # JOB 1 — Read version & auto-tag
+  # ─────────────────────────────────────────────────────────────────────────────
+  tag-version:
+    name: 🏷️ Auto-Tag Version
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.get_version.outputs.version }}
+      tag: ${{ steps.get_version.outputs.tag }}
+      already_released: ${{ steps.check_tag.outputs.exists }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Extract version from pubspec.yaml
+        id: get_version
+        run: |
+          VERSION=$(grep '^version:' pubspec.yaml | sed 's/version: //' | sed 's/+.*//' | tr -d '[:space:]')
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "tag=v$VERSION" >> $GITHUB_OUTPUT
+          echo "App Version: $VERSION"
+
+      - name: Check if tag already exists
+        id: check_tag
+        run: |
+          TAG="v${{ steps.get_version.outputs.version }}"
+          if git ls-remote --tags origin "$TAG" | grep -q "$TAG"; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+            echo "Tag $TAG already exists — skipping."
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "New version $TAG — will build and release."
+          fi
+
+      - name: Create & push git tag
+        if: steps.check_tag.outputs.exists == 'false'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag "v${{ steps.get_version.outputs.version }}"
+          git push origin "v${{ steps.get_version.outputs.version }}"
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # JOB 2 — Build Android APK
+  # ─────────────────────────────────────────────────────────────────────────────
+  build-android:
+    name: 🤖 Build Android APK
+    runs-on: ubuntu-latest
+    needs: tag-version
+    if: needs.tag-version.outputs.already_released == 'false'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: Get dependencies
+        run: flutter pub get
+
+      - name: Analyze for errors
+        run: flutter analyze --no-fatal-infos
+        continue-on-error: true
+
+      - name: Build Android APK
+        run: |
+          flutter build apk --release \
+            --dart-define=GITHUB_TOKEN=${{ secrets.UPDATE_PAT }} \
+            --dart-define=ADMIN_EMAIL=${{ secrets.ADMIN_EMAIL }} \
+            --dart-define=ADMIN_PASS1=${{ secrets.ADMIN_PASS1 }} \
+            --dart-define=ADMIN_PASS2=${{ secrets.ADMIN_PASS2 }} \
+            --dart-define=ADMIN_PASS3=${{ secrets.ADMIN_PASS3 }} \
+            --dart-define=AES_KEY=${{ secrets.AES_KEY }} \
+            --build-name=${{ needs.tag-version.outputs.version }} \
+            --build-number=${{ github.run_number }}
+
+      - name: Rename APK with version
+        run: |
+          mv build/app/outputs/flutter-apk/app-release.apk \
+             build/app/outputs/flutter-apk/ebficBM-${{ needs.tag-version.outputs.tag }}.apk
+
+      - name: Upload APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-apk
+          path: build/app/outputs/flutter-apk/ebficBM-${{ needs.tag-version.outputs.tag }}.apk
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # JOB 3 — Build Windows EXE (Silent Update Enabled)
+  # ─────────────────────────────────────────────────────────────────────────────
+  build-windows:
+    name: 🪟 Build Windows EXE
+    runs-on: windows-latest
+    needs: tag-version
+    if: needs.tag-version.outputs.already_released == 'false'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: Get dependencies
+        run: flutter pub get
+
+      - name: Build Windows Release
+        run: |
+          flutter build windows --release `
+            --dart-define=GITHUB_TOKEN=${{ secrets.UPDATE_PAT }} `
+            --dart-define=ADMIN_EMAIL=${{ secrets.ADMIN_EMAIL }} `
+            --dart-define=ADMIN_PASS1=${{ secrets.ADMIN_PASS1 }} `
+            --dart-define=ADMIN_PASS2=${{ secrets.ADMIN_PASS2 }} `
+            --dart-define=ADMIN_PASS3=${{ secrets.ADMIN_PASS3 }} `
+            --dart-define=AES_KEY=${{ secrets.AES_KEY }} `
+            --build-name=${{ needs.tag-version.outputs.version }} `
+            --build-number=${{ github.run_number }}
+
+      - name: Install Inno Setup
+        run: choco install innosetup -y
+
+      - name: Compile EXE with Inno Setup
+        run: |
+          & "C:\Program Files (x86)\Inno Setup 6\iscc.exe" "/DMyAppVersion=${{ needs.tag-version.outputs.version }}" windows\setup.iss
+
+      - name: Rename EXE with version
+        run: |
+          Rename-Item -Path "build\windows\inno\ebficBM-windows.exe" -NewName "ebficBM-${{ needs.tag-version.outputs.tag }}-windows-setup.exe"
+
+      - name: Upload Windows Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-release
+          path: build\windows\inno\ebficBM-${{ needs.tag-version.outputs.tag }}-windows-setup.exe
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # JOB 4 — Build macOS App
+  # ─────────────────────────────────────────────────────────────────────────────
+  build-macos:
+    name: 🍎 Build macOS App
+    runs-on: macos-latest
+    needs: tag-version
+    if: needs.tag-version.outputs.already_released == 'false'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: Get dependencies
+        run: flutter pub get
+
+      - name: Build macOS Release
+        run: |
+          flutter build macos --release \
+            --dart-define=GITHUB_TOKEN=${{ secrets.UPDATE_PAT }} \
+            --dart-define=ADMIN_EMAIL=${{ secrets.ADMIN_EMAIL }} \
+            --dart-define=ADMIN_PASS1=${{ secrets.ADMIN_PASS1 }} \
+            --dart-define=ADMIN_PASS2=${{ secrets.ADMIN_PASS2 }} \
+            --dart-define=ADMIN_PASS3=${{ secrets.ADMIN_PASS3 }} \
+            --dart-define=AES_KEY=${{ secrets.AES_KEY }} \
+            --build-name=${{ needs.tag-version.outputs.version }} \
+            --build-number=${{ github.run_number }}
+
+      - name: Package into ZIP
+        run: |
+          ditto -c -k --sequesterRsrc --keepParent \
+            "build/macos/Build/Products/Release/ebficBM.app" \
+            "ebficBM-${{ needs.tag-version.outputs.tag }}-macos.zip"
+
+      - name: Upload macOS Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-zip
+          path: ebficBM-${{ needs.tag-version.outputs.tag }}-macos.zip
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # JOB 5 — Publish Release (only if at least Android build succeeded)
+  # ─────────────────────────────────────────────────────────────────────────────
+  create-release:
+    name: 🚀 Publish GitHub Release
+    runs-on: ubuntu-latest
+    needs: [tag-version, build-android, build-windows, build-macos]
+    if: |
+      always() &&
+      needs.tag-version.outputs.already_released == 'false' &&
+      needs.build-android.result == 'success'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download all build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release-assets/
+
+      - name: List release assets
+        run: ls -lR release-assets/
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.tag-version.outputs.tag }}
+          name: "ebfic Business Manager ${{ needs.tag-version.outputs.tag }}"
+          body: |
+            ## 🚀 ebfic Business Manager ${{ needs.tag-version.outputs.tag }}
+
+            **Automated Production Release** — Built by GitHub Actions CI/CD pipeline.
+
+            ---
+
+            ### 📦 Download & Install
+
+            | Platform | File | How to Install |
+            |----------|------|----------------|
+            | 🤖 **Android** | `ebficBM-*-apk` | Download → Open/Tap to install |
+            | 🪟 **Windows** | `ebficBM-*-windows-setup.exe` | Download & Run / In-App Silent Update |
+            | 🍎 **macOS** | `ebficBM-*-macos.zip` | Extract → Drag to Applications |
+
+            ---
+
+            ### ✅ Changelog
+            - **Seamless Advanced Over-the-Air Update System.**
+            - Shifted logic from Certificate-bound MSIX to 100% Free Silent EXE executable.
+            - UI fixes and Dashboard responsiveness enhancements.
+            - Fully secure and corrupt-proof real-time integrity verification.
+
+            ---
+            *Commit: `${{ github.sha }}` | Run: #${{ github.run_number }}*
+          files: |
+            release-assets/**/*.apk
+            release-assets/**/*.exe
+            release-assets/**/*.zip
+          draft: false
+          prerelease: false
+          fail_on_unmatched_files: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
