@@ -1,4 +1,4 @@
-name: 🚀 Deploy EBM App → ebm.ebfic.store (SSH) + Releases
+name: 🚀 Deploy EBM App → ebm.ebfic.store (SSH) + Release
 
 on:
   push:
@@ -7,6 +7,7 @@ on:
     types: [ created ]
 
 jobs:
+  # 🌐 ওয়েব ডিপ্লয়মেন্ট
   deploy-web:
     name: 🌐 Deploy Web via SSH
     runs-on: ubuntu-latest
@@ -22,7 +23,7 @@ jobs:
         run: |
           flutter pub get
           flutter build web --release --dart-define=API_URL=https://api.ebfic.store
-      - name: 📤 Upload to Server via SCP
+      - name: 📤 Upload to Server
         uses: appleboy/scp-action@master
         with:
           host: ${{ secrets.REMOTE_HOST }}
@@ -33,8 +34,9 @@ jobs:
           target: "public_html/ebm"
           strip_components: 2
 
-  build-apps:
-    name: 🤖 Build Android & Windows
+  # 🤖 অ্যাপ বিল্ড এবং গিটহাব রিলিজ
+  build-and-release:
+    name: 🤖 Build Android & Windows Release
     runs-on: windows-latest
     if: github.event_name == 'release'
     steps:
@@ -45,11 +47,13 @@ jobs:
         with:
           flutter-version: '3.32.0'
           channel: 'stable'
-      - name: 🏗️ Build APK
+      - name: 📦 Get Dependencies
+        run: flutter pub get
+      - name: 🤖 Build Android APK
         run: flutter build apk --release --dart-define=API_URL=https://api.ebfic.store
-      - name: 🏗️ Build Windows
+      - name: 🪟 Build Windows EXE
         run: flutter build windows --release --dart-define=API_URL=https://api.ebfic.store
-      - name: 📤 Upload to Release
+      - name: 📤 Upload to GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           files: |
