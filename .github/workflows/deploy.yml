@@ -1,4 +1,4 @@
-name: 🚀 Deploy EBM App → ebm.ebfic.store (SSH) + Release
+name: 🚀 Deploy EBM App (SSH)
 
 on:
   push:
@@ -7,9 +7,7 @@ on:
     types: [ created ]
 
 jobs:
-  # 🌐 ওয়েব ডিপ্লয়মেন্ট
   deploy-web:
-    name: 🌐 Deploy Web via SSH
     runs-on: ubuntu-latest
     steps:
       - name: 📥 Checkout
@@ -23,20 +21,19 @@ jobs:
         run: |
           flutter pub get
           flutter build web --release --dart-define=API_URL=https://api.ebfic.store
-      - name: 📤 Upload to Server
+      - name: 📤 Upload via SCP
         uses: appleboy/scp-action@master
         with:
           host: ${{ secrets.REMOTE_HOST }}
           username: ${{ secrets.REMOTE_USER }}
+          password: ${{ secrets.SSH_PASSWORD }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: ${{ secrets.REMOTE_PORT || 22 }}
           source: "build/web/*"
           target: "public_html/ebm"
           strip_components: 2
 
-  # 🤖 অ্যাপ বিল্ড এবং গিটহাব রিলিজ
-  build-and-release:
-    name: 🤖 Build Android & Windows Release
+  build-apps:
     runs-on: windows-latest
     if: github.event_name == 'release'
     steps:
@@ -47,13 +44,13 @@ jobs:
         with:
           flutter-version: '3.32.0'
           channel: 'stable'
-      - name: 📦 Get Dependencies
-        run: flutter pub get
-      - name: 🤖 Build Android APK
-        run: flutter build apk --release --dart-define=API_URL=https://api.ebfic.store
-      - name: 🪟 Build Windows EXE
+      - name: 🏗️ Build APK
+        run: |
+          flutter pub get
+          flutter build apk --release --dart-define=API_URL=https://api.ebfic.store
+      - name: 🏗️ Build Windows
         run: flutter build windows --release --dart-define=API_URL=https://api.ebfic.store
-      - name: 📤 Upload to GitHub Release
+      - name: 📤 Upload to Release
         uses: softprops/action-gh-release@v2
         with:
           files: |
