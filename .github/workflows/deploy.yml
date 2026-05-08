@@ -8,6 +8,7 @@ on:
 
 jobs:
   deploy-web:
+    name: 🌐 Deploy Web via SSH
     runs-on: ubuntu-latest
     steps:
       - name: 📥 Checkout
@@ -15,8 +16,8 @@ jobs:
       - name: 🐦 Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.32.0'
           channel: 'stable'
+          cache: true
       - name: 🏗️ Build Web
         run: |
           flutter pub get
@@ -42,8 +43,8 @@ jobs:
       - name: 🐦 Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.32.0'
           channel: 'stable'
+          cache: true
       - name: 🏗️ Build APK
         run: |
           flutter pub get
