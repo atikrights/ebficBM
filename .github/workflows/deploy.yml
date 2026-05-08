@@ -30,9 +30,8 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: ${{ secrets.REMOTE_PORT || 65002 }}
           timeout: 120s
-          command_timeout: 20m
           source: "build/web/*"
-          target: "public_html/ebm"
+          target: "domains/ebfic.store/public_html/ebm" # Corrected Path
           strip_components: 2
 
   build-apps:
