@@ -1,111 +1,114 @@
-name: Multi-Platform Release (All Platforms)
+name: 🚀 Deploy EBM App → ebm.ebfic.store + Build Releases
 
 on:
   push:
-    branches:
-      - main
+    branches: [ main ]
+  release:
+    types: [ created ]
 
 jobs:
-  build-linux-web-android:
-    name: 🌐 Web & Android Build
+  # ─── Job 1: Flutter Web Deploy ───────────────────────────
+  deploy-web:
+    name: 🌐 Build & Deploy Web
     runs-on: ubuntu-latest
+
     steps:
-      - name: Checkout Code
+      - name: 📥 Checkout
         uses: actions/checkout@v4
-      - name: Install Flutter
+
+      - name: 🐦 Setup Flutter
         uses: subosito/flutter-action@v2
         with:
+          flutter-version: '3.32.0'
           channel: 'stable'
           cache: true
-      - name: Build Web
-        run: flutter build web --release --dart-define=PUSHER_KEY=${{ secrets.PUSHER_KEY }}
-      - name: Build Android APK
-        run: flutter build apk --release --no-tree-shake-icons
-      - name: Deploy Web to Server
-        uses: easingthemes/ssh-deploy@main
-        env:
-          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
-          ARGS: "-rlgoDzvc -i --delete --exclude '.env' --timeout=120"
-          REMOTE_HOST: ${{ secrets.REMOTE_HOST }}
-          REMOTE_USER: ${{ secrets.REMOTE_USER }}
-          REMOTE_PORT: 65002
-          TARGET: "/home/u200841033/domains/ebfic.store/public_html/ebm/"
-          SOURCE: "build/web/"
-      - name: Upload Android Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: android-apk
-          path: build/app/outputs/flutter-apk/app-release.apk
 
-  build-windows:
-    name: 🪟 Windows Build
-    runs-on: windows-latest
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-      - name: Install Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          channel: 'stable'
-      - name: Build Windows
+      - name: 📦 Get Dependencies
+        run: flutter pub get
+
+      - name: 🏗️ Build Web
         run: |
-          flutter pub get
-          flutter build windows --release --dart-define=PUSHER_KEY=${{ secrets.PUSHER_KEY }}
-      - name: Package Windows Build (Zip)
-        run: Compress-Archive -Path build/windows/x64/runner/Release/* -DestinationPath ebm-windows.zip
-        shell: pwsh
-      - name: Upload Windows Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: windows-zip
-          path: ebm-windows.zip
+          flutter build web \
+            --release \
+            --web-renderer canvaskit \
+            --dart-define=API_URL=https://api.ebfic.store
 
-  build-macos-ios:
-    name: 🍎 Mac & iOS Build
-    runs-on: macos-latest
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-      - name: Install Flutter
-        uses: subosito/flutter-action@v2
+      - name: 📤 Deploy to Hostinger
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
-          channel: 'stable'
-      - name: Build MacOS
-        run: |
-          flutter pub get
-          flutter build macos --release
-      - name: Package MacOS Build (Zip)
-        run: Compress-Archive -Path build/macos/Build/Products/Release/* -DestinationPath ebm-macos.zip
-        shell: pwsh
-      - name: Upload MacOS Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: macos-zip
-          path: ebm-macos.zip
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          server-dir: /public_html/ebm/
+          local-dir: ./build/web/
 
-  create-release:
-    name: 🚀 Create Multi-Platform Release
-    needs: [build-linux-web-android, build-windows, build-macos-ios]
+  # ─── Job 2: Android APK Build ────────────────────────────
+  build-android:
+    name: 🤖 Build Android APK
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
+    if: github.event_name == 'release'
+
     steps:
-      - name: Download All Artifacts
-        uses: actions/download-artifact@v4
+      - name: 📥 Checkout
+        uses: actions/checkout@v4
+
+      - name: ☕ Setup Java
+        uses: actions/setup-java@v4
         with:
-          path: release-files
-      - name: Flatten Files for Release
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: 🐦 Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.32.0'
+          channel: 'stable'
+          cache: true
+
+      - name: 📦 Get Dependencies
+        run: flutter pub get
+
+      - name: 🤖 Build Android APK (Release)
         run: |
-          mkdir final-release
-          find release-files -name "*.apk" -exec cp {} final-release/ebm-android.apk \;
-          find release-files -name "ebm-windows.zip" -exec cp {} final-release/ \;
-          find release-files -name "ebm-macos.zip" -exec cp {} final-release/ \;
-      - name: Create Release
+          flutter build apk \
+            --release \
+            --dart-define=API_URL=https://api.ebfic.store
+
+      - name: 📤 Upload APK to GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v1.0.${{ github.run_number }}
-          name: "EBM Release v1.0.${{ github.run_number }}"
-          body: "Multi-platform automated build (Web, Android, Windows, Mac)."
-          files: final-release/*
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          files: build/app/outputs/flutter-apk/app-release.apk
+          name: EBM App ${{ github.ref_name }}
+
+  # ─── Job 3: Windows EXE Build ────────────────────────────
+  build-windows:
+    name: 🪟 Build Windows EXE
+    runs-on: windows-latest
+    if: github.event_name == 'release'
+
+    steps:
+      - name: 📥 Checkout
+        uses: actions/checkout@v4
+
+      - name: 🐦 Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.32.0'
+          channel: 'stable'
+          cache: true
+
+      - name: 📦 Get Dependencies
+        run: flutter pub get
+
+      - name: 🪟 Build Windows EXE
+        run: |
+          flutter build windows --release `
+            --dart-define=API_URL=https://api.ebfic.store
+
+      - name: 📦 Zip Windows Build
+        run: Compress-Archive -Path build/windows/x64/runner/Release/* -DestinationPath ebm-windows.zip
+
+      - name: 📤 Upload Windows Build to Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ebm-windows.zip

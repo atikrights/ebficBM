@@ -1,0 +1,29 @@
+Showing outdated packages.
+[*] indicates versions that are not the latest available.
+
+Package Name           Current  Upgradable  Resolvable  Latest  
+
+direct dependencies:  
+file_picker            *8.3.7   *8.3.7      11.0.2      11.0.2  
+
+dev_dependencies: all up-to-date.
+
+transitive dependencies:
+args                   -        2.7.0       2.7.0       2.7.0   
+dbus                   -        -           0.7.12      0.7.12  
+jni                    -        1.0.0       1.0.0       1.0.0   
+jni_flutter            -        1.0.1       1.0.1       1.0.1   
+meta                   *1.17.0  *1.17.0     *1.17.0     1.18.2  
+package_config         -        2.2.0       2.2.0       2.2.0   
+path_provider_android  *2.2.23  2.3.0       2.3.0       2.3.0   
+vector_math            *2.2.0   *2.2.0      *2.2.0      2.3.0   
+win32                  *5.15.0  *5.15.0     *5.15.0     6.0.0   
+
+transitive dev_dependencies:
+test_api               *0.7.10  *0.7.10     *0.7.10     0.7.11  
+
+1 upgradable dependency is locked (in pubspec.lock) to an older version.
+To update it, use `flutter pub upgrade`.
+
+1 dependency is constrained to a version that is older than a resolvable version.
+To update it, edit pubspec.yaml, or run `flutter pub upgrade --major-versions`.

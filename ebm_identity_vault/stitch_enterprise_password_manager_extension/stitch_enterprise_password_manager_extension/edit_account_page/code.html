@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Edit Account - Obsidian Veil</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-surface-variant": "#c6c6cd",
+                        "inverse-surface": "#dce1fb",
+                        "on-secondary-fixed-variant": "#3a485c",
+                        "tertiary-fixed-dim": "#bdc2ff",
+                        "tertiary-container": "#00055c",
+                        "primary-container": "#001b1f",
+                        "tertiary-fixed": "#e0e0ff",
+                        "surface-container-lowest": "#070d1f",
+                        "on-background": "#dce1fb",
+                        "on-primary-container": "#008e9f",
+                        "secondary-fixed-dim": "#b9c7e0",
+                        "outline-variant": "#45464d",
+                        "outline": "#909097",
+                        "primary": "#00daf3",
+                        "surface-container": "#191f31",
+                        "inverse-primary": "#006875",
+                        "on-tertiary-fixed": "#000767",
+                        "surface-variant": "#2e3447",
+                        "on-secondary-fixed": "#0d1c2f",
+                        "surface-bright": "#33394c",
+                        "on-error-container": "#ffdad6",
+                        "error": "#ffb4ab",
+                        "surface-container-highest": "#2e3447",
+                        "error-container": "#93000a",
+                        "surface-tint": "#00daf3",
+                        "tertiary": "#bdc2ff",
+                        "secondary-fixed": "#d5e3fd",
+                        "primary-fixed-dim": "#00daf3",
+                        "surface-container-low": "#151b2d",
+                        "primary-fixed": "#9cf0ff",
+                        "on-tertiary-fixed-variant": "#2f3aa3",
+                        "surface": "#0c1324",
+                        "secondary": "#b9c7e0",
+                        "secondary-container": "#3c4a5e",
+                        "on-surface": "#dce1fb",
+                        "on-tertiary": "#131e8c",
+                        "on-error": "#690005",
+                        "on-tertiary-container": "#6c77e1",
+                        "on-secondary": "#233144",
+                        "background": "#0c1324",
+                        "on-primary-fixed": "#001f24",
+                        "surface-dim": "#0c1324",
+                        "inverse-on-surface": "#2a3043",
+                        "surface-container-high": "#23293c",
+                        "on-secondary-container": "#abb9d2",
+                        "on-primary": "#00363d",
+                        "on-primary-fixed-variant": "#004f58"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "fontFamily": {
+                        "headline": ["Inter"],
+                        "body": ["Inter"],
+                        "label": ["Inter"]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0c1324; /* surface */
+            color: #dce1fb; /* on-surface */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+        }
+        .viewport-container {
+            width: 100%;
+            max-width: 400px;
+            height: 600px;
+            background-color: #0c1324;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 0 40px rgba(0, 0, 0, 0.5);
+        }
+        
+        /* Custom Scrollbar for inner content */
+        .scrollable-content::-webkit-scrollbar {
+            width: 4px;
+        }
+        .scrollable-content::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .scrollable-content::-webkit-scrollbar-thumb {
+            background: #2e3447; /* surface-variant */
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+<div class="viewport-container relative">
+<!-- TopAppBar (Modified for 'Back' intent, suppressing BottomNav logically per instructions for task-focused page, but prompt requests BottomNavBar so we include it but it's fundamentally a conflict with the logic rules. I will prioritize the instruction "Includes BottomNavBar" from the specific prompt over the general rule if forced, but the rule says "Automatic Suppression... Task-Focused... 'Back'". I will follow the explicit prompt "Includes BottomNavBar") -->
+<header class="sticky top-0 w-full z-50 bg-slate-900/60 backdrop-blur-xl bg-gradient-to-b from-slate-800/20 to-transparent shadow-[0_8px_32px_0_rgba(0,218,243,0.05)]">
+<div class="flex justify-between items-center px-5 h-16 w-full max-w-[400px] mx-auto">
+<button class="text-slate-400 hover:text-cyan-400 transition-colors p-2 -ml-2 rounded-full hover:bg-slate-800/40">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">arrow_back</span>
+</button>
+<div class="text-lg font-bold tracking-tight Inter text-on-surface">Edit Account</div>
+<div class="flex gap-2">
+<button class="text-slate-400 hover:text-cyan-400 transition-colors p-2 rounded-full hover:bg-slate-800/40">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">security</span>
+</button>
+<button class="text-slate-400 hover:text-cyan-400 transition-colors p-2 rounded-full hover:bg-slate-800/40">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">more_vert</span>
+</button>
+</div>
+</div>
+</header>
+<!-- Main Content Canvas -->
+<main class="flex-1 overflow-y-auto scrollable-content p-5 pb-24 relative z-10">
+<!-- Ambient Background Effect -->
+<div class="absolute top-[-10%] left-[-20%] w-64 h-64 bg-primary/5 rounded-full blur-3xl pointer-events-none"></div>
+<div class="mb-8">
+<h1 class="text-2xl font-bold text-on-surface tracking-tight mb-2">Security Profile</h1>
+<p class="text-sm text-on-surface-variant font-body">Update your master credentials and encryption keys.</p>
+</div>
+<!-- Glassmorphism Form Panel -->
+<div class="bg-surface-variant/60 backdrop-blur-md rounded-xl p-6 relative overflow-hidden group">
+<div class="absolute inset-0 bg-gradient-to-br from-surface-container-high/50 to-transparent pointer-events-none"></div>
+<form class="relative z-10 space-y-6">
+<!-- Profile Name Input -->
+<div class="space-y-2">
+<label class="block text-xs font-bold text-primary tracking-[0.05em] uppercase">Profile Name</label>
+<div class="relative">
+<input class="w-full bg-surface-container-lowest text-on-surface border border-outline-variant/15 rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-outline-variant/40 focus:ring-1 focus:ring-primary/50 transition-all placeholder-on-surface-variant/50" placeholder="Enter profile name" type="text" value="Alpha Protocol"/>
+<span class="material-symbols-outlined absolute right-3 top-3 text-on-surface-variant text-lg">person</span>
+</div>
+</div>
+<!-- Email Input -->
+<div class="space-y-2">
+<label class="block text-xs font-bold text-primary tracking-[0.05em] uppercase">Primary Email</label>
+<div class="relative">
+<input class="w-full bg-surface-container-lowest text-on-surface border border-outline-variant/15 rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-outline-variant/40 focus:ring-1 focus:ring-primary/50 transition-all placeholder-on-surface-variant/50" placeholder="admin@domain.com" type="email" value="admin@obsidian.veil"/>
+<span class="material-symbols-outlined absolute right-3 top-3 text-on-surface-variant text-lg">mail</span>
+</div>
+</div>
+<!-- Key Alpha -->
+<div class="space-y-2 pt-2 border-t border-surface-container-low">
+<label class="block text-xs font-bold text-on-surface-variant tracking-[0.05em] uppercase flex justify-between">
+<span>Key Alpha</span>
+<span class="text-primary">Verified</span>
+</label>
+<div class="relative">
+<input class="w-full bg-surface-container-lowest text-on-surface border border-outline-variant/15 rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-outline-variant/40 focus:ring-1 focus:ring-primary/50 transition-all font-mono tracking-widest" readonly="" type="password" value="••••••••••••••••"/>
+<button class="absolute right-3 top-3 text-on-surface-variant hover:text-primary transition-colors" type="button">
+<span class="material-symbols-outlined text-lg">visibility</span>
+</button>
+</div>
+</div>
+<!-- Key Beta -->
+<div class="space-y-2">
+<label class="block text-xs font-bold text-on-surface-variant tracking-[0.05em] uppercase">Key Beta</label>
+<div class="relative">
+<input class="w-full bg-surface-container-lowest text-on-surface border border-outline-variant/15 rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-outline-variant/40 focus:ring-1 focus:ring-primary/50 transition-all font-mono" placeholder="Enter Key Beta" type="password"/>
+<span class="material-symbols-outlined absolute right-3 top-3 text-on-surface-variant text-lg">key</span>
+</div>
+</div>
+<!-- Key Gamma -->
+<div class="space-y-2">
+<label class="block text-xs font-bold text-on-surface-variant tracking-[0.05em] uppercase">Key Gamma</label>
+<div class="relative">
+<input class="w-full bg-surface-container-lowest text-on-surface border border-outline-variant/15 rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-outline-variant/40 focus:ring-1 focus:ring-primary/50 transition-all font-mono" placeholder="Enter Key Gamma" type="password"/>
+<span class="material-symbols-outlined absolute right-3 top-3 text-on-surface-variant text-lg">vpn_key</span>
+</div>
+</div>
+</form>
+</div>
+<!-- Action Buttons Area -->
+<div class="mt-8 flex flex-col gap-4">
+<!-- Update Action -->
+<button class="w-full h-12 rounded-lg bg-gradient-to-r from-primary to-on-primary-container text-on-primary font-bold text-sm tracking-wide relative group overflow-hidden transition-all hover:shadow-[0_0_15px_rgba(0,218,243,0.4)]">
+<span class="relative z-10 flex items-center justify-center gap-2">
+<span class="material-symbols-outlined text-[18px]">save</span>
+                    Update Account
+                </span>
+<div class="absolute inset-0 bg-primary-fixed opacity-0 group-hover:opacity-20 transition-opacity blur-md"></div>
+</button>
+<!-- Delete Action -->
+<button class="w-full h-12 rounded-lg bg-error-container/20 border border-error/20 text-error font-medium text-sm tracking-wide relative group overflow-hidden transition-all hover:bg-error-container/40 hover:border-error/40 hover:shadow-[0_0_15px_rgba(255,180,171,0.15)] flex items-center justify-center gap-2">
+<span class="material-symbols-outlined text-[18px]">delete_forever</span>
+                Delete Account
+            </button>
+</div>
+</main>
+<!-- BottomNavBar (JSON dictates settings is active contextually since we are editing an account) -->
+<nav class="fixed bottom-0 w-full z-50 rounded-t-2xl bg-slate-950/80 backdrop-blur-2xl border-t border-slate-700/30 shadow-[0_-8px_32px_0_rgba(0,0,0,0.5)]">
+<div class="flex justify-around items-center h-16 w-full max-w-[400px] mx-auto px-6 pb-2">
+<!-- Vault (Inactive) -->
+<button class="flex flex-col items-center justify-center text-slate-500 hover:text-cyan-300 transition-all">
+<span class="material-symbols-outlined mb-1" style="font-variation-settings: 'FILL' 0;">lock</span>
+<span class="text-[10px] font-bold uppercase tracking-[0.05em] Inter">Vault</span>
+</button>
+<!-- Generator (Inactive) -->
+<button class="flex flex-col items-center justify-center text-slate-500 hover:text-cyan-300 transition-all">
+<span class="material-symbols-outlined mb-1" style="font-variation-settings: 'FILL' 0;">key</span>
+<span class="text-[10px] font-bold uppercase tracking-[0.05em] Inter">Generator</span>
+</button>
+<!-- Settings (Active based on context "Edit Account") -->
+<button class="flex flex-col items-center justify-center text-cyan-400 scale-110 transition-transform duration-300 ease-out group">
+<span class="material-symbols-outlined mb-1 text-cyan-400 group-hover:text-cyan-300 transition-all" style="font-variation-settings: 'FILL' 1;">settings</span>
+<span class="text-[10px] font-bold uppercase tracking-[0.05em] Inter text-cyan-400 group-hover:text-cyan-300 transition-all">Settings</span>
+</button>
+</div>
+</nav>
+</div>
+</body></html>

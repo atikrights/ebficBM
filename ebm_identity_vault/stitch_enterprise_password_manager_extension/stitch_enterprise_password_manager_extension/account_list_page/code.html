@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Account List - Obsidian Veil</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-surface-variant": "#c6c6cd",
+                        "inverse-surface": "#dce1fb",
+                        "on-secondary-fixed-variant": "#3a485c",
+                        "tertiary-fixed-dim": "#bdc2ff",
+                        "tertiary-container": "#00055c",
+                        "primary-container": "#001b1f",
+                        "tertiary-fixed": "#e0e0ff",
+                        "surface-container-lowest": "#070d1f",
+                        "on-background": "#dce1fb",
+                        "on-primary-container": "#008e9f",
+                        "secondary-fixed-dim": "#b9c7e0",
+                        "outline-variant": "#45464d",
+                        "outline": "#909097",
+                        "primary": "#00daf3",
+                        "surface-container": "#191f31",
+                        "inverse-primary": "#006875",
+                        "on-tertiary-fixed": "#000767",
+                        "surface-variant": "#2e3447",
+                        "on-secondary-fixed": "#0d1c2f",
+                        "surface-bright": "#33394c",
+                        "on-error-container": "#ffdad6",
+                        "error": "#ffb4ab",
+                        "surface-container-highest": "#2e3447",
+                        "error-container": "#93000a",
+                        "surface-tint": "#00daf3",
+                        "tertiary": "#bdc2ff",
+                        "secondary-fixed": "#d5e3fd",
+                        "primary-fixed-dim": "#00daf3",
+                        "surface-container-low": "#151b2d",
+                        "primary-fixed": "#9cf0ff",
+                        "on-tertiary-fixed-variant": "#2f3aa3",
+                        "surface": "#0c1324",
+                        "secondary": "#b9c7e0",
+                        "secondary-container": "#3c4a5e",
+                        "on-surface": "#dce1fb",
+                        "on-tertiary": "#131e8c",
+                        "on-error": "#690005",
+                        "on-tertiary-container": "#6c77e1",
+                        "on-secondary": "#233144",
+                        "background": "#0c1324",
+                        "on-primary-fixed": "#001f24",
+                        "surface-dim": "#0c1324",
+                        "inverse-on-surface": "#2a3043",
+                        "surface-container-high": "#23293c",
+                        "on-secondary-container": "#abb9d2",
+                        "on-primary": "#00363d",
+                        "on-primary-fixed-variant": "#004f58"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "fontFamily": {
+                        "headline": ["Inter"],
+                        "body": ["Inter"],
+                        "label": ["Inter"]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        body { font-family: 'Inter', sans-serif; }
+        .glass-panel {
+            background-color: rgba(46, 52, 71, 0.6);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+        }
+        .glow-button {
+            background: linear-gradient(135deg, theme('colors.primary'), theme('colors.on-primary-container'));
+        }
+        .glow-button:hover {
+            box-shadow: 0 0 8px 2px theme('colors.primary-fixed');
+        }
+        .ambient-shadow:hover {
+            box-shadow: 0 8px 24px 0 rgba(0, 218, 243, 0.08);
+            background-color: theme('colors.surface-container-highest');
+        }
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .hide-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+</head>
+<body class="bg-surface text-on-surface h-screen w-full flex justify-center items-center overflow-hidden">
+<div class="relative w-full max-w-[400px] h-full max-h-[600px] bg-surface flex flex-col shadow-2xl overflow-hidden rounded-xl">
+<!-- TopAppBar -->
+<header class="sticky top-0 w-full z-50 bg-slate-900/60 backdrop-blur-xl bg-gradient-to-b from-slate-800/20 to-transparent shadow-[0_8px_32px_0_rgba(0,218,243,0.05)]">
+<div class="flex justify-between items-center px-5 h-16 w-full max-w-[400px] mx-auto">
+<div class="flex items-center gap-2">
+<span class="text-xl font-black text-cyan-400 tracking-widest uppercase font-headline">OBSIDIAN VEIL</span>
+</div>
+<div class="flex items-center gap-4 text-cyan-400">
+<button aria-label="Security" class="hover:bg-slate-800/40 transition-colors rounded-full p-2">
+<span class="material-symbols-outlined" data-icon="security">security</span>
+</button>
+<button aria-label="More Options" class="hover:bg-slate-800/40 transition-colors rounded-full p-2">
+<span class="material-symbols-outlined" data-icon="more_vert">more_vert</span>
+</button>
+</div>
+</div>
+</header>
+<!-- Main Content Canvas -->
+<main class="flex-1 overflow-y-auto hide-scrollbar flex flex-col relative pb-24">
+<!-- Search Area -->
+<div class="px-5 pt-4 pb-2 sticky top-0 z-40 bg-surface/80 backdrop-blur-md">
+<div class="relative group">
+<div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+<span class="material-symbols-outlined text-on-surface-variant text-sm group-focus-within:text-primary transition-colors">search</span>
+</div>
+<input class="w-full bg-surface-container-lowest border border-outline-variant/15 text-on-surface text-sm rounded-lg focus:ring-1 focus:ring-primary focus:border-primary block w-full pl-10 p-2.5 transition-all group-focus-within:border-outline-variant/40 group-focus-within:shadow-[inset_0_0_10px_rgba(0,218,243,0.1)] placeholder-on-surface-variant/50" placeholder="Search Vault..." type="text"/>
+<div class="absolute inset-y-0 right-0 pr-3 flex items-center">
+<span class="material-symbols-outlined text-on-surface-variant text-sm hover:text-primary cursor-pointer transition-colors" data-icon="tune">tune</span>
+</div>
+</div>
+</div>
+<!-- Vault Status / Header Offset -->
+<div class="px-5 py-4 flex justify-between items-end">
+<div>
+<h1 class="text-2xl font-bold text-on-surface font-headline tracking-tight leading-none">All Items</h1>
+<p class="text-sm text-on-surface-variant mt-1 font-body">148 Secure Entries</p>
+</div>
+<div class="bg-tertiary-container px-3 py-1 rounded-full flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px] text-tertiary" data-icon="verified_user">verified_user</span>
+<span class="text-xs font-bold text-tertiary uppercase tracking-wider">Safe</span>
+</div>
+</div>
+<!-- Account List -->
+<div class="px-5 flex flex-col gap-2 pb-20">
+<!-- Card 1 -->
+<div class="bg-surface-container-low rounded-xl p-4 flex items-center gap-4 transition-all duration-200 ambient-shadow cursor-pointer group">
+<div class="w-10 h-10 rounded-md bg-secondary-container flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-secondary" data-icon="corporate_fare">corporate_fare</span>
+</div>
+<div class="flex-1 min-w-0">
+<h2 class="text-base font-semibold text-on-surface truncate font-headline group-hover:text-primary transition-colors">Super Admin 01</h2>
+<p class="text-xs text-on-surface-variant truncate font-body">admin@enterprise.corp</p>
+</div>
+<div class="flex items-center gap-2 opacity-60 group-hover:opacity-100 transition-opacity">
+<button class="w-8 h-8 rounded-full bg-surface-container-lowest flex items-center justify-center hover:bg-surface-variant hover:text-primary transition-colors text-on-surface-variant">
+<span class="material-symbols-outlined text-[18px]" data-icon="rocket_launch">rocket_launch</span>
+</button>
+<button class="w-8 h-8 rounded-full bg-surface-container-lowest flex items-center justify-center hover:bg-surface-variant hover:text-primary transition-colors text-on-surface-variant">
+<span class="material-symbols-outlined text-[18px]" data-icon="edit">edit</span>
+</button>
+</div>
+</div>
+<!-- Card 2 -->
+<div class="bg-surface-container-low rounded-xl p-4 flex items-center gap-4 transition-all duration-200 ambient-shadow cursor-pointer group">
+<div class="w-10 h-10 rounded-md bg-secondary-container flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-secondary" data-icon="database">database</span>
+</div>
+<div class="flex-1 min-w-0">
+<h2 class="text-base font-semibold text-on-surface truncate font-headline group-hover:text-primary transition-colors">Prod DB Master</h2>
+<p class="text-xs text-on-surface-variant truncate font-body">sysadmin@db.cluster.local</p>
+</div>
+<div class="flex items-center gap-2 opacity-60 group-hover:opacity-100 transition-opacity">
+<button class="w-8 h-8 rounded-full bg-surface-container-lowest flex items-center justify-center hover:bg-surface-variant hover:text-primary transition-colors text-on-surface-variant">
+<span class="material-symbols-outlined text-[18px]" data-icon="rocket_launch">rocket_launch</span>
+</button>
+<button class="w-8 h-8 rounded-full bg-surface-container-lowest flex items-center justify-center hover:bg-surface-variant hover:text-primary transition-colors text-on-surface-variant">
+<span class="material-symbols-outlined text-[18px]" data-icon="edit">edit</span>
+</button>
+</div>
+</div>
+<!-- Card 3 -->
+<div class="bg-surface-container-low rounded-xl p-4 flex items-center gap-4 transition-all duration-200 ambient-shadow cursor-pointer group relative overflow-hidden">
+<!-- Subtle highlight for 'weak' or attention needed -->
+<div class="absolute left-0 top-0 bottom-0 w-1 bg-error-container"></div>
+<div class="w-10 h-10 rounded-md bg-secondary-container flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-secondary" data-icon="cloud">cloud</span>
+</div>
+<div class="flex-1 min-w-0">
+<div class="flex items-center gap-2">
+<h2 class="text-base font-semibold text-on-surface truncate font-headline group-hover:text-primary transition-colors">AWS Root</h2>
+<span class="material-symbols-outlined text-[14px] text-error" data-icon="warning">warning</span>
+</div>
+<p class="text-xs text-on-surface-variant truncate font-body">infrastructure@aws.com</p>
+</div>
+<div class="flex items-center gap-2 opacity-60 group-hover:opacity-100 transition-opacity">
+<button class="w-8 h-8 rounded-full bg-surface-container-lowest flex items-center justify-center hover:bg-surface-variant hover:text-primary transition-colors text-on-surface-variant">
+<span class="material-symbols-outlined text-[18px]" data-icon="rocket_launch">rocket_launch</span>
+</button>
+<button class="w-8 h-8 rounded-full bg-surface-container-lowest flex items-center justify-center hover:bg-surface-variant hover:text-primary transition-colors text-on-surface-variant">
+<span class="material-symbols-outlined text-[18px]" data-icon="edit">edit</span>
+</button>
+</div>
+</div>
+<!-- Card 4 -->
+<div class="bg-surface-container-low rounded-xl p-4 flex items-center gap-4 transition-all duration-200 ambient-shadow cursor-pointer group">
+<div class="w-10 h-10 rounded-md bg-secondary-container flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-secondary" data-icon="terminal">terminal</span>
+</div>
+<div class="flex-1 min-w-0">
+<h2 class="text-base font-semibold text-on-surface truncate font-headline group-hover:text-primary transition-colors">SSH Key - Bastion</h2>
+<p class="text-xs text-on-surface-variant truncate font-body">ed25519 - bastion.net</p>
+</div>
+<div class="flex items-center gap-2 opacity-60 group-hover:opacity-100 transition-opacity">
+<button class="w-8 h-8 rounded-full bg-surface-container-lowest flex items-center justify-center hover:bg-surface-variant hover:text-primary transition-colors text-on-surface-variant">
+<span class="material-symbols-outlined text-[18px]" data-icon="rocket_launch">rocket_launch</span>
+</button>
+<button class="w-8 h-8 rounded-full bg-surface-container-lowest flex items-center justify-center hover:bg-surface-variant hover:text-primary transition-colors text-on-surface-variant">
+<span class="material-symbols-outlined text-[18px]" data-icon="edit">edit</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Bottom Fade Mask for list -->
+<div class="sticky bottom-0 w-full h-12 bg-gradient-to-t from-surface to-transparent pointer-events-none -mt-12 z-10"></div>
+</main>
+<!-- Floating Add Button -->
+<div class="absolute bottom-[80px] left-0 right-0 flex justify-center z-40 pointer-events-none">
+<button class="glow-button pointer-events-auto flex items-center gap-2 px-6 py-3 rounded-xl shadow-[0_8px_32px_0_rgba(0,218,243,0.2)] transition-all transform hover:scale-105 active:scale-95">
+<span class="material-symbols-outlined text-on-primary font-bold" data-icon="add">add</span>
+<span class="text-sm font-bold text-on-primary uppercase tracking-wide font-label">Add New Account</span>
+</button>
+</div>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 w-full z-50 rounded-t-2xl bg-slate-950/80 backdrop-blur-2xl border-t border-slate-700/30 shadow-[0_-8px_32px_0_rgba(0,0,0,0.5)]">
+<div class="flex justify-around items-center h-16 w-full max-w-[400px] mx-auto px-6 pb-2">
+<button aria-label="Vault" class="flex flex-col items-center justify-center text-cyan-400 scale-110 transition-transform hover:text-cyan-300 group">
+<span class="material-symbols-outlined mb-1 group-hover:text-cyan-300 transition-colors" data-icon="lock" data-weight="fill" style="font-variation-settings: 'FILL' 1;">lock</span>
+<span class="text-[10px] font-bold uppercase tracking-[0.05em] font-label">Vault</span>
+</button>
+<button aria-label="Generator" class="flex flex-col items-center justify-center text-slate-500 hover:text-cyan-300 transition-all group">
+<span class="material-symbols-outlined mb-1 group-hover:text-cyan-300 transition-colors" data-icon="key">key</span>
+<span class="text-[10px] font-bold uppercase tracking-[0.05em] font-label">Generator</span>
+</button>
+<button aria-label="Settings" class="flex flex-col items-center justify-center text-slate-500 hover:text-cyan-300 transition-all group">
+<span class="material-symbols-outlined mb-1 group-hover:text-cyan-300 transition-colors" data-icon="settings">settings</span>
+<span class="text-[10px] font-bold uppercase tracking-[0.05em] font-label">Settings</span>
+</button>
+</div>
+</nav>
+</div>
+</body></html>
