@@ -1,4 +1,4 @@
-name: 🚀 Deploy EBM App → ebm.ebfic.store + Build Releases
+name: 🚀 Deploy EBM App → ebm.ebfic.store (SSH) + Releases
 
 on:
   push:
@@ -7,108 +7,51 @@ on:
     types: [ created ]
 
 jobs:
-  # ─── Job 1: Flutter Web Deploy ───────────────────────────
   deploy-web:
-    name: 🌐 Build & Deploy Web
+    name: 🌐 Deploy Web via SSH
     runs-on: ubuntu-latest
-
     steps:
       - name: 📥 Checkout
         uses: actions/checkout@v4
-
       - name: 🐦 Setup Flutter
         uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.32.0'
           channel: 'stable'
-          cache: true
-
-      - name: 📦 Get Dependencies
-        run: flutter pub get
-
       - name: 🏗️ Build Web
         run: |
-          flutter build web \
-            --release \
-            --web-renderer canvaskit \
-            --dart-define=API_URL=https://api.ebfic.store
-
-      - name: 📤 Deploy to Hostinger
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+          flutter pub get
+          flutter build web --release --dart-define=API_URL=https://api.ebfic.store
+      - name: 📤 Upload to Server via SCP
+        uses: appleboy/scp-action@master
         with:
-          server: ${{ secrets.FTP_SERVER }}
-          username: ${{ secrets.FTP_USERNAME }}
-          password: ${{ secrets.FTP_PASSWORD }}
-          server-dir: /public_html/ebm/
-          local-dir: ./build/web/
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USERNAME }}
+          password: ${{ secrets.SSH_PASSWORD }}
+          port: 22
+          source: "build/web/*"
+          target: "public_html/ebm"
+          strip_components: 2
 
-  # ─── Job 2: Android APK Build ────────────────────────────
-  build-android:
-    name: 🤖 Build Android APK
-    runs-on: ubuntu-latest
-    if: github.event_name == 'release'
-
-    steps:
-      - name: 📥 Checkout
-        uses: actions/checkout@v4
-
-      - name: ☕ Setup Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: 'temurin'
-          java-version: '17'
-
-      - name: 🐦 Setup Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          flutter-version: '3.32.0'
-          channel: 'stable'
-          cache: true
-
-      - name: 📦 Get Dependencies
-        run: flutter pub get
-
-      - name: 🤖 Build Android APK (Release)
-        run: |
-          flutter build apk \
-            --release \
-            --dart-define=API_URL=https://api.ebfic.store
-
-      - name: 📤 Upload APK to GitHub Release
-        uses: softprops/action-gh-release@v2
-        with:
-          files: build/app/outputs/flutter-apk/app-release.apk
-          name: EBM App ${{ github.ref_name }}
-
-  # ─── Job 3: Windows EXE Build ────────────────────────────
-  build-windows:
-    name: 🪟 Build Windows EXE
+  build-apps:
+    name: 🤖 Build Android & Windows
     runs-on: windows-latest
     if: github.event_name == 'release'
-
     steps:
       - name: 📥 Checkout
         uses: actions/checkout@v4
-
       - name: 🐦 Setup Flutter
         uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.32.0'
           channel: 'stable'
-          cache: true
-
-      - name: 📦 Get Dependencies
-        run: flutter pub get
-
-      - name: 🪟 Build Windows EXE
-        run: |
-          flutter build windows --release `
-            --dart-define=API_URL=https://api.ebfic.store
-
-      - name: 📦 Zip Windows Build
-        run: Compress-Archive -Path build/windows/x64/runner/Release/* -DestinationPath ebm-windows.zip
-
-      - name: 📤 Upload Windows Build to Release
+      - name: 🏗️ Build APK
+        run: flutter build apk --release --dart-define=API_URL=https://api.ebfic.store
+      - name: 🏗️ Build Windows
+        run: flutter build windows --release --dart-define=API_URL=https://api.ebfic.store
+      - name: 📤 Upload to Release
         uses: softprops/action-gh-release@v2
         with:
-          files: ebm-windows.zip
+          files: |
+            build/app/outputs/flutter-apk/app-release.apk
+            build/windows/x64/runner/Release/*.exe
