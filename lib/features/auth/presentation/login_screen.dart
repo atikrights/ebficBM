@@ -148,7 +148,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     final rawTarget = kIsWeb ? html.window.location.href.split('#').first : 'ebm-app://auth';
                     final encodedTarget = base64Url.encode(utf8.encode(rawTarget));
                     
-                    final centralBase = AppConfig.instance.centralUrl;
+                    final centralBase = AppConfig.centralUrl;
                     final centralWebSso = "$centralBase/#/authorize?target=$encodedTarget";
                     final centralAppSso = "ebm-central://authorize?target=$encodedTarget";
 

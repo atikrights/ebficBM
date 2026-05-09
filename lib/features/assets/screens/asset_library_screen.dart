@@ -982,7 +982,7 @@ class _AssetLibraryScreenState extends State<AssetLibraryScreen> {
 
     // ✅ Unified Universal Link
     final String liveLink = 'asset://${asset.id}';
-    final String sharedLink = AppConfig.instance.sharedLink(asset.id);
+    final String sharedLink = AppConfig.sharedLink(asset.id);
 
     showModalBottomSheet(
       context: context,
@@ -1135,7 +1135,7 @@ class _AssetLibraryScreenState extends State<AssetLibraryScreen> {
 
               // Live Link (AppConfig auto-domain)
               _buildDetailField(
-                'Live Link  •  ${AppConfig.instance.isLocalhost ? "🟡 Localhost (dev)" : "🟢 Production"}',
+                'Live Link  •  ${AppConfig.isLocalhost ? "🟡 Localhost (dev)" : "🟢 Production"}',
                 _buildCopyRow(liveLink, isDark, IconsaxPlusLinear.link),
                 isDark,
               ),
