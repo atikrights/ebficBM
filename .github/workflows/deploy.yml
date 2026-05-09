@@ -1,4 +1,4 @@
-name: 🚀 Deploy EBM App (SSH) + Android & Windows Release
+name: 🚀 Deploy EBM App (Professional Multi-Platform)
 
 on:
   push:
@@ -21,7 +21,6 @@ jobs:
         uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
-          cache: true
       - name: 🏗️ Build Web
         run: |
           flutter pub get
@@ -35,55 +34,56 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: 65002
           timeout: 300s
-          command_timeout: 30m
           source: "build/web/*"
           target: "domains/ebfic.store/public_html/ebm"
           strip_components: 2
 
-  # 🤖 অ্যান্ড্রয়েড এবং উইন্ডোজ বিল্ড (Master Fix)
-  build-android-windows:
-    name: 🤖 Android & Windows
-    runs-on: windows-latest
-    if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'release'
+  # 🤖 অ্যান্ড্রয়েড বিল্ড (Ubuntu তে করা হবে - ১০০% স্টেবল)
+  build-android:
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
     steps:
       - name: 📥 Checkout
         uses: actions/checkout@v4
-      
-      # লং পাথ সাপোর্ট এনাবল করা (Fixes Gradle File Errors)
-      - name: 📂 Enable Long Paths
-        run: git config --global core.longpaths true
-
+      - name: ☕ Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
       - name: 🐦 Setup Flutter
         uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
-          cache: true
-      
-      - name: 📦 Get Deps & Clean
+      - name: 🤖 Build APK
         run: |
           flutter pub get
-          flutter clean
-
-      - name: 🤖 Build APK (Debug/Unsigned)
-        run: flutter build apk --debug --dart-define=API_URL=https://api.ebfic.store --suppress-analytics --no-tree-shake-icons
-        continue-on-error: true # ফ্লাটার এরর দিলেও আমরা চেক করবো APK তৈরি হয়েছে কি না
-
-      - name: 🪟 Build Windows
-        run: flutter build windows --release --dart-define=API_URL=https://api.ebfic.store --suppress-analytics
-
-      # ম্যানুয়ালি ফাইলগুলো খুঁজে রিলিজ ফোল্ডারে নেওয়া (Robust Search)
-      - name: 📂 Manual Artifact Collection
-        run: |
-          mkdir release_files
-          dir /s /b build\app\outputs\*.apk > apk_list.txt
-          for /f "delims=" %%i in (apk_list.txt) do copy "%%i" release_files\
-          copy build\windows\x64\runner\Release\*.exe release_files\
-        shell: cmd
-
+          flutter build apk --debug --dart-define=API_URL=https://api.ebfic.store
       - name: 📤 Upload to Release
         uses: softprops/action-gh-release@v2
         with:
+          files: build/app/outputs/flutter-apk/*.apk
           generate_release_notes: true
-          files: release_files/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # 🪟 উইন্ডোজ বিল্ড (Windows এ করা হবে)
+  build-windows:
+    runs-on: windows-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    steps:
+      - name: 📥 Checkout
+        uses: actions/checkout@v4
+      - name: 🐦 Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+      - name: 🪟 Build Windows
+        run: |
+          flutter pub get
+          flutter build windows --release --dart-define=API_URL=https://api.ebfic.store
+      - name: 📤 Upload to Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: build/windows/x64/runner/Release/*.exe
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
