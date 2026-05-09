@@ -20,7 +20,7 @@ class PusherService {
         apiKey: AppConfig.pusherKey,
         cluster: AppConfig.pusherCluster,
         useTLS: true,
-        authEndpoint: AppConfig.instance.authEndpoint,
+        authEndpoint: AppConfig.authEndpoint,
         authParams: token != null ? {
           'headers': {
             'Authorization': 'Bearer $token',

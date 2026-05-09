@@ -5,7 +5,7 @@ import '../config/app_config.dart';
 
 /// EBM App API Service (adapted from Central)
 class ApiService {
-  String get baseUrl => AppConfig.instance.baseUrl;
+  String get baseUrl => AppConfig.baseUrl;
 
   String? token;
 
