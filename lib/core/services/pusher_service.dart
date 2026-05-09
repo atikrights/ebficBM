@@ -1,3 +1,4 @@
+import '../config/app_config.dart';
 import 'dart:developer';
 import 'package:pusher_channels_flutter/pusher_channels_flutter.dart';
 
@@ -16,9 +17,10 @@ class PusherService {
       await pusher.disconnect();
       
       await pusher.init(
-        apiKey: const String.fromEnvironment('PUSHER_KEY', defaultValue: "194c83322db5de281baf"),
-        cluster: "ap2",
-        authEndpoint: "http://127.0.0.1:8000/broadcasting/auth",
+        apiKey: AppConfig.pusherKey,
+        cluster: AppConfig.pusherCluster,
+        useTLS: true,
+        authEndpoint: AppConfig.instance.authEndpoint,
         authParams: token != null ? {
           'headers': {
             'Authorization': 'Bearer $token',
