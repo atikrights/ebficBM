@@ -43,7 +43,7 @@ void main() async {
   }
 
   // Initialize Global Configurations
-  await AppConfig.instance.init();
+  await AppConfig.init();
   
   // Initialize Real-time Sync
   await PusherService().init();

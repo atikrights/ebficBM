@@ -4,13 +4,12 @@ import 'package:shared_preferences/shared_preferences.dart';
 /// Universal domain-aware configuration for EBM.
 class AppConfig {
   AppConfig._internal();
-  static final AppConfig instance = AppConfig._internal();
 
   static const String _storageKey = 'ebm_base_url_override';
   static String? _customBaseUrl;
 
   /// Must be called once at app startup
-  Future<void> init() async {
+  static Future<void> init() async {
     try {
       final prefs = await SharedPreferences.getInstance();
       _customBaseUrl = prefs.getString(_storageKey);
@@ -81,4 +80,7 @@ class AppConfig {
   /// Asset Link Builders
   static String assetLink(String assetId) => '$baseUrl/assets/$assetId/view';
   static String sharedLink(String assetId) => '$baseUrl/assets/$assetId/share';
+
+  // Backward compatibility dummy instance (deprecated)
+  static final AppConfig instance = AppConfig._internal();
 }
