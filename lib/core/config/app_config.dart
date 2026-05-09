@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:html' as html if (dart.library.io) 'dart:io';
 
 /// Universal domain-aware configuration for EBM.
 class AppConfig {
@@ -18,29 +19,29 @@ class AppConfig {
 
   /// The Backend API URL (Smart Detection)
   static String get baseUrl {
-    // 1. Check for manual override (used in dev settings)
+    // 1. Check for manual override
     if (_customBaseUrl != null && _customBaseUrl!.isNotEmpty) {
       return _customBaseUrl!.endsWith('/api') ? _customBaseUrl! : '$_customBaseUrl/api';
     }
 
-    // 2. Check for build-time definition (--dart-define=API_URL=...)
+    // 2. Check for build-time definition
     const definedUrl = String.fromEnvironment('API_URL');
     if (definedUrl.isNotEmpty) {
       return definedUrl.endsWith('/api') ? definedUrl : '$definedUrl/api';
     }
 
-    // 3. Environment-based fallback
+    // 3. Web Smart Detection
     if (kIsWeb) {
-      final host = Uri.base.host;
-      if (host == 'localhost' || host == '127.0.0.1') return 'http://127.0.0.1:8000/api';
-      final domainParts = host.split('.');
-      if (domainParts.length >= 2) {
-        final rootDomain = domainParts.sublist(domainParts.length - 2).join('.');
-        return 'https://api.$rootDomain/api';
+      final host = html.window.location.hostname;
+      if (host.contains('ebfic.store')) {
+        return 'https://api.ebfic.store/api';
+      }
+      if (host == 'localhost' || host == '127.0.0.1') {
+        return 'http://127.0.0.1:8000/api';
       }
     }
 
-    // 4. Final Fallback (Production vs Local Debug)
+    // 4. Fallback based on mode
     if (kReleaseMode) return 'https://api.ebfic.store/api';
     return 'http://127.0.0.1:8000/api';
   }
@@ -48,13 +49,11 @@ class AppConfig {
   /// The EBM Central Portal URL for SSO.
   static String get centralUrl {
     if (kIsWeb) {
-      final host = Uri.base.host;
-      if (host == 'localhost' || host == '127.0.0.1') return 'http://127.0.0.1:3000';
-      final domainParts = host.split('.');
-      if (domainParts.length >= 2) {
-        final rootDomain = domainParts.sublist(domainParts.length - 2).join('.');
-        return 'https://central.$rootDomain';
+      final host = html.window.location.hostname;
+      if (host.contains('ebfic.store')) {
+        return 'https://central.ebfic.store';
       }
+      if (host == 'localhost' || host == '127.0.0.1') return 'http://127.0.0.1:3000';
     }
     return kReleaseMode ? 'https://central.ebfic.store' : 'http://127.0.0.1:3000';
   }
@@ -81,6 +80,5 @@ class AppConfig {
   static String assetLink(String assetId) => '$baseUrl/assets/$assetId/view';
   static String sharedLink(String assetId) => '$baseUrl/assets/$assetId/share';
 
-  // Backward compatibility dummy instance (deprecated)
   static final AppConfig instance = AppConfig._internal();
 }
