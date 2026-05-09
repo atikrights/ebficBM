@@ -7,7 +7,7 @@ class AppConfig {
   static final AppConfig instance = AppConfig._internal();
 
   static const String _storageKey = 'ebm_base_url_override';
-  String? _customBaseUrl;
+  static String? _customBaseUrl;
 
   /// Must be called once at app startup
   Future<void> init() async {
@@ -18,7 +18,7 @@ class AppConfig {
   }
 
   /// The Backend API URL (Smart Detection)
-  String get baseUrl {
+  static String get baseUrl {
     // 1. Check for manual override (used in dev settings)
     if (_customBaseUrl != null && _customBaseUrl!.isNotEmpty) {
       return _customBaseUrl!.endsWith('/api') ? _customBaseUrl! : '$_customBaseUrl/api';
@@ -46,20 +46,39 @@ class AppConfig {
     return 'http://127.0.0.1:8000/api';
   }
 
+  /// The EBM Central Portal URL for SSO.
+  static String get centralUrl {
+    if (kIsWeb) {
+      final host = Uri.base.host;
+      if (host == 'localhost' || host == '127.0.0.1') return 'http://127.0.0.1:3000';
+      final domainParts = host.split('.');
+      if (domainParts.length >= 2) {
+        final rootDomain = domainParts.sublist(domainParts.length - 2).join('.');
+        return 'https://central.$rootDomain';
+      }
+    }
+    return kReleaseMode ? 'https://central.ebfic.store' : 'http://127.0.0.1:3000';
+  }
+
+  /// Whether the app is currently running on localhost (dev mode).
+  static bool get isLocalhost {
+    return baseUrl.contains('127.0.0.1') || baseUrl.contains('localhost');
+  }
+
   /// Origin for CORS and Auth (e.g., https://api.ebfic.store)
-  String get origin {
+  static String get origin {
     final uri = Uri.parse(baseUrl);
     return '${uri.scheme}://${uri.host}';
   }
 
   /// Broadcasting Auth Endpoint
-  String get authEndpoint => '$baseUrl/broadcasting/auth';
+  static String get authEndpoint => '$baseUrl/broadcasting/auth';
 
   /// Pusher Configuration
   static const String pusherKey = "194c83322db5de281baf";
   static const String pusherCluster = "ap2";
 
   /// Asset Link Builders
-  String assetLink(String assetId) => '$baseUrl/assets/$assetId/view';
-  String sharedLink(String assetId) => '$baseUrl/assets/$assetId/share';
+  static String assetLink(String assetId) => '$baseUrl/assets/$assetId/view';
+  static String sharedLink(String assetId) => '$baseUrl/assets/$assetId/share';
 }
