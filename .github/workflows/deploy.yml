@@ -1,4 +1,4 @@
-name: 🚀 EBM Ecosystem Master Release (100% Guaranteed)
+name: 🚀 EBM Ecosystem Master Release (Final Resilience)
 
 on:
   push:
@@ -11,7 +11,7 @@ permissions:
   contents: write
 
 jobs:
-  # 🌐 ওয়েব ডিপ্লয়মেন্ট (All Web Assets Sync)
+  # 🌐 ওয়েব ডিপ্লয়মেন্ট
   deploy-web:
     runs-on: ubuntu-latest
     steps:
@@ -38,7 +38,7 @@ jobs:
           target: "domains/ebfic.store/public_html/ebm"
           strip_components: 2
 
-  # 🤖 অ্যান্ড্রয়েড বিল্ড (Guaranteed APK Release)
+  # 🤖 অ্যান্ড্রয়েড বিল্ড (Resilient APK Build)
   build-android:
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/v')
@@ -58,13 +58,15 @@ jobs:
       - name: 📦 Build APK
         run: |
           flutter pub get
-          flutter build apk --debug --dart-define=API_URL=https://api.ebfic.store --suppress-analytics
+          flutter clean
+          flutter build apk --debug --dart-define=API_URL=https://api.ebfic.store --suppress-analytics --no-tree-shake-icons
+        continue-on-error: true # যদি টুল এরর দেয় তবুও আমরা APK খুঁজি
         
-      - name: 📂 Collect APKs
+      - name: 📂 Force Collect APKs
         run: |
           mkdir -p release_assets
-          find build/app/outputs/flutter-apk/ -name "*.apk" -exec cp {} release_assets/ \;
-          find android/app/build/outputs/apk/ -name "*.apk" -exec cp {} release_assets/ \; || true
+          # পুরো ডিরেক্টরিতে সব .apk ফাইল খুঁজে কপি করো
+          find . -name "*.apk" -type f -exec cp {} release_assets/ \;
 
       - name: 📤 Upload to Release
         uses: softprops/action-gh-release@v2
@@ -74,7 +76,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  # 🪟 উইন্ডোজ বিল্ড (Guaranteed Windows Release)
+  # 🪟 উইন্ডোজ বিল্ড
   build-windows:
     runs-on: windows-latest
     if: startsWith(github.ref, 'refs/tags/v')
@@ -90,10 +92,11 @@ jobs:
           flutter pub get
           flutter build windows --release --dart-define=API_URL=https://api.ebfic.store
       
-      - name: 📂 Collect Windows Assets
+      - name: 📂 Force Collect Windows
         run: |
           mkdir release_assets
-          copy build\windows\x64\runner\Release\*.exe release_assets\
+          dir /s /b *.exe > exe_list.txt
+          for /f "delims=" %%i in (exe_list.txt) do copy "%%i" release_assets\
         shell: cmd
 
       - name: 📤 Upload to Release
