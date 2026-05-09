@@ -7,6 +7,10 @@ on:
   release:
     types: [ created ]
 
+# গিটহাবকে রিলিজ তৈরি করার পারমিশন দেওয়া হলো
+permissions:
+  contents: write
+
 jobs:
   # 🌐 ওয়েব ডিপ্লয়মেন্ট
   deploy-web:
@@ -36,7 +40,7 @@ jobs:
           target: "domains/ebfic.store/public_html/ebm"
           strip_components: 2
 
-  # 🤖 অ্যান্ড্রয়েড এবং উইন্ডোজ বিল্ড (Fixing Signing Error)
+  # 🤖 অ্যান্ড্রয়েড এবং উইন্ডোজ বিল্ড
   build-android-windows:
     name: 🤖 Android & Windows
     runs-on: windows-latest
@@ -51,8 +55,7 @@ jobs:
           cache: true
       - name: 📦 Get Deps
         run: flutter pub get
-      - name: 🤖 Build APK (Unsigned Release)
-        # Using assembleRelease to avoid strict signing checks if configured
+      - name: 🤖 Build APK (Debug/Unsigned)
         run: flutter build apk --debug --dart-define=API_URL=https://api.ebfic.store
       - name: 🪟 Build Windows
         run: flutter build windows --release --dart-define=API_URL=https://api.ebfic.store
@@ -60,5 +63,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            build/app/outputs/flutter-apk/app-debug.apk
+            build/app/outputs/flutter-apk/*.apk
             build/windows/x64/runner/Release/*.exe
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
