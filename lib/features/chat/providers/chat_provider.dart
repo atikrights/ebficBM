@@ -225,11 +225,17 @@ class ChatProvider extends ChangeNotifier with WidgetsBindingObserver {
   }
 
   Future<void> loadSessions() async {
+    if (_isLoading) return; // Prevent duplicate concurrent loads
     _isLoading = true;
     notifyListeners();
-    _sessions = await _service.getChatSessions();
-    _isLoading = false;
-    notifyListeners();
+    try {
+      _sessions = await _service.getChatSessions().timeout(const Duration(seconds: 10));
+    } catch (e) {
+      debugPrint("Load Sessions Error: $e");
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
   }
 
   List<Map<String, dynamic>> getMessages(String receiverType) {
@@ -240,9 +246,11 @@ class ChatProvider extends ChangeNotifier with WidgetsBindingObserver {
     _isLoading = true;
     notifyListeners();
     try {
-      _messages[receiverType] = await _service.getChats(receiverType);
+      _messages[receiverType] = await _service.getChats(receiverType).timeout(const Duration(seconds: 10));
       if (int.tryParse(receiverType) != null) _service.markAsRead(int.parse(receiverType));
-    } catch (e) {} finally {
+    } catch (e) {
+      debugPrint("Load Messages ($receiverType) Error: $e");
+    } finally {
       _isLoading = false;
       notifyListeners();
     }
