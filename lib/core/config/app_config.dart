@@ -1,6 +1,5 @@
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'dart:html' as html if (dart.library.io) 'dart:io';
 
 /// Universal domain-aware configuration for EBM.
 class AppConfig {
@@ -30,10 +29,10 @@ class AppConfig {
       return definedUrl.endsWith('/api') ? definedUrl : '$definedUrl/api';
     }
 
-    // 3. Web Smart Detection
+    // 3. Web Smart Detection (Universal implementation)
     if (kIsWeb) {
-      final host = html.window.location.hostname;
-      if (host != null && host.contains('ebfic.store')) {
+      final host = Uri.base.host;
+      if (host.contains('ebfic.store')) {
         return 'https://api.ebfic.store/api';
       }
       if (host == 'localhost' || host == '127.0.0.1') {
@@ -41,7 +40,7 @@ class AppConfig {
       }
     }
 
-    // 4. Fallback based on mode
+    // 4. Final Fallback (Production vs Local Debug)
     if (kReleaseMode) return 'https://api.ebfic.store/api';
     return 'http://127.0.0.1:8000/api';
   }
@@ -49,7 +48,7 @@ class AppConfig {
   /// The EBM Central Portal URL for SSO.
   static String get centralUrl {
     if (kIsWeb) {
-      final host = html.window.location.hostname;
+      final host = Uri.base.host;
       if (host.contains('ebfic.store')) {
         return 'https://central.ebfic.store';
       }
