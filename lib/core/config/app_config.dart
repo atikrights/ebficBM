@@ -33,7 +33,7 @@ class AppConfig {
     // 3. Web Smart Detection
     if (kIsWeb) {
       final host = html.window.location.hostname;
-      if (host.contains('ebfic.store')) {
+      if (host != null && host.contains('ebfic.store')) {
         return 'https://api.ebfic.store/api';
       }
       if (host == 'localhost' || host == '127.0.0.1') {
