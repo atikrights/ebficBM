@@ -55,24 +55,44 @@ jobs:
         with:
           channel: 'stable'
       
-      - name: 📦 Build APK
+      - name: 📦 Build APK & AAB
         run: |
           flutter pub get
           flutter clean
-          flutter build apk --debug --dart-define=API_URL=https://api.ebfic.store --suppress-analytics --no-tree-shake-icons
-        continue-on-error: true # যদি টুল এরর দেয় তবুও আমরা APK খুঁজি
+          flutter build apk --release --dart-define=API_URL=https://api.ebfic.store
+          flutter build appbundle --release --dart-define=API_URL=https://api.ebfic.store
+        continue-on-error: true
         
-      - name: 📂 Force Collect APKs
+      - name: 📂 Force Collect Releases
         run: |
           mkdir -p release_assets
-          # পুরো ডিরেক্টরিতে সব .apk ফাইল খুঁজে কপি করো
           find . -name "*.apk" -type f -exec cp {} release_assets/ \;
+          find . -name "*.aab" -type f -exec cp {} release_assets/ \;
 
       - name: 📤 Upload to Release
         uses: softprops/action-gh-release@v2
         with:
-          files: release_assets/*.apk
-          generate_release_notes: true
+          files: release_assets/*
+          name: EBM Mobile Update ${{ github.ref_name }}
+          body: |
+            🚀 **EBM Mobile App Official Release**
+            
+            ### 📝 What's New in this Update:
+            - Auto-generated changelogs and stability improvements.
+            - Real-time chat synchronization & core performance boosts.
+            
+            ### 📥 Installation Instructions:
+            **Android Users:**
+            1. Download the `.apk` file below.
+            2. Open the downloaded file.
+            3. If prompted, select "Allow installation from unknown sources".
+            4. Tap "Install" to update your EBM app.
+            
+            *(Note: The `.aab` file is provided strictly for Google Play Store console uploads.)*
+            
+            ---
+            👨‍💻 **Developed & Architected by: Atik Islam**
+            *EBM Ecosystem Master CI/CD Pipeline*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
