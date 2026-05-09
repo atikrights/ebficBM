@@ -69,7 +69,8 @@ class AppConfig {
   }
 
   /// Broadcasting Auth Endpoint
-  static String get authEndpoint => '$baseUrl/broadcasting/auth';
+  /// NOTE: Laravel's broadcasting/auth is NOT under /api prefix.
+  static String get authEndpoint => '${baseUrl.replaceFirst('/api', '')}/broadcasting/auth';
 
   /// Pusher Configuration
   static const String pusherKey = "194c83322db5de281baf";
