@@ -46,7 +46,8 @@ class PusherService {
       
       // Only subscribe to global channel if we have a token (likely admin/manager)
       if (token != null) {
-        await pusher.subscribe(channelName: "private-ebm-global");
+        final prefix = AppConfig.envPrefix;
+        await pusher.subscribe(channelName: "private-${prefix}ebm-global");
       }
       
       await pusher.connect();
@@ -58,7 +59,8 @@ class PusherService {
 
   Future<void> subscribeToUserChannels(int userId) async {
     try {
-      final channelName = "private-dm.$userId";
+      final prefix = AppConfig.envPrefix;
+      final channelName = "private-${prefix}dm.$userId";
       await pusher.subscribe(channelName: channelName);
       log("Pusher Subscribing to user channel: $channelName");
     } catch (e) {
@@ -68,7 +70,8 @@ class PusherService {
 
   Future<void> unsubscribeFromUserChannels(int userId) async {
     try {
-      await pusher.unsubscribe(channelName: "private-dm.$userId");
+      final prefix = AppConfig.envPrefix;
+      await pusher.unsubscribe(channelName: "private-${prefix}dm.$userId");
     } catch (e) {}
   }
 

@@ -79,5 +79,8 @@ class AppConfig {
   static String assetLink(String assetId) => '$baseUrl/assets/$assetId/view';
   static String sharedLink(String assetId) => '$baseUrl/assets/$assetId/share';
 
+  /// Channel Prefix for Environment Isolation (Matches Backend & Central)
+  static String get envPrefix => isLocalhost ? 'local.' : 'prod.';
+
   static final AppConfig instance = AppConfig._internal();
 }
