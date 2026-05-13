@@ -60,9 +60,8 @@ jobs:
         run: |
           flutter pub get
           flutter clean
-          flutter build apk --release --dart-define=API_URL=https://api.ebfic.store
-          flutter build appbundle --release --dart-define=API_URL=https://api.ebfic.store
-        continue-on-error: true
+          flutter build apk --release --no-tree-shake-icons --dart-define=API_URL=https://api.ebfic.store
+          flutter build appbundle --release --no-tree-shake-icons --dart-define=API_URL=https://api.ebfic.store
         
       - name: 📂 Force Collect Releases
         run: |
