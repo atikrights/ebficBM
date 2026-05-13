@@ -70,11 +70,64 @@ jobs:
           find . -name "*.apk" -type f -exec cp {} release_assets/ \;
           find . -name "*.aab" -type f -exec cp {} release_assets/ \;
 
+      - name: 📤 Upload Android Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-assets
+          path: release_assets/*
+
+  # 🪟 উইন্ডোজ বিল্ড
+  build-windows:
+    runs-on: windows-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    steps:
+      - name: 📥 Checkout
+        uses: actions/checkout@v4
+      - name: 🐦 Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+      - name: 🪟 Build Windows
+        run: |
+          flutter pub get
+          flutter build windows --release --dart-define=API_URL=https://api.ebfic.store
+      
+      - name: 📂 Package Windows Build
+        run: |
+          mkdir release_assets
+          Compress-Archive -Path build\windows\x64\runner\Release\* -DestinationPath release_assets\EBM_App_Windows.zip
+        shell: powershell
+
+      - name: 📤 Upload Windows Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-assets
+          path: release_assets/*.zip
+
+  # 🚀 ইউনিফাইড রিলিজ
+  create-release:
+    name: 🚀 Create Unified Release
+    needs: [build-android, build-windows]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    permissions:
+      contents: write
+    steps:
+      - name: 📥 Download All Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: final-assets
+          
+      - name: 📂 Flatten Assets
+        run: |
+          mkdir release_ready
+          find final-assets -type f -exec cp {} release_ready/ \;
+          
       - name: 📤 Upload to Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_name }}
-          files: release_assets/*
+          files: release_ready/*
           name: "EBM Mobile Update ${{ github.ref_name }}"
           body: |
             🚀 **EBM Mobile App Official Release — ${{ github.ref_name }}**
@@ -99,35 +152,5 @@ jobs:
             ---
             👨‍💻 **Developed & Architected by: Atik Islam**
             *EBM Ecosystem — Enterprise CI/CD Pipeline*
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-  # 🪟 উইন্ডোজ বিল্ড
-  build-windows:
-    runs-on: windows-latest
-    if: startsWith(github.ref, 'refs/tags/v')
-    steps:
-      - name: 📥 Checkout
-        uses: actions/checkout@v4
-      - name: 🐦 Setup Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          channel: 'stable'
-      - name: 🪟 Build Windows
-        run: |
-          flutter pub get
-          flutter build windows --release --dart-define=API_URL=https://api.ebfic.store
-      
-      - name: 📂 Package Windows Build
-        run: |
-          mkdir release_assets
-          Compress-Archive -Path build\windows\x64\runner\Release\* -DestinationPath release_assets\EBM_App_Windows.zip
-        shell: powershell
-
-      - name: 📤 Upload Windows ZIP to Release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ github.ref_name }}
-          files: release_assets/*.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
