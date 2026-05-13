@@ -47,7 +47,7 @@ android {
     }
 }
 
-// Optimization for Windows APK discovery
+// Optimization for Windows APK and AAB discovery
 tasks.whenTaskAdded {
     if (name.contains("assembleRelease")) {
         doLast {
@@ -58,6 +58,20 @@ tasks.whenTaskAdded {
                 buildApkDir.listFiles()?.forEach { file ->
                     if (file.name.endsWith(".apk")) {
                         file.copyTo(File(flutterApkDir, file.name), overwrite = true)
+                    }
+                }
+            }
+        }
+    }
+    if (name.contains("bundleRelease")) {
+        doLast {
+            val buildBundleDir = File("${project.projectDir}/build/outputs/bundle/release")
+            val flutterBundleDir = File("${project.rootDir}/../build/app/outputs/bundle/release")
+            if (buildBundleDir.exists()) {
+                flutterBundleDir.mkdirs()
+                buildBundleDir.listFiles()?.forEach { file ->
+                    if (file.name.endsWith(".aab")) {
+                        file.copyTo(File(flutterBundleDir, file.name), overwrite = true)
                     }
                 }
             }
