@@ -38,6 +38,18 @@ class AppConfig {
       if (host == 'localhost' || host == '127.0.0.1') {
         return 'http://127.0.0.1:8000/api';
       }
+      // If accessed via local network IP (e.g. 192.168.1.5)
+      if (RegExp(r'^[0-9]+(?:\.[0-9]+){3}$').hasMatch(host)) {
+        return 'http://$host:8000/api';
+      }
+      // For any other dynamic domain (e.g., custom server domain)
+      // If the frontend is hosted on a domain, assume API is on api.<domain>
+      final parts = host.split('.');
+      if (parts.length > 2) {
+        final rootDomain = parts.sublist(parts.length - 2).join('.');
+        return 'https://api.$rootDomain/api';
+      }
+      return 'https://$host/api';
     }
 
     // 4. Final Fallback (Production vs Local Debug)
@@ -53,6 +65,13 @@ class AppConfig {
         return 'https://central.ebfic.store';
       }
       if (host == 'localhost' || host == '127.0.0.1') return 'http://127.0.0.1:3000';
+      if (RegExp(r'^[0-9]+(?:\.[0-9]+){3}$').hasMatch(host)) return 'http://$host:3000';
+      
+      final parts = host.split('.');
+      if (parts.length > 2) {
+        final rootDomain = parts.sublist(parts.length - 2).join('.');
+        return 'https://central.$rootDomain';
+      }
     }
     return kReleaseMode ? 'https://central.ebfic.store' : 'http://127.0.0.1:3000';
   }
