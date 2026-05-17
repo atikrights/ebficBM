@@ -463,10 +463,8 @@ class _CreateTaskDialogState extends State<_CreateTaskDialog> with SingleTickerP
       setState(() {
         _matchedPlan = null;
         _matchedProject = null;
-        if (_selectedPlan != null) {
-          _selectedPlan = null;
-          _selectedProject = null;
-        }
+        _selectedPlan = null;
+        _selectedProject = null;
       });
     }
 
@@ -480,6 +478,9 @@ class _CreateTaskDialogState extends State<_CreateTaskDialog> with SingleTickerP
             setState(() {
               _matchedProject = project;
               _matchedPlan = plan;
+              // Automatically select and link the plan and project
+              _selectedProject = project;
+              _selectedPlan = plan;
             });
           }
           return;
@@ -533,15 +534,17 @@ class _CreateTaskDialogState extends State<_CreateTaskDialog> with SingleTickerP
 
     final companyId = _selectedProject?.companyId ?? cp.selectedCompany?.id ?? (cp.companies.isNotEmpty ? cp.companies.first.id : '1');
 
-    await tp.addTask(newTask, companyId: companyId);
+    final createdTask = await tp.addTask(newTask, companyId: companyId);
 
     await Future.delayed(const Duration(milliseconds: 150));
     if (!mounted) return;
     
     Navigator.pop(context);
+    
+    final finalTaskId = createdTask?.id ?? newId;
     Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => TaskWorkspaceScreen(taskId: newId)),
+      MaterialPageRoute(builder: (_) => TaskWorkspaceScreen(taskId: finalTaskId)),
     );
   }
 

@@ -25,7 +25,7 @@ class _ProjectListScreenState extends State<ProjectListScreen> {
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
   String _selectedFilter = 'All';
-  final List<String> _filters = ['All', 'Active', 'Hold', 'Complete'];
+  final List<String> _filters = ['All', 'Active', 'Pending', 'Private', 'Hold', 'Complete'];
 
   @override
   void dispose() {
@@ -37,9 +37,15 @@ class _ProjectListScreenState extends State<ProjectListScreen> {
   List<Project> _applyFilter(List<Project> all) {
     List<Project> filtered = all;
 
-    // Status filter
+    // Approval-based + status filter
     if (_selectedFilter == 'Active') {
-      filtered = filtered.where((p) => p.status == ProjectStatus.inProgress).toList();
+      filtered = filtered.where((p) => p.isApproved && p.status == ProjectStatus.inProgress).toList();
+    } else if (_selectedFilter == 'Pending') {
+      // Attached to a company but not yet approved
+      filtered = filtered.where((p) => !p.isApproved && p.companyId != null).toList();
+    } else if (_selectedFilter == 'Private') {
+      // Not attached to any company (owner only)
+      filtered = filtered.where((p) => p.companyId == null || p.companyId!.isEmpty).toList();
     } else if (_selectedFilter == 'Hold') {
       filtered = filtered.where((p) => p.status == ProjectStatus.delayed).toList();
     } else if (_selectedFilter == 'Complete') {
@@ -61,7 +67,9 @@ class _ProjectListScreenState extends State<ProjectListScreen> {
 
   int _countForFilter(List<Project> all, String filter) {
     if (filter == 'All') return all.length;
-    if (filter == 'Active') return all.where((p) => p.status == ProjectStatus.inProgress).length;
+    if (filter == 'Active') return all.where((p) => p.isApproved && p.status == ProjectStatus.inProgress).length;
+    if (filter == 'Pending') return all.where((p) => !p.isApproved && p.companyId != null).length;
+    if (filter == 'Private') return all.where((p) => p.companyId == null || p.companyId!.isEmpty).length;
     if (filter == 'Hold') return all.where((p) => p.status == ProjectStatus.delayed).length;
     if (filter == 'Complete') return all.where((p) => p.status == ProjectStatus.completed).length;
     return 0;
@@ -641,16 +649,58 @@ class _ProjectListItemState extends State<_ProjectListItem> {
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
-                              fontSize: 15, // Slightly larger
+                              fontSize: 15,
                               fontWeight: FontWeight.w800,
                               color: widget.isDark ? Colors.white.withOpacity(0.95) : AppColors.textDark,
                               letterSpacing: -0.4,
                             ),
                           ),
                         ),
+                        // Pending badge
+                        if (!widget.project.isApproved && widget.project.companyId != null)
+                          Padding(
+                            padding: const EdgeInsets.only(left: 6),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: Colors.orangeAccent.withOpacity(0.12),
+                                borderRadius: BorderRadius.circular(4),
+                                border: Border.all(color: Colors.orangeAccent.withOpacity(0.3)),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: const [
+                                  Icon(IconsaxPlusLinear.timer_1, size: 9, color: Colors.orangeAccent),
+                                  SizedBox(width: 3),
+                                  Text('PENDING', style: TextStyle(fontSize: 8, fontWeight: FontWeight.w900, color: Colors.orangeAccent, letterSpacing: 0.5)),
+                                ],
+                              ),
+                            ),
+                          ),
+                        // Private badge (no company)
+                        if (widget.project.companyId == null || widget.project.companyId!.isEmpty)
+                          Padding(
+                            padding: const EdgeInsets.only(left: 6),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: Colors.blueGrey.withOpacity(0.12),
+                                borderRadius: BorderRadius.circular(4),
+                                border: Border.all(color: Colors.blueGrey.withOpacity(0.3)),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: const [
+                                  Icon(IconsaxPlusLinear.lock, size: 9, color: Colors.blueGrey),
+                                  SizedBox(width: 3),
+                                  Text('PRIVATE', style: TextStyle(fontSize: 8, fontWeight: FontWeight.w900, color: Colors.blueGrey, letterSpacing: 0.5)),
+                                ],
+                              ),
+                            ),
+                          ),
                         if (widget.project.status == ProjectStatus.draft)
                           Padding(
-                            padding: const EdgeInsets.only(left: 8),
+                            padding: const EdgeInsets.only(left: 6),
                             child: Container(
                               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                               decoration: BoxDecoration(
@@ -720,7 +770,7 @@ class _ProjectListItemState extends State<_ProjectListItem> {
           flex: 2,
           child: Align(
             alignment: Alignment.centerRight,
-            child: _statusBadge(widget.project.status, statusColor),
+            child: _approvalStatusBadge(),
           ),
         ),
         Padding(
@@ -795,7 +845,7 @@ class _ProjectListItemState extends State<_ProjectListItem> {
                 ],
               ),
             ),
-            _statusBadge(widget.project.status, statusColor),
+            _approvalStatusBadge(),
           ],
         ),
         const SizedBox(height: 12),
@@ -938,22 +988,45 @@ class _ProjectListItemState extends State<_ProjectListItem> {
     );
   }
 
-  Widget _statusBadge(ProjectStatus status, Color color) {
+  Widget _approvalStatusBadge() {
+    // Private: no company attached
+    if (widget.project.companyId == null || widget.project.companyId!.isEmpty) {
+      return _buildBadge('PRIVATE', Colors.blueGrey, IconsaxPlusLinear.lock);
+    }
+    // Pending approval
+    if (!widget.project.isApproved) {
+      return _buildBadge('PENDING', Colors.orangeAccent, IconsaxPlusLinear.timer_1);
+    }
+    // Approved: show actual status
+    final color = _getStatusColor(widget.project.status);
+    return _buildBadge(widget.project.status.name.toUpperCase(), color, null);
+  }
+
+  Widget _buildBadge(String label, Color color, IconData? icon) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
         color: color.withOpacity(0.12),
         borderRadius: BorderRadius.circular(6),
         border: Border.all(color: color.withOpacity(0.25), width: 0.5),
       ),
-      child: Text(
-        status.name.toUpperCase(),
-        style: TextStyle(
-          fontSize: 8, 
-          fontWeight: FontWeight.w900, 
-          color: color, 
-          letterSpacing: 0.8,
-        ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (icon != null) ...[
+            Icon(icon, size: 9, color: color),
+            const SizedBox(width: 4),
+          ],
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 8,
+              fontWeight: FontWeight.w900,
+              color: color,
+              letterSpacing: 0.8,
+            ),
+          ),
+        ],
       ),
     );
   }

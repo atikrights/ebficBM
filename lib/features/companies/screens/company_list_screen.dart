@@ -386,26 +386,7 @@ class CompanyListScreen extends StatelessWidget {
       itemCount: companies.length,
       itemBuilder: (context, index) {
         final company = companies[index];
-        return InkWell(
-          onTap: () {
-            provider.selectCompany(company.id);
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => Scaffold(
-                  body: SafeArea(
-                    child: CompanyDetailView(
-                      company: company,
-                      onBack: () => Navigator.pop(context),
-                    ),
-                  ),
-                ),
-              ),
-            );
-          },
-          borderRadius: BorderRadius.circular(24),
-          child: _PremiumCompanyCard(company: company, isDark: isDark),
-        )
+        return _PremiumCompanyCard(company: company, isDark: isDark)
             .animate()
             .fade(delay: Duration(milliseconds: 40 * index))
             .slideY(begin: 0.08, end: 0, delay: Duration(milliseconds: 40 * index));
@@ -687,12 +668,12 @@ class CompanyListScreen extends StatelessWidget {
                           onPressed: () {
                              if (nameController.text.trim().isEmpty) return;
                              
-                             int randomId = 100000 + Random().nextInt(1000);
-                             while(provider.allCompanies.any((c) => c.id == 'CID-$randomId')) {
-                               randomId = 100000 + Random().nextInt(1000);
+                             int randomId = 100000 + Random().nextInt(900000);
+                             while(provider.allCompanies.any((c) => c.id == randomId.toString())) {
+                               randomId = 100000 + Random().nextInt(900000);
                              }
                              final newCompany = Company(
-                               id: 'CID-$randomId',
+                               id: randomId.toString(),
                                name: nameController.text.trim(),
                                website: websiteController.text.trim(),
                                categories: selectedCategories,
@@ -778,6 +759,9 @@ class _PremiumCompanyCard extends StatelessWidget {
     final subColor = isDark ? Colors.white54 : Colors.black54;
     final isCritical = company.healthScore < 0.7;
     final healthColor = isCritical ? AppColors.error : AppColors.success;
+    
+    final auth = context.watch<AuthProvider>();
+    final canDelete = auth.isAdmin || (auth.isManager && company.status != CompanyStatus.active);
 
     return GlassContainer(
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
@@ -788,34 +772,53 @@ class _PremiumCompanyCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // ── TOP ROW: Logo + Name + Status ───────────────────
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              // Logo
-              Container(
-                width: 40, height: 40,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: AppColors.primaryGradient,
-                  boxShadow: [BoxShadow(color: AppColors.primary.withOpacity(0.3), blurRadius: 8, offset: const Offset(0, 3))],
+          GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: () {
+              context.read<CompanyProvider>().selectCompany(company.id);
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => Scaffold(
+                    body: SafeArea(
+                      child: CompanyDetailView(
+                        company: company,
+                        onBack: () => Navigator.pop(context),
+                      ),
+                    ),
+                  ),
                 ),
-                child: company.logoUrl != null && company.logoUrl!.isNotEmpty
-                    ? ClipOval(child: EbmImage(source: company.logoUrl!, width: 40, height: 40, fit: BoxFit.cover, errorWidget: const Icon(IconsaxPlusLinear.building_3, color: Colors.white, size: 20)))
-                    : const Icon(IconsaxPlusLinear.building_3, color: Colors.white, size: 20),
-              ),
-              const SizedBox(width: 10),
-              // Name
-              Expanded(
-                child: Text(
-                  company.name,
-                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: textColor, letterSpacing: -0.2),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+              );
+            },
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                // Logo
+                Container(
+                  width: 40, height: 40,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: AppColors.primaryGradient,
+                    boxShadow: [BoxShadow(color: AppColors.primary.withOpacity(0.3), blurRadius: 8, offset: const Offset(0, 3))],
+                  ),
+                  child: company.logoUrl != null && company.logoUrl!.isNotEmpty
+                      ? ClipOval(child: EbmImage(source: company.logoUrl!, width: 40, height: 40, fit: BoxFit.cover, errorWidget: const Icon(IconsaxPlusLinear.building_3, color: Colors.white, size: 20)))
+                      : const Icon(IconsaxPlusLinear.building_3, color: Colors.white, size: 20),
                 ),
-              ),
-              const SizedBox(width: 8),
-              _buildStatusBadge(),
-            ],
+                const SizedBox(width: 10),
+                // Name
+                Expanded(
+                  child: Text(
+                    company.name,
+                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: textColor, letterSpacing: -0.2),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                _buildStatusBadge(),
+              ],
+            ),
           ),
 
           const SizedBox(height: 10),
@@ -824,7 +827,7 @@ class _PremiumCompanyCard extends StatelessWidget {
           Row(
             children: [
               InkWell(
-                onTap: () => ClipboardHelper.copy(context, company.id),
+                onTap: () => ClipboardHelper.copy(context, 'CID-${company.id}'),
                 borderRadius: BorderRadius.circular(6),
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
@@ -838,7 +841,7 @@ class _PremiumCompanyCard extends StatelessWidget {
                     children: [
                       const Icon(IconsaxPlusLinear.copy, size: 9, color: AppColors.primary),
                       const SizedBox(width: 3),
-                      Text(company.id,
+                      Text('CID-${company.id}',
                           style: const TextStyle(color: AppColors.primary, fontSize: 9, fontWeight: FontWeight.bold, letterSpacing: 0.5)),
                     ],
                   ),
@@ -935,13 +938,13 @@ class _PremiumCompanyCard extends StatelessWidget {
               ),
               const SizedBox(width: 8),
               _buildIconButton(context, IconsaxPlusLinear.user_add, 'Assign', () {}, isDanger: false),
-              if (company.status != CompanyStatus.active) ...[
+              if (canDelete) ...[
                 const SizedBox(width: 8),
                 _buildIconButton(context, IconsaxPlusLinear.trash, 'Delete', () => _showRemovePopup(context, textColor), isDanger: true),
               ],
               const SizedBox(width: 8),
               // Copy CID quick action
-              _buildIconButton(context, IconsaxPlusLinear.copy, 'Copy CID', () => ClipboardHelper.copy(context, company.id), isDanger: false),
+              _buildIconButton(context, IconsaxPlusLinear.copy, 'Copy CID', () => ClipboardHelper.copy(context, 'CID-${company.id}'), isDanger: false),
             ],
           ),
         ],

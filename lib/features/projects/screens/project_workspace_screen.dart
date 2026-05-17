@@ -1170,7 +1170,8 @@ class _ProjectSetupFormState extends State<_ProjectSetupForm> {
     setState(() => _isSaving = true);
     await Future.delayed(const Duration(milliseconds: 600));
     
-    final updated = widget.project.copyWith(
+    final p = widget.project;
+    final updated = p.copyWith(
       name: _nameCtrl.text,
       category: _catCtrl.text,
       description: _descCtrl.text,
@@ -1181,6 +1182,8 @@ class _ProjectSetupFormState extends State<_ProjectSetupForm> {
       coverPhotoUrl: _coverCtrl.text,
       inspirationText: _inspCtrl.text,
       managerSignature: _sigCtrl.text,
+      managerSignatureTimestamp: (_sigCtrl.text != p.managerSignature && _sigCtrl.text.isNotEmpty) 
+          ? DateTime.now() : p.managerSignatureTimestamp,
     );
 
     if (mounted) {
@@ -2044,7 +2047,8 @@ class _PlanConsoleBoardState extends State<_PlanConsoleBoard> {
           final oldId = m['id'] ?? DateTime.now().millisecondsSinceEpoch.toString();
           final task = SystemTask.fromMap(m).copyWith(
             id: 'tsk_${DateTime.now().microsecondsSinceEpoch}_$oldId',
-            planId: widget.plan.id
+            planId: widget.plan.id,
+            projectId: widget.project.id,
           );
           tp.addTask(task, companyId: widget.project.companyId ?? '1');
           count++;
@@ -2082,21 +2086,48 @@ class _PlanConsoleBoardState extends State<_PlanConsoleBoard> {
         actions: [
           TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
           ElevatedButton(
-            onPressed: () {
+            onPressed: () async {
               final tp = context.read<TaskProvider>();
-              final match = tp.allTasks.where((t) => t.taskNumber.toUpperCase() == _searchCtrl.text.trim().toUpperCase());
-              if (match.isNotEmpty) {
-                final task = match.first;
-                // Link it via ProjectProvider to get the Log
-                context.read<ProjectProvider>().linkTaskToPlan(widget.project.id, widget.plan.id, task.id, task.title, 'Admin');
-                // Also update TaskProvider
-                tp.updateTaskStatus(task.id, task.status);
+              final query = _searchCtrl.text.trim().toUpperCase();
+              if (query.isEmpty) return;
+
+              // 1. Exact match
+              var matches = tp.allTasks.where((t) => t.taskNumber.toUpperCase() == query);
+
+              // 2. Contains match on taskNumber
+              if (matches.isEmpty) {
+                matches = tp.allTasks.where((t) => t.taskNumber.toUpperCase().contains(query));
+              }
+
+              // 3. Contains match on title
+              if (matches.isEmpty) {
+                matches = tp.allTasks.where((t) => t.title.toUpperCase().contains(query));
+              }
+
+              if (matches.isNotEmpty) {
+                final task = matches.first;
                 
-                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Node ${task.taskNumber} attached to traceability flow.'), behavior: SnackBarBehavior.floating));
+                // Link it by updating planId and projectId via TaskProvider
+                final updatedTask = task.copyWith(
+                  planId: widget.plan.id,
+                  projectId: widget.project.id,
+                );
+                await tp.updateTask(updatedTask);
+                
+                // Also update ProjectProvider
+                await context.read<ProjectProvider>().linkTaskToPlan(widget.project.id, widget.plan.id, task.id, task.title, 'Admin');
+                
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                  content: Text('Node ${task.taskNumber} successfully attached to traceability flow.'),
+                  behavior: SnackBarBehavior.floating,
+                ));
                 _searchCtrl.clear();
                 Navigator.pop(context);
               } else {
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('UID not found in console registry.')));
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                  content: Text('UID not found in console registry.'),
+                  behavior: SnackBarBehavior.floating,
+                ));
               }
             },
             style: ElevatedButton.styleFrom(backgroundColor: color, foregroundColor: Colors.white),
@@ -2316,6 +2347,7 @@ class _PlanConsoleBoardState extends State<_PlanConsoleBoard> {
       title: title.trim(),
       status: TaskStatus.todo,
       planId: widget.plan.id,
+      projectId: widget.project.id,
     );
     tp.addTask(newTask, companyId: widget.project.companyId ?? '1');
     
@@ -2756,7 +2788,7 @@ class _StrategicRadarMapState extends State<_StrategicRadarMap> with SingleTicke
 
   @override
   Widget build(BuildContext context) {
-    final tasks = context.watch<TaskProvider>().allTasks.where((t) => widget.project.taskIds.contains(t.id)).toList();
+    final tasks = context.watch<TaskProvider>().allTasks.where((t) => t.projectId == widget.project.id).toList();
     final isDark = Theme.of(context).brightness == Brightness.dark;
     
     return Stack(

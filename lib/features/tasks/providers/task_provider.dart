@@ -112,8 +112,8 @@ class TaskProvider extends ChangeNotifier {
     await prefs.setString(_storageKey, encoded);
   }
 
-  Future<void> addTask(SystemTask task, {required String companyId}) async {
-    if (_api == null) return;
+  Future<SystemTask?> addTask(SystemTask task, {required String companyId}) async {
+    if (_api == null) return null;
 
     try {
       final response = await _api!.post('/tasks', {
@@ -122,13 +122,16 @@ class TaskProvider extends ChangeNotifier {
       });
 
       if (response != null) {
-        _tasks.insert(0, SystemTask.fromMap(response));
+        final created = SystemTask.fromMap(response);
+        _tasks.insert(0, created);
         await _saveToStorage();
         notifyListeners();
+        return created;
       }
     } catch (e) {
       debugPrint('❌ Add Task Error: $e');
     }
+    return null;
   }
 
   Future<void> updateTask(SystemTask task) async {

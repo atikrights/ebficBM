@@ -24,6 +24,7 @@ import 'package:ebficbm/features/companies/screens/platform_doc_editor_screen.da
 import 'package:ebficbm/features/companies/screens/platform_doc_view_screen.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
+import 'package:ebficbm/core/providers/auth_provider.dart';
 
 class WordLimitFormatter extends TextInputFormatter {
   final int maxWords;
@@ -64,7 +65,7 @@ class _CompanyManageScreenState extends State<CompanyManageScreen> {
   int _settingsTabIndex = 0;
   final List<String> _settingsTabs = ['General', 'Customize', 'Advanced'];
 
-  final List<String> _tabNames = ['Overview', 'Blueprint', 'Records', 'Analytics', 'Project Hub', 'Settings'];
+  final List<String> _tabNames = ['Overview', 'Blueprint', 'Records', 'Analytics', 'Project', 'Settings'];
   final List<IconData> _tabIcons = [
     IconsaxPlusLinear.element_3,
     IconsaxPlusLinear.edit_2,
@@ -513,6 +514,9 @@ class _CompanyManageScreenState extends State<CompanyManageScreen> {
   Widget _buildProjectHubTab(Company company, bool isDark) {
     final projectProvider = context.watch<ProjectProvider>();
     final projects = projectProvider.getProjectsForCompany(company.id);
+    final userRole = context.read<AuthProvider>().userRole?.toLowerCase() ?? '';
+    final canApprove = ['admin', 'sub_admin', 'super_admin'].contains(userRole);
+    final canManageProjects = ['admin', 'sub_admin', 'manager', 'super_admin'].contains(userRole);
 
     return CustomScrollView(
       physics: const BouncingScrollPhysics(),
@@ -526,12 +530,21 @@ class _CompanyManageScreenState extends State<CompanyManageScreen> {
                   Expanded(
                     child: Text('Project Deployments', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black)),
                   ),
-                  ElevatedButton.icon(
-                    onPressed: () => _showDeployProjectDialog(context, company, isDark),
-                    icon: const Icon(IconsaxPlusLinear.add, size: 16),
-                    label: const Text('Deploy'),
-                    style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
-                  )
+                  if (canManageProjects) ...[
+                    ElevatedButton.icon(
+                      onPressed: () => _showAttachProjectDialog(context, company, isDark),
+                      icon: const Icon(IconsaxPlusLinear.link, size: 16),
+                      label: const Text('Attach'),
+                      style: ElevatedButton.styleFrom(backgroundColor: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.05), foregroundColor: isDark ? Colors.white : Colors.black, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)), elevation: 0),
+                    ),
+                    const SizedBox(width: 8),
+                    ElevatedButton.icon(
+                      onPressed: () => _showDeployProjectDialog(context, company, isDark),
+                      icon: const Icon(IconsaxPlusLinear.add, size: 16),
+                      label: const Text('Deploy'),
+                      style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
+                    ),
+                  ]
                 ],
               ),
               const SizedBox(height: 24),
@@ -584,6 +597,23 @@ class _CompanyManageScreenState extends State<CompanyManageScreen> {
                             ],
                           ),
                         ),
+                        if (!proj.isApproved && canApprove) ...[
+                          ElevatedButton.icon(
+                            onPressed: () {
+                              projectProvider.updateProject(proj.copyWith(isApproved: true));
+                              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Project Approved!'), backgroundColor: AppColors.success, behavior: SnackBarBehavior.floating));
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.success.withValues(alpha: 0.2),
+                              foregroundColor: AppColors.success,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              elevation: 0
+                            ),
+                            icon: const Icon(IconsaxPlusLinear.tick_circle, size: 16),
+                            label: const Text('Approve', style: TextStyle(fontWeight: FontWeight.bold)),
+                          ),
+                          const SizedBox(width: 8),
+                        ],
                         ElevatedButton(
                           onPressed: () {
                             Navigator.push(context, MaterialPageRoute(builder: (_) => ProjectWorkspaceScreen(projectId: proj.id)));
@@ -1312,13 +1342,7 @@ class _CompanyManageScreenState extends State<CompanyManageScreen> {
                       
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
-                          content: Row(
-                            children: [
-                              const Icon(IconsaxPlusLinear.tick_circle, color: Colors.white, size: 18),
-                              const SizedBox(width: 12),
-                              Text('Corporate identity updated with "${asset.name}"'),
-                            ],
-                          ),
+                          content: const Text('Emblem synced successfully!'),
                           backgroundColor: AppColors.success,
                           behavior: SnackBarBehavior.floating,
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -1327,6 +1351,90 @@ class _CompanyManageScreenState extends State<CompanyManageScreen> {
                     },
                   ),
                 ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _showAttachProjectDialog(BuildContext context, Company company, bool isDark) {
+    showGeneralDialog(
+      context: context,
+      barrierDismissible: true,
+      barrierLabel: 'Attach Project',
+      pageBuilder: (ctx, _, __) {
+        return Center(
+          child: Material(
+            color: Colors.transparent,
+            child: GlassContainer(
+              width: 500,
+              padding: const EdgeInsets.all(24),
+              borderRadius: 24,
+              child: Consumer<ProjectProvider>(
+                builder: (context, projectProvider, child) {
+                  final availableProjects = projectProvider.allProjects.where((p) => p.companyId?.toString() != company.id.toString()).toList();
+                  return Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text('Attach Project', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black)),
+                          IconButton(icon: Icon(IconsaxPlusLinear.close_circle, color: isDark ? Colors.white : Colors.black), onPressed: () => Navigator.pop(ctx)),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      Text('Select an unlinked project to attach to "${company.name}". This will bring the project into the organizational scope.', style: TextStyle(color: isDark ? Colors.white54 : Colors.black54, fontSize: 13)),
+                      const SizedBox(height: 24),
+                      if (availableProjects.isEmpty)
+                        Container(
+                          padding: const EdgeInsets.all(24),
+                          decoration: BoxDecoration(color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.03), borderRadius: BorderRadius.circular(12)),
+                          child: Center(
+                            child: Text('No available projects to attach.', style: TextStyle(color: isDark ? Colors.white54 : Colors.black54)),
+                          ),
+                        )
+                      else
+                        Container(
+                          height: 300,
+                          decoration: BoxDecoration(
+                            color: isDark ? Colors.white.withValues(alpha: 0.02) : Colors.black.withValues(alpha: 0.02),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: isDark ? Colors.white10 : Colors.black12),
+                          ),
+                          child: ListView.separated(
+                            padding: const EdgeInsets.all(8),
+                            itemCount: availableProjects.length,
+                            separatorBuilder: (_, __) => Divider(color: isDark ? Colors.white10 : Colors.black12, height: 1),
+                            itemBuilder: (context, index) {
+                              final proj = availableProjects[index];
+                              return ListTile(
+                                leading: Container(
+                                  padding: const EdgeInsets.all(8),
+                                  decoration: BoxDecoration(color: proj.brandColor.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
+                                  child: Icon(IconsaxPlusLinear.folder, color: proj.brandColor, size: 18),
+                                ),
+                                title: Text(proj.name, style: TextStyle(color: isDark ? Colors.white : Colors.black, fontWeight: FontWeight.bold, fontSize: 13)),
+                                subtitle: Text(proj.description.isEmpty ? 'No description' : proj.description, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: isDark ? Colors.white54 : Colors.black54, fontSize: 11)),
+                                trailing: ElevatedButton(
+                                  style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)), padding: const EdgeInsets.symmetric(horizontal: 12), minimumSize: const Size(0, 32)),
+                                  onPressed: () {
+                                    projectProvider.updateProject(proj.copyWith(companyId: company.id));
+                                    Navigator.pop(ctx);
+                                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Project attached successfully!'), backgroundColor: AppColors.success, behavior: SnackBarBehavior.floating));
+                                  },
+                                  child: const Text('Attach', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                    ],
+                  );
+                },
               ),
             ),
           ),

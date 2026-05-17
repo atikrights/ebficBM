@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
 import 'package:ebficbm/core/config/app_config.dart';
+import 'package:ebficbm/core/providers/auth_provider.dart';
 import 'package:ebficbm/features/assets/providers/asset_provider.dart';
 import 'package:ebficbm/features/assets/models/asset_model.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
@@ -35,9 +36,11 @@ class EbmImage extends StatelessWidget {
   Widget build(BuildContext context) {
     if (source.isEmpty) return _error();
 
+    final token = context.watch<AuthProvider>().api.token;
+
     // 1. Check if it's a direct web URL (not on our domain)
     if (source.startsWith('http') && !source.contains(AppConfig.origin)) {
-      return _networkImage(source);
+      return _networkImage(source, token);
     }
 
     // 2. Local File path (Desktop/Mobile)
@@ -73,27 +76,28 @@ class EbmImage extends StatelessWidget {
         
         // On Web or if local missing, use resolved URL
         if (asset.url != null && asset.url!.isNotEmpty) {
-          return _networkImage(asset.url!);
+          return _networkImage(asset.url!, token);
         }
         
         // Fallback to AppConfig generated link
-        return _networkImage(AppConfig.assetLink(asset.id));
+        return _networkImage(AppConfig.assetLink(asset.id), token);
       }
     }
 
     // 4. Default fallback: try treating as Network if looks like URL, else error
-    if (source.startsWith('http')) return _networkImage(source);
+    if (source.startsWith('http')) return _networkImage(source, token);
     
     return _error();
   }
 
-  Widget _networkImage(String url) {
+  Widget _networkImage(String url, String? token) {
     return Image.network(
       url,
       width: width,
       height: height,
       fit: fit,
       cacheWidth: isThumbnail ? 300 : cacheWidth,
+      headers: token != null ? {'Authorization': 'Bearer $token'} : null,
       loadingBuilder: (context, child, loadingProgress) {
         if (loadingProgress == null) return child;
         return placeholder ?? _placeholder();

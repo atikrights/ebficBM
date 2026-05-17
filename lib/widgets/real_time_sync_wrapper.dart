@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
+import 'dart:convert';
+import 'package:provider/provider.dart';
 import 'package:ebficbm/core/services/pusher_service.dart';
 import 'package:ebficbm/core/services/refresh_service.dart';
+import 'package:ebficbm/core/providers/auth_provider.dart';
+import 'package:ebficbm/features/tasks/providers/task_provider.dart';
+import 'package:ebficbm/features/projects/providers/project_provider.dart';
 import 'package:pusher_channels_flutter/pusher_channels_flutter.dart';
 
 class RealTimeSyncWrapper extends StatefulWidget {
@@ -32,6 +37,39 @@ class _RealTimeSyncWrapperState extends State<RealTimeSyncWrapper> {
 
     if (triggerEvents.contains(event.eventName)) {
       debugPrint('Real-time update received: ${event.eventName}');
+      
+      // Parse payload to check for team_switched event
+      try {
+        final dynamic rawData = event.data;
+        final Map<String, dynamic> payload = rawData is String
+            ? Map<String, dynamic>.from(json.decode(rawData))
+            : Map<String, dynamic>.from(rawData as Map);
+
+        if (payload['type'] == 'team_switched') {
+          final int? switchedUserId = payload['user_id'] is int 
+              ? payload['user_id'] 
+              : int.tryParse(payload['user_id']?.toString() ?? '');
+
+          if (mounted) {
+            final authProvider = context.read<AuthProvider>();
+            if (switchedUserId != null && authProvider.userId == switchedUserId) {
+              // Context switched on another session - reload local cache
+              context.read<TaskProvider>().reload();
+              context.read<ProjectProvider>().reload();
+
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text("Workspace context updated in real-time!"),
+                  behavior: SnackBarBehavior.floating,
+                  duration: Duration(seconds: 3),
+                ),
+              );
+            }
+          }
+        }
+      } catch (e) {
+        debugPrint('Error decoding Pusher payload: $e');
+      }
       
       // Trigger global refresh using the RefreshService
       if (mounted) {

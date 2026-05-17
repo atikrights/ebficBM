@@ -202,6 +202,10 @@ class Project {
   final List<String> adminPhotos; // Multi-admin profile photos
   final String inspirationText;
   final String managerSignature;
+  final DateTime? managerSignatureTimestamp;
+  final String founderSignature;
+  final DateTime? founderSignatureTimestamp;
+  final double? confirmedBudget;
   final List<String> additionalLinks;
   
   final List<String> taskIds;
@@ -233,6 +237,10 @@ class Project {
     this.adminPhotos = const [],
     this.inspirationText = '',
     this.managerSignature = '',
+    this.managerSignatureTimestamp,
+    this.founderSignature = '',
+    this.founderSignatureTimestamp,
+    this.confirmedBudget,
     this.additionalLinks = const [],
     this.taskIds = const [],
     this.plans = const [],
@@ -249,27 +257,48 @@ class Project {
       'category': category,
       'description': description,
       'companyId': companyId,
+      'company_id': companyId,
       'companyName': companyName,
       'totalBudget': totalBudget,
+      'total_budget': totalBudget,
       'minBudget': minBudget,
+      'min_budget': minBudget,
       'maxBudget': maxBudget,
+      'max_budget': maxBudget,
       'status': status.index,
       'startDate': startDate.toIso8601String(),
+      'start_date': startDate.toIso8601String(),
       'estimatedEndDate': estimatedEndDate.toIso8601String(),
+      'estimated_end_date': estimatedEndDate.toIso8601String(),
       'actualEndDate': actualEndDate?.toIso8601String(),
+      'actual_end_date': actualEndDate?.toIso8601String(),
       'brandColor': brandColor.value,
+      'brand_color': '#${brandColor.value.toRadixString(16).padLeft(8, '0').substring(2)}',
       'website': website,
       'phoneNumber': phoneNumber,
+      'phone': phoneNumber,
       'coverPhotoUrl': coverPhotoUrl,
+      'cover_photo_url': coverPhotoUrl,
       'adminPhotos': adminPhotos,
       'inspirationText': inspirationText,
+      'inspiration_text': inspirationText,
       'managerSignature': managerSignature,
+      'manager_signature': managerSignature,
+      'managerSignatureTimestamp': managerSignatureTimestamp?.toIso8601String(),
+      'manager_signature_timestamp': managerSignatureTimestamp?.toIso8601String(),
+      'founderSignature': founderSignature,
+      'founder_signature': founderSignature,
+      'founderSignatureTimestamp': founderSignatureTimestamp?.toIso8601String(),
+      'founder_signature_timestamp': founderSignatureTimestamp?.toIso8601String(),
+      'confirmedBudget': confirmedBudget,
+      'confirmed_budget': confirmedBudget,
       'additionalLinks': additionalLinks,
       'taskIds': taskIds,
       'plans': plans.map((p) => p.toMap()).toList(),
       'financialLogs': financialLogs.map((l) => l.toMap()).toList(),
       'syncLogs': syncLogs.map((l) => l.toMap()).toList(),
       'isApproved': isApproved,
+      'is_approved': isApproved,
     };
   }
 
@@ -295,7 +324,14 @@ class Project {
       coverPhotoUrl: map['coverPhotoUrl'] ?? map['cover_photo_url'] ?? '',
       adminPhotos: List<String>.from(map['adminPhotos'] ?? []),
       inspirationText: map['inspirationText'] ?? map['inspiration_text'] ?? '',
-      managerSignature: map['managerSignature'] ?? '',
+      managerSignature: map['managerSignature'] ?? map['manager_signature'] ?? '',
+      managerSignatureTimestamp: (map['managerSignatureTimestamp'] ?? map['manager_signature_timestamp']) != null 
+          ? DateTime.parse(map['managerSignatureTimestamp'] ?? map['manager_signature_timestamp']) : null,
+      founderSignature: map['founderSignature'] ?? map['founder_signature'] ?? '',
+      founderSignatureTimestamp: (map['founderSignatureTimestamp'] ?? map['founder_signature_timestamp']) != null 
+          ? DateTime.parse(map['founderSignatureTimestamp'] ?? map['founder_signature_timestamp']) : null,
+      confirmedBudget: (map['confirmedBudget'] ?? map['confirmed_budget']) != null 
+          ? (map['confirmedBudget'] ?? map['confirmed_budget'] as num).toDouble() : null,
       additionalLinks: List<String>.from(map['additionalLinks'] ?? []),
       taskIds: List<String>.from(map['taskIds'] ?? []),
       plans: List<Plan>.from((map['plans'] as List? ?? []).map((p) => Plan.fromMap(p))),
@@ -334,8 +370,10 @@ class Project {
     ProjectStatus? status, DateTime? startDate, DateTime? estimatedEndDate,
     DateTime? actualEndDate, Color? brandColor, String? website, String? phoneNumber,
     String? coverPhotoUrl, List<String>? adminPhotos, String? inspirationText, String? managerSignature,
+    DateTime? managerSignatureTimestamp,
+    String? founderSignature, DateTime? founderSignatureTimestamp, double? confirmedBudget,
     List<String>? additionalLinks, List<String>? taskIds, List<Plan>? plans,
-    List<CostLog>? financialLogs, List<HistoryLog>? syncLogs,
+    List<CostLog>? financialLogs, List<HistoryLog>? syncLogs, bool? isApproved,
   }) {
     return Project(
       id: id ?? this.id, pid: pid ?? this.pid, name: name ?? this.name,
@@ -350,11 +388,16 @@ class Project {
       adminPhotos: adminPhotos ?? this.adminPhotos,
       inspirationText: inspirationText ?? this.inspirationText,
       managerSignature: managerSignature ?? this.managerSignature,
+      managerSignatureTimestamp: managerSignatureTimestamp ?? this.managerSignatureTimestamp,
+      founderSignature: founderSignature ?? this.founderSignature,
+      founderSignatureTimestamp: founderSignatureTimestamp ?? this.founderSignatureTimestamp,
+      confirmedBudget: confirmedBudget ?? this.confirmedBudget,
       additionalLinks: additionalLinks ?? this.additionalLinks,
       taskIds: taskIds ?? this.taskIds,
       plans: plans ?? this.plans,
       financialLogs: financialLogs ?? this.financialLogs,
       syncLogs: syncLogs ?? this.syncLogs,
+      isApproved: isApproved ?? this.isApproved,
     );
   }
 }
