@@ -199,6 +199,81 @@ class ProjectProvider with ChangeNotifier {
     }
   }
 
+  // ── MANUAL COMPANY ATTACHMENT SYSTEM ─────────────────────────────────────
+
+  /// Method 2: From Project Single Page — attach this project to a company
+  Future<bool> attachToCompany(String projectId, String companyId) async {
+    if (_api == null) return false;
+    try {
+      final response = await _api!.post('/projects/$projectId/attach-company', {
+        'company_id': companyId,
+      });
+      if (response != null) {
+        await syncWithDatabase();
+        return true;
+      }
+    } catch (e) {
+      debugPrint('❌ Attach Company Error: $e');
+    }
+    return false;
+  }
+
+  /// Method 1: From Company Single Page — batch-attach multiple projects
+  Future<List<Map<String, dynamic>>> batchAttachToCompany(
+      String companyId, List<String> projectIds) async {
+    if (_api == null) return [];
+    try {
+      final response = await _api!.post(
+        '/companies/$companyId/attach-projects',
+        {'project_ids': projectIds},
+      );
+      if (response != null) {
+        await syncWithDatabase();
+        return List<Map<String, dynamic>>.from(response['results'] ?? []);
+      }
+    } catch (e) {
+      debugPrint('❌ Batch Attach Error: $e');
+    }
+    return [];
+  }
+
+  /// Detach a project from its company — returns to creator private scope
+  Future<bool> detachFromCompany(String projectId) async {
+    if (_api == null) return false;
+    try {
+      final response = await _api!.post('/projects/$projectId/detach-company', {});
+      if (response != null) {
+        await syncWithDatabase();
+        return true;
+      }
+    } catch (e) {
+      debugPrint('❌ Detach Company Error: $e');
+    }
+    return false;
+  }
+
+  /// Fetch all unattached projects (null company_id) for the picker modal
+  Future<List<Project>> fetchUnattachedProjects() async {
+    if (_api == null) return [];
+    try {
+      final response = await _api!.get('/projects/unattached');
+      if (response is List) {
+        return response.map((m) => Project.fromMap(m)).toList();
+      }
+    } catch (e) {
+      debugPrint('❌ Fetch Unattached Error: $e');
+    }
+    return [];
+  }
+
+  /// Get all private/unattached projects (null companyId) from local cache
+  List<Project> get unattachedProjects =>
+      _projects.where((p) => p.companyId == null || p.companyId!.isEmpty).toList();
+
+  /// Get all pending-approval projects (isApproved = false) from local cache
+  List<Project> get pendingProjects =>
+      _projects.where((p) => !p.isApproved).toList();
+
   Future<void> removePlan(String projectId, String planId) async {
     if (_api == null) return;
     try {
@@ -232,7 +307,6 @@ class ProjectProvider with ChangeNotifier {
   Future<void> linkTaskToPlan(String projectId, String planId, String taskId, String taskTitle, String author) async {
     if (_api == null) return;
     try {
-      // In our new schema, linking a task to a plan is just updating the task's plan_id
       await _api!.put('/tasks/$taskId', {
         'plan_id': planId,
         'project_id': projectId,
@@ -244,18 +318,14 @@ class ProjectProvider with ChangeNotifier {
   }
 
   Future<void> clearSyncLogs(String projectId) async {
-    // This was previously for local logs, now we just refresh from DB
     await syncWithDatabase();
   }
 
   Future<void> deleteProject(String id) async {
     if (_api == null) return;
-
-    // Optimistic UI
     final backup = [..._projects];
     _projects.removeWhere((p) => p.id == id);
     notifyListeners();
-
     try {
       await _api!.delete('/projects/$id');
       await _saveToStorage();
