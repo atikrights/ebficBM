@@ -80,8 +80,15 @@ class TaskProvider extends ChangeNotifier {
       }
 
       final response = await _api!.get(endpoint);
+      List? rawList;
       if (response is List) {
-        _tasks = response.map((m) => SystemTask.fromMap(m)).toList();
+        rawList = response;
+      } else if (response is Map && response['data'] is List) {
+        rawList = response['data'];
+      }
+
+      if (rawList != null) {
+        _tasks = rawList.map((m) => SystemTask.fromMap(m)).toList();
         await _saveToStorage();
         notifyListeners();
       }

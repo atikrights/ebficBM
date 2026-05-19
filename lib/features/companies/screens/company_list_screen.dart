@@ -120,7 +120,7 @@ class CompanyListScreen extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 8),
-              if (auth.isAdmin || auth.isManager)
+              if (auth.canCreateItems)
                 _buildCreateButton(context, isMobile, isDark, textColor),
             ],
           ),

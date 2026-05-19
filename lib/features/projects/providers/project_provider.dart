@@ -252,6 +252,20 @@ class ProjectProvider with ChangeNotifier {
     return false;
   }
 
+  /// Search a project by its unique PID securely
+  Future<Project?> searchByPid(String pid) async {
+    if (_api == null) return null;
+    try {
+      final response = await _api!.get('/projects/search-pid?pid=$pid');
+      if (response != null) {
+        return Project.fromMap(response);
+      }
+    } catch (e) {
+      debugPrint('❌ Search by PID Error: $e');
+    }
+    return null;
+  }
+
   /// Fetch all unattached projects (null company_id) for the picker modal
   Future<List<Project>> fetchUnattachedProjects() async {
     if (_api == null) return [];

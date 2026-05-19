@@ -35,8 +35,10 @@ class AuthProvider extends ChangeNotifier {
 
   bool get isSuperAdmin => _userRole?.toUpperCase() == 'SUPER_ADMIN';
   bool get isAdmin => _userRole?.toUpperCase() == 'ADMIN' || isSuperAdmin;
+  bool get isSubAdmin => _userRole?.toUpperCase() == 'SUB_ADMIN';
   bool get isManager => _userRole?.toUpperCase() == 'MANAGER';
   bool get isAuthority => isAdmin || isSuperAdmin;
+  bool get canCreateItems => isSuperAdmin || isAdmin || isSubAdmin || isManager;
 
   int? get userId => _userId;
   String? get chatProfileId => _chatProfileId;

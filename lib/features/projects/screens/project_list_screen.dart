@@ -13,6 +13,7 @@ import 'package:ebficbm/features/tasks/providers/task_provider.dart';
 import 'package:ebficbm/features/tasks/models/system_task.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:ebficbm/core/providers/auth_provider.dart';
 
 class ProjectListScreen extends StatefulWidget {
   const ProjectListScreen({super.key});
@@ -308,6 +309,7 @@ class _ProjectListScreenState extends State<ProjectListScreen> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final auth = Provider.of<AuthProvider>(context);
 
     return Consumer<ProjectProvider>(
       builder: (context, projectProvider, child) {
@@ -336,20 +338,21 @@ class _ProjectListScreenState extends State<ProjectListScreen> {
               ),
             ),
             // Floating Action Button
-            Positioned(
-              bottom: 24,
-              right: 16,
-              child: FloatingActionButton.extended(
-                onPressed: () => _showCreateDialog(context),
-                backgroundColor: AppColors.primary,
-                elevation: 2,
-                icon: const Icon(IconsaxPlusLinear.add_circle, color: Colors.white, size: 18),
-                label: const Text(
-                  'Create',
-                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13, letterSpacing: 0.5),
+            if (auth.canCreateItems)
+              Positioned(
+                bottom: 24,
+                right: 16,
+                child: FloatingActionButton.extended(
+                  onPressed: () => _showCreateDialog(context),
+                  backgroundColor: AppColors.primary,
+                  elevation: 2,
+                  icon: const Icon(IconsaxPlusLinear.add_circle, color: Colors.white, size: 18),
+                  label: const Text(
+                    'Create',
+                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13, letterSpacing: 0.5),
+                  ),
                 ),
               ),
-            ),
           ],
         );
 
