@@ -20,11 +20,11 @@ import 'package:ebficbm/features/chat/providers/chat_provider.dart';
 import 'package:ebficbm/features/chat/data/chat_service.dart';
 
 import 'package:ebficbm/widgets/custom_title_bar.dart';
+import 'package:ebficbm/widgets/premium_loading_screen.dart';
 
 import 'package:flutter/foundation.dart';
 
 import 'package:flutter/services.dart';
-import 'package:ebficbm/core/services/refresh_service.dart';
 
 import 'package:ebficbm/core/providers/team_provider.dart';
 
@@ -153,6 +153,10 @@ class BizOSApp extends StatelessWidget {
                             }
                           }
                         }
+                      }
+
+                      if (authProvider.isInitializing) {
+                        return const PremiumLoadingScreen();
                       }
 
                       if (!storageService.isSetupComplete) {

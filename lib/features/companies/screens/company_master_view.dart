@@ -527,6 +527,12 @@ class _ErBlueprintCardState extends State<_ErBlueprintCard> {
       case CompanyStatus.archived:
         color = Colors.grey;
         break;
+      case CompanyStatus.pending:
+        color = AppColors.primary;
+        break;
+      case CompanyStatus.declined:
+        color = AppColors.error;
+        break;
     }
     return Container(
       width: 7,

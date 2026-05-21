@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 
 enum AssetType { image, document, video, other }
 

@@ -13,7 +13,6 @@ import 'package:path_provider/path_provider.dart';
 import 'package:ebficbm/core/config/app_config.dart';
 import 'package:ebficbm/core/services/pusher_service.dart';
 import 'package:ebficbm/core/providers/auth_provider.dart';
-import 'package:ebficbm/core/providers/team_provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 void main() async {

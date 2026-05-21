@@ -13,6 +13,7 @@ class AuthProvider extends ChangeNotifier {
   final ApiService _api = ApiService();
   
   bool _isLoggedIn = false;
+  bool _isInitializing = true;
   String? _userName;
   String? _userEmail;
   String? _userRole;
@@ -27,6 +28,7 @@ class AuthProvider extends ChangeNotifier {
   String? _chatAbout;
 
   bool get isLoggedIn => _isLoggedIn;
+  bool get isInitializing => _isInitializing;
   String? get userName => _userName;
   String? get userEmail => _userEmail;
   String? get userRole => _userRole;
@@ -50,6 +52,9 @@ class AuthProvider extends ChangeNotifier {
   ApiService get api => _api;
 
   AuthProvider() {
+    _api.onUnauthorized = () {
+      logout();
+    };
     _restoreSession();
     
     // ── Real-Time Policy & Role Eviction Listener ─────────────────────
@@ -77,47 +82,96 @@ class AuthProvider extends ChangeNotifier {
   }
 
   Future<void> _restoreSession() async {
-    final prefs = await SharedPreferences.getInstance();
-    final deviceId = prefs.getString('ebm_secure_device_id') ?? '';
-    
-    // Attempt to read encrypted token. If not present, fall back to plain token (migration)
-    String? token = await SecureLocalStore.readDecrypted('auth_token', deviceId);
-    if (token == null) {
-      token = prefs.getString('auth_token');
-      if (token != null && deviceId.isNotEmpty) {
-        await SecureLocalStore.saveEncrypted('auth_token', token, deviceId);
-        await prefs.remove('auth_token'); // clean up legacy unencrypted key
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final deviceId = prefs.getString('ebm_secure_device_id') ?? '';
+      
+      // Attempt to read encrypted token. If not present, fall back to plain token (migration)
+      String? token = await SecureLocalStore.readDecrypted('auth_token', deviceId);
+      if (token == null) {
+        token = prefs.getString('auth_token');
+        if (token != null && deviceId.isNotEmpty) {
+          await SecureLocalStore.saveEncrypted('auth_token', token, deviceId);
+          await prefs.remove('auth_token'); // clean up legacy unencrypted key
+        }
       }
-    }
-    
-    final role = prefs.getString('user_role');
-    final name = prefs.getString('user_name');
-    final email = prefs.getString('user_email');
+      
+      final role = prefs.getString('user_role');
+      final name = prefs.getString('user_name');
+      final email = prefs.getString('user_email');
 
-    if (token != null && role != null) {
-      _api.setToken(token);
-      try {
-        // Verify token with backend
-        final response = await _api.get('/user');
+      if (token != null && role != null) {
+        _api.setToken(token);
+        
+        // 1. Immediately restore state from local cache to prevent logout screen flash
         _isLoggedIn = true;
         _userRole = role;
-        _userName = name ?? response['name'];
-        _userEmail = email ?? response['email'];
-        _userId = response['id'];
-        _chatProfileId = response['chat_profile_id'];
-        _chatNumber = response['chat_number'];
-        _chatNickname = response['chat_nickname'];
-        _chatBio = response['chat_bio'];
-        _chatAbout = response['chat_about'];
+        _userName = name;
+        _userEmail = email;
+        _userId = prefs.getInt('user_id');
+        _chatProfileId = prefs.getString('chat_profile_id');
+        _chatNumber = prefs.getString('chat_number');
+        _chatNickname = prefs.getString('chat_nickname');
+        _chatBio = prefs.getString('chat_bio');
+        _chatAbout = prefs.getString('chat_about');
         
-        // Subscribe to private channels
-        await PusherService().init(token: token);
-        PusherService().subscribeToUserChannels(_userId!);
-        
-        notifyListeners();
-      } catch (e) {
-        // If token is invalid (401), clear everything
+        // 2. Initialize Pusher immediately with current token
+        if (_userId != null) {
+          try {
+            await PusherService().init(token: token);
+            PusherService().subscribeToUserChannels(_userId!);
+          } catch (e) {
+            debugPrint("Failed to initialize Pusher on restore: $e");
+          }
+        }
+
+        // 3. Asynchronously verify the token with backend to refresh profile
+        _verifySessionAsync(token, role, name, email, _userId);
+      }
+    } finally {
+      _isInitializing = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> _verifySessionAsync(
+    String token,
+    String cachedRole,
+    String? cachedName,
+    String? cachedEmail,
+    int? cachedUserId,
+  ) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final response = await _api.get('/user');
+      _userRole = response['role']?.toUpperCase() ?? cachedRole;
+      _userName = response['name'] ?? cachedName;
+      _userEmail = response['email'] ?? cachedEmail;
+      _userId = response['id'];
+      _chatProfileId = response['chat_profile_id'];
+      _chatNumber = response['chat_number'];
+      _chatNickname = response['chat_nickname'];
+      _chatBio = response['chat_bio'];
+      _chatAbout = response['chat_about'];
+
+      // Persist verified info
+      await prefs.setString('user_role', _userRole!);
+      if (_userName != null) await prefs.setString('user_name', _userName!);
+      if (_userEmail != null) await prefs.setString('user_email', _userEmail!);
+      if (_userId != null) await prefs.setInt('user_id', _userId!);
+      if (_chatProfileId != null) await prefs.setString('chat_profile_id', _chatProfileId!);
+      if (_chatNumber != null) await prefs.setString('chat_number', _chatNumber!);
+      if (_chatNickname != null) await prefs.setString('chat_nickname', _chatNickname!);
+      if (_chatBio != null) await prefs.setString('chat_bio', _chatBio!);
+      if (_chatAbout != null) await prefs.setString('chat_about', _chatAbout!);
+
+      notifyListeners();
+    } catch (e) {
+      // Only log out if the backend explicitly reports that the token is unauthorized (401)
+      if (e is ApiException && e.statusCode == 401) {
         await logout();
+      } else {
+        debugPrint("Background session verification failed (e.g. offline/server issues): $e");
       }
     }
   }
@@ -214,6 +268,12 @@ class AuthProvider extends ChangeNotifier {
       await prefs.setString('user_role', role.toUpperCase());
       await prefs.setString('user_name', name);
       await prefs.setString('user_email', uEmail);
+      await prefs.setInt('user_id', userData['id']);
+      if (userData['chat_profile_id'] != null) await prefs.setString('chat_profile_id', userData['chat_profile_id']);
+      if (userData['chat_number'] != null) await prefs.setString('chat_number', userData['chat_number']);
+      if (userData['chat_nickname'] != null) await prefs.setString('chat_nickname', userData['chat_nickname']);
+      if (userData['chat_bio'] != null) await prefs.setString('chat_bio', userData['chat_bio']);
+      if (userData['chat_about'] != null) await prefs.setString('chat_about', userData['chat_about']);
 
       _api.setToken(token);
       _isLoggedIn = true;
@@ -260,12 +320,23 @@ class AuthProvider extends ChangeNotifier {
       await prefs.setString('user_role', role.toUpperCase());
       await prefs.setString('user_name', name);
       await prefs.setString('user_email', uEmail);
+      await prefs.setInt('user_id', userData['id']);
+      if (userData['chat_profile_id'] != null) await prefs.setString('chat_profile_id', userData['chat_profile_id']);
+      if (userData['chat_number'] != null) await prefs.setString('chat_number', userData['chat_number']);
+      if (userData['chat_nickname'] != null) await prefs.setString('chat_nickname', userData['chat_nickname']);
+      if (userData['chat_bio'] != null) await prefs.setString('chat_bio', userData['chat_bio']);
+      if (userData['chat_about'] != null) await prefs.setString('chat_about', userData['chat_about']);
 
       _isLoggedIn = true;
       _userRole = role.toUpperCase();
       _userName = name;
       _userEmail = uEmail;
       _userId = userData['id'];
+      _chatProfileId = userData['chat_profile_id'];
+      _chatNumber = userData['chat_number'];
+      _chatNickname = userData['chat_nickname'];
+      _chatBio = userData['chat_bio'];
+      _chatAbout = userData['chat_about'];
       _isLoading = false;
       
       if (_userId != null) {
@@ -306,12 +377,24 @@ class AuthProvider extends ChangeNotifier {
       await SecureLocalStore.saveEncrypted('auth_token', authToken, deviceId);
       await prefs.setString('user_role', role.toUpperCase());
       await prefs.setString('user_name', name);
+      await prefs.setString('user_email', userData['email'] ?? email);
+      await prefs.setInt('user_id', userData['id']);
+      if (userData['chat_profile_id'] != null) await prefs.setString('chat_profile_id', userData['chat_profile_id']);
+      if (userData['chat_number'] != null) await prefs.setString('chat_number', userData['chat_number']);
+      if (userData['chat_nickname'] != null) await prefs.setString('chat_nickname', userData['chat_nickname']);
+      if (userData['chat_bio'] != null) await prefs.setString('chat_bio', userData['chat_bio']);
+      if (userData['chat_about'] != null) await prefs.setString('chat_about', userData['chat_about']);
 
       _api.setToken(authToken);
       _isLoggedIn = true;
       _userRole = role.toUpperCase();
       _userName = name;
       _userId = userData['id'];
+      _chatProfileId = userData['chat_profile_id'];
+      _chatNumber = userData['chat_number'];
+      _chatNickname = userData['chat_nickname'];
+      _chatBio = userData['chat_bio'];
+      _chatAbout = userData['chat_about'];
       _isLoading = false;
       
       if (_userId != null) {

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../data/chat_service.dart';
 import '../../../core/services/pusher_service.dart';
-import '../../../core/utils/encryption_util.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 

@@ -1,7 +1,5 @@
-import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import '../../../core/network/api_service.dart';
-import '../../../core/utils/encryption_util.dart';
 
 class ChatService {
   final ApiService _api;

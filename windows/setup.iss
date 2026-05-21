@@ -19,6 +19,13 @@ SetupIconFile=runner\resources\app_icon.ico
 UninstallDisplayIcon={app}\ebficBM.exe
 DisableProgramGroupPage=yes
 PrivilegesRequired=lowest
+WizardStyle=modern
+SetupMutex=ebficBMSetupMutex
+AppMutex=ebficBMMutex
+CloseApplications=yes
+
+[InstallDelete]
+Type: filesandordirs; Name: "{app}\data"
 
 [Files]
 Source: "..\build\windows\x64\runner\Release\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs

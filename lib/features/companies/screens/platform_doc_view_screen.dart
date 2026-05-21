@@ -1,12 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:provider/provider.dart';
 import 'package:ebficbm/core/theme/colors.dart';
 import 'package:ebficbm/widgets/ebm_image.dart';
 import '../models/company.dart';
-import '../providers/company_provider.dart';
-import 'platform_doc_editor_screen.dart';
 
 class PlatformDocViewScreen extends StatelessWidget {
   final Company company;
@@ -28,7 +25,6 @@ class PlatformDocViewScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final screenWidth = MediaQuery.of(context).size.width;
     final title = platform['title'] ?? 'Untitled Platform';
     final content = platform['doc'] ?? '';
     final link = platform['link'] ?? '';

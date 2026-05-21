@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'dart:math' as math;
 
 class GuidelinesScreen extends StatefulWidget {
   const GuidelinesScreen({super.key});

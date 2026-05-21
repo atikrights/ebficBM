@@ -91,17 +91,23 @@ jobs:
           flutter pub get
           flutter build windows --release --dart-define=API_URL=https://api.ebfic.store
       
+      - name: 📦 Compile Inno Setup Installer
+        run: |
+          iscc /dMyAppVersion="${{ github.ref_name }}" windows/setup.iss
+        shell: powershell
+
       - name: 📂 Package Windows Build
         run: |
           mkdir release_assets
           Compress-Archive -Path build\windows\x64\runner\Release\* -DestinationPath release_assets\EBM_App_Windows.zip
+          cp build\windows\inno\ebficBM-windows.exe release_assets\ebficBM-windows-setup.exe
         shell: powershell
 
       - name: 📤 Upload Windows Artifact
         uses: actions/upload-artifact@v4
         with:
           name: windows-assets
-          path: release_assets/*.zip
+          path: release_assets/*
 
   # 🚀 ইউনিফাইড রিলিজ
   create-release:

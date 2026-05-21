@@ -54,6 +54,10 @@ class AppConfig {
 
     // 4. Final Fallback (Production vs Local Debug)
     if (kReleaseMode) return 'https://api.ebfic.store/api';
+    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
+      // 10.0.2.2 is the special alias for your host loopback interface in Android Emulator
+      return 'http://10.0.2.2:8000/api';
+    }
     return 'http://127.0.0.1:8000/api';
   }
 
@@ -73,12 +77,15 @@ class AppConfig {
         return 'https://central.$rootDomain';
       }
     }
+    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
+      return 'http://10.0.2.2:3000';
+    }
     return kReleaseMode ? 'https://central.ebfic.store' : 'http://127.0.0.1:3000';
   }
 
   /// Whether the app is currently running on localhost (dev mode).
   static bool get isLocalhost {
-    return baseUrl.contains('127.0.0.1') || baseUrl.contains('localhost');
+    return baseUrl.contains('127.0.0.1') || baseUrl.contains('localhost') || baseUrl.contains('10.0.2.2');
   }
 
   /// Origin for CORS and Auth (e.g., https://api.ebfic.store)

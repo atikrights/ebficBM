@@ -41,9 +41,6 @@ class _ChatListScreenState extends State<ChatListScreen> {
       return const ChatProfileSetupScreen();
     }
     
-    // Use AppColors to match ebm app layout
-    final bgColor = isDark ? AppColors.darkBackground : AppColors.lightBackground;
-    final cardColor = isDark ? AppColors.darkSurface : AppColors.lightSurface;
     final textColor = isDark ? AppColors.textLight : AppColors.textDark;
 
     // Get last messages for official chats

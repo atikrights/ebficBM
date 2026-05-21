@@ -7,7 +7,6 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:ebficbm/features/companies/providers/company_provider.dart';
 import 'package:ebficbm/features/projects/providers/project_provider.dart';
 import 'package:ebficbm/features/tasks/providers/task_provider.dart';
-import 'package:iconsax_plus/iconsax_plus.dart';
 
 /// GlobalRefreshWrapper — wraps the entire app with:
 /// • Ctrl+R / F5 keyboard shortcuts
@@ -85,8 +84,6 @@ class _GlobalRefreshWrapperState extends State<GlobalRefreshWrapper> {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
     return RefreshService(
       refresh: _refresh,
       child: CallbackShortcuts(
@@ -134,7 +131,6 @@ class AppRefreshIndicator extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     final service = RefreshService.of(context);
     if (service == null) return child;
 
