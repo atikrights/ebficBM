@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'dart:ui';
@@ -2749,31 +2750,35 @@ class _StrategicRadarMap extends StatefulWidget {
   State<_StrategicRadarMap> createState() => _StrategicRadarMapState();
 }
 
-class _StrategicRadarMapState extends State<_StrategicRadarMap> with SingleTickerProviderStateMixin {
+class _StrategicRadarMapState extends State<_StrategicRadarMap>
+    with SingleTickerProviderStateMixin {
   final TransformationController _controller = TransformationController();
   late AnimationController _rippleController;
+  Timer? _refreshTimer;
 
   @override
   void initState() {
     super.initState();
-    _rippleController = AnimationController(vsync: this, duration: const Duration(seconds: 3))..repeat();
-    
+    _rippleController =
+        AnimationController(vsync: this, duration: const Duration(seconds: 4))..repeat();
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
-        final double viewportWidth = context.size?.width ?? 1000;
-        final double canvasWidth = (widget.project.plans.length * 400).toDouble().clamp(2500, 100000);
-        
-        _controller.value = Matrix4.identity()
-          ..translate(
-            -(canvasWidth / 2 - (viewportWidth / 2)), 
-            -0.0 // Start at top
-          );
+        context.read<TaskProvider>().syncWithDatabase(projectId: widget.project.id);
+        _controller.value = Matrix4.identity();
+      }
+    });
+
+    _refreshTimer = Timer.periodic(const Duration(seconds: 10), (_) {
+      if (mounted) {
+        context.read<TaskProvider>().syncWithDatabase(projectId: widget.project.id);
       }
     });
   }
 
   @override
   void dispose() {
+    _refreshTimer?.cancel();
     _rippleController.dispose();
     _controller.dispose();
     super.dispose();
@@ -2782,463 +2787,951 @@ class _StrategicRadarMapState extends State<_StrategicRadarMap> with SingleTicke
   void _zoom(double val) {
     final Matrix4 currentMatrix = _controller.value;
     final double scale = currentMatrix.getMaxScaleOnAxis();
-    final double newScale = (scale + val).clamp(0.1, 2.5);
-    _controller.value = Matrix4.identity()..scale(newScale);
+    final double newScale = (scale + val).clamp(0.2, 2.0);
+    _controller.value = Matrix4.identity()..scale(newScale, newScale, 1.0);
   }
 
   @override
   Widget build(BuildContext context) {
-    final tasks = context.watch<TaskProvider>().allTasks.where((t) => t.projectId == widget.project.id).toList();
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    
+    final brandColor = widget.project.brandColor;
+
+    // Get real tasks belonging to this project
+    final realTasks = context
+        .watch<TaskProvider>()
+        .allTasks
+        .where((t) => t.projectId == widget.project.id)
+        .toList();
+
+    final List<SystemTask> tasks = [];
+    if (realTasks.isNotEmpty) {
+      tasks.addAll(realTasks);
+    } else {
+      // Dynamic simulated tasks based on plans of this project if no tasks exist
+      for (var plan in widget.project.plans) {
+        final prefix = widget.project.pid.substring(
+            0, widget.project.pid.length > 3 ? 3 : widget.project.pid.length);
+        tasks.addAll([
+          SystemTask(
+            id: '${plan.id}-t1',
+            planId: plan.id,
+            projectId: widget.project.id,
+            taskNumber: 'TSK-$prefix-01',
+            title: 'Strategic Onboarding',
+            allocatedCost: plan.budget * 0.20,
+            status: TaskStatus.completed,
+            assignee: 'Operations Lead',
+            dueDate: DateTime.now().add(const Duration(days: 2)),
+            description:
+                'Conduct foundational alignment session and initialize project blueprint.',
+          ),
+          SystemTask(
+            id: '${plan.id}-t2',
+            planId: plan.id,
+            projectId: widget.project.id,
+            taskNumber: 'TSK-$prefix-02',
+            title: 'Integrate Core Services',
+            allocatedCost: plan.budget * 0.50,
+            status: TaskStatus.inProgress,
+            assignee: 'Development Team',
+            dueDate: DateTime.now().add(const Duration(days: 7)),
+            description:
+                'Formulate core logic, establish databases, build dynamic UI widgets, and deploy service API layers.',
+          ),
+          SystemTask(
+            id: '${plan.id}-t3',
+            planId: plan.id,
+            projectId: widget.project.id,
+            taskNumber: 'TSK-$prefix-03',
+            title: 'Governance & Auditing',
+            allocatedCost: plan.budget * 0.30,
+            status: TaskStatus.todo,
+            assignee: 'Quality Analyst',
+            dueDate: DateTime.now().add(const Duration(days: 14)),
+            description:
+                'Validate requirements checklist, audit security configuration, perform user acceptance tests, and obtain authorization.',
+          ),
+        ]);
+      }
+    }
+
+    // Dynamic layout coordinate calculations: Project (x=50) -> Plans (x=400) -> Tasks (x=750)
+    const double verticalSpacing = 95.0;
+    const double projectX = 50.0;
+    const double planX = 400.0;
+    const double taskX = 750.0;
+
+    double currentY = 40.0;
+    final Map<String, Offset> planPositions = {};
+    final Map<String, Offset> taskPositions = {};
+
+    for (final plan in widget.project.plans) {
+      final planTasks = tasks.where((t) => t.planId == plan.id).toList();
+      final int taskCount = planTasks.length;
+
+      // Heights occupied by task node clusters
+      final double clusterHeight = (taskCount > 0 ? taskCount : 1) * verticalSpacing;
+
+      // Position of plan node centered within task cluster height
+      final double planY = currentY + (clusterHeight / 2) - 40.0;
+      planPositions[plan.id] = Offset(planX, planY);
+
+      // Position of task nodes vertically
+      for (int j = 0; j < taskCount; j++) {
+        final task = planTasks[j];
+        final double taskY =
+            currentY + (j * verticalSpacing) + (verticalSpacing / 2) - 40.0;
+        taskPositions[task.id] = Offset(taskX, taskY);
+      }
+
+      currentY += clusterHeight + 40.0; // add vertical plan spacing
+    }
+
+    // Project Y is in the vertical center of all plans
+    double projectY = 100.0;
+    if (widget.project.plans.isNotEmpty &&
+        planPositions.containsKey(widget.project.plans.first.id) &&
+        planPositions.containsKey(widget.project.plans.last.id)) {
+      final firstPlanY = planPositions[widget.project.plans.first.id]!.dy;
+      final lastPlanY = planPositions[widget.project.plans.last.id]!.dy;
+      projectY = (firstPlanY + lastPlanY) / 2;
+    }
+    final Offset projectPos = Offset(projectX, projectY);
+
+    final double canvasHeight = currentY.clamp(550.0, 10000.0);
+    const double canvasWidth = 1100.0;
+
     return Stack(
       children: [
         RepaintBoundary(
           child: InteractiveViewer(
             transformationController: _controller,
             constrained: false,
-            boundaryMargin: const EdgeInsets.all(2000), 
-            minScale: 0.01, // Extreme zoom out for massive data
+            boundaryMargin: const EdgeInsets.all(500),
+            minScale: 0.1,
             maxScale: 2.0,
-            child: Consumer<TaskProvider>(
-              builder: (context, tp, _) {
-                final double canvasWidth = (widget.project.plans.length * 400).toDouble().clamp(2500, 100000);
-                final double canvasHeight = 5000; // Deep vertical space for tasks
-                
-                return Container(
-                  width: canvasWidth,
-                  height: canvasHeight,
-                  color: Colors.transparent,
-                  child: Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      // High-Performance Painter
-                      CustomPaint(
-                        size: Size(canvasWidth, canvasHeight),
-                        painter: _RadarLinkPainter(
-                          project: widget.project,
-                          tasks: tp.allTasks,
-                          lineColor: widget.project.brandColor,
-                          canvasWidth: canvasWidth,
-                        ),
+            child: Container(
+              width: canvasWidth,
+              height: canvasHeight,
+              color: Colors.transparent,
+              child: Stack(
+                children: [
+                  // High-Performance Link Painter
+                  AnimatedBuilder(
+                    animation: _rippleController,
+                    builder: (context, _) => CustomPaint(
+                      size: Size(canvasWidth, canvasHeight),
+                      painter: _EbmProjectRadarLinkPainter(
+                        project: widget.project,
+                        tasks: tasks,
+                        projectPos: projectPos,
+                        planPositions: planPositions,
+                        taskPositions: taskPositions,
+                        lineColor: brandColor,
+                        pulseValue: _rippleController.value,
                       ),
-                      
-                      // Aggregated Nodes
-                      ..._buildRadarNodes(context, widget.project, tp.allTasks, isDark, canvasWidth),
-                    ],
+                    ),
                   ),
-                );
-              },
+
+                  // Project root node
+                  Positioned(
+                    left: projectPos.dx,
+                    top: projectPos.dy,
+                    child: _EbmProjectFlowNodeCard(
+                      title: widget.project.name,
+                      subtitle: widget.project.category.toUpperCase(),
+                      dateText:
+                          '${widget.project.startDate.year}-${widget.project.startDate.month.toString().padLeft(2, '0')}-${widget.project.startDate.day.toString().padLeft(2, '0')}',
+                      trackingId: widget.project.pid,
+                      statusText: widget.project.status.name.toUpperCase(),
+                      statusColor: widget.project.isApproved
+                          ? Colors.green
+                          : Colors.orangeAccent,
+                      brandColor: brandColor,
+                      icon: IconsaxPlusLinear.box,
+                    ),
+                  ),
+
+                  // Plan nodes
+                  ...widget.project.plans.map((plan) {
+                    final planPos = planPositions[plan.id];
+                    if (planPos == null) return const SizedBox.shrink();
+                    final planTasks = tasks.where((t) => t.planId == plan.id).toList();
+                    final double total =
+                        planTasks.fold(0.0, (s, t) => s + t.allocatedCost);
+                    return Positioned(
+                      left: planPos.dx,
+                      top: planPos.dy,
+                      child: _EbmProjectFlowNodeCard(
+                        title: plan.title,
+                        subtitle: '\$${total.toInt()} BUDGETED',
+                        dateText: 'i-CODE Hub Node',
+                        trackingId: plan.icode,
+                        statusText: plan.status.name.toUpperCase(),
+                        statusColor: _ebmPlanStatusColor(plan.status),
+                        brandColor: brandColor,
+                        icon: IconsaxPlusLinear.hierarchy,
+                        onTap: () {
+                          showDialog(
+                            context: context,
+                            builder: (ctx) => _buildEbmPlanModal(
+                              context: ctx,
+                              plan: plan,
+                              color: brandColor,
+                              isDark: isDark,
+                              totalBudget: total,
+                            ),
+                          );
+                        },
+                      ),
+                    );
+                  }),
+
+                  // Task nodes
+                  ...tasks.map((task) {
+                    final taskPos = taskPositions[task.id];
+                    if (taskPos == null) return const SizedBox.shrink();
+                    final formattedDate = task.dueDate != null
+                        ? '${task.dueDate!.year}-${task.dueDate!.month.toString().padLeft(2, '0')}-${task.dueDate!.day.toString().padLeft(2, '0')}'
+                        : 'No Due Date';
+                    return Positioned(
+                      left: taskPos.dx,
+                      top: taskPos.dy,
+                      child: _EbmProjectFlowNodeCard(
+                        title: task.title,
+                        subtitle: 'ASSIGNEE: ${task.assignee.toUpperCase()}',
+                        dateText: 'DUE: $formattedDate',
+                        trackingId: task.taskNumber,
+                        statusText: task.status.displayName,
+                        statusColor: _ebmTaskStatusColor(task.status),
+                        brandColor: brandColor,
+                        icon: IconsaxPlusLinear.task_square,
+                        onTap: () {
+                          final taskProv = context.read<TaskProvider>();
+                          showDialog(
+                            context: context,
+                            builder: (ctx) => _buildEbmTaskModal(
+                              context: ctx,
+                              task: task,
+                              color: brandColor,
+                              isDark: isDark,
+                              taskProvider: taskProv,
+                            ),
+                          );
+                        },
+                      ),
+                    );
+                  }),
+                ],
+              ),
             ),
           ),
         ),
-        
-        // Zoom Controls
+
+        // Zoom controls
         Positioned(
           bottom: 20,
           right: 20,
-          child: Column(
-            children: [
-              _zoomBtn(Icons.add, () => _zoom(0.2), widget.project.brandColor, isDark),
-              const SizedBox(height: 8),
-              _zoomBtn(Icons.remove, () => _zoom(-0.2), widget.project.brandColor, isDark),
-            ],
+          child: Container(
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              color: isDark
+                  ? const Color(0xFF1E1E24).withOpacity(0.9)
+                  : Colors.white.withOpacity(0.9),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                  color: isDark ? Colors.white10 : Colors.black.withOpacity(0.05)),
+              boxShadow: [
+                BoxShadow(
+                    color: Colors.black.withOpacity(0.08),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4))
+              ],
+            ),
+            child: Column(children: [
+              _zoomButton(Icons.add, () => _zoom(0.15), brandColor, isDark),
+              const SizedBox(height: 6),
+              _zoomButton(Icons.remove, () => _zoom(-0.15), brandColor, isDark),
+            ]),
           ),
         ),
       ],
     );
   }
 
-  Widget _zoomBtn(IconData icon, VoidCallback onTap, Color color, bool isDark) {
-    return GestureDetector(
+  Widget _zoomButton(IconData icon, VoidCallback onTap, Color color, bool isDark) {
+    return InkWell(
       onTap: onTap,
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(12),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
-          child: Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: isDark ? Colors.black54 : Colors.white70,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: color.withValues(alpha: 0.3)),
+      borderRadius: BorderRadius.circular(10),
+      child: Container(
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: isDark ? Colors.white.withOpacity(0.04) : Colors.black.withOpacity(0.02),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Icon(icon, color: color, size: 18),
+      ),
+    );
+  }
+}
+
+// ── Project Bezier Link Painter ───────────────────────────────────────────────
+
+class _EbmProjectRadarLinkPainter extends CustomPainter {
+  final Project project;
+  final List<SystemTask> tasks;
+  final Offset projectPos;
+  final Map<String, Offset> planPositions;
+  final Map<String, Offset> taskPositions;
+  final Color lineColor;
+  final double pulseValue;
+
+  _EbmProjectRadarLinkPainter({
+    required this.project,
+    required this.tasks,
+    required this.projectPos,
+    required this.planPositions,
+    required this.taskPositions,
+    required this.lineColor,
+    required this.pulseValue,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final startPort = Offset(projectPos.dx + 240.0, projectPos.dy + 40.0);
+
+    for (final plan in project.plans) {
+      final planPos = planPositions[plan.id];
+      if (planPos != null) {
+        final endPort = Offset(planPos.dx, planPos.dy + 40.0);
+        final path = Path()
+          ..moveTo(startPort.dx, startPort.dy)
+          ..cubicTo(startPort.dx + 80.0, startPort.dy,
+              endPort.dx - 80.0, endPort.dy, endPort.dx, endPort.dy);
+        canvas.drawPath(
+            path,
+            Paint()
+              ..color = lineColor.withOpacity(0.18)
+              ..style = PaintingStyle.stroke
+              ..strokeWidth = 2.0
+              ..strokeCap = StrokeCap.round);
+        _drawPulse(canvas, path, Paint()..color = lineColor, pulseValue);
+      }
+    }
+
+    for (final plan in project.plans) {
+      final planPos = planPositions[plan.id];
+      if (planPos != null) {
+        final planStartPort = Offset(planPos.dx + 240.0, planPos.dy + 40.0);
+        final planTasks = tasks.where((t) => t.planId == plan.id).toList();
+        for (final task in planTasks) {
+          final taskPos = taskPositions[task.id];
+          if (taskPos != null) {
+            final endPort = Offset(taskPos.dx, taskPos.dy + 40.0);
+            final path = Path()
+              ..moveTo(planStartPort.dx, planStartPort.dy)
+              ..cubicTo(
+                  planStartPort.dx + 80.0,
+                  planStartPort.dy,
+                  endPort.dx - 80.0,
+                  endPort.dy,
+                  endPort.dx,
+                  endPort.dy);
+            final taskColor = _ebmTaskStatusColor(task.status);
+            canvas.drawPath(
+                path,
+                Paint()
+                  ..color = taskColor.withOpacity(0.12)
+                  ..style = PaintingStyle.stroke
+                  ..strokeWidth = 1.5
+                  ..strokeCap = StrokeCap.round);
+            _drawPulse(canvas, path, Paint()..color = taskColor, pulseValue);
+          }
+        }
+      }
+    }
+  }
+
+  void _drawPulse(Canvas canvas, Path path, Paint paint, double t) {
+    for (final metric in path.computeMetrics()) {
+      final tangent = metric.getTangentForOffset(metric.length * t);
+      if (tangent != null) {
+        canvas.drawCircle(
+            tangent.position,
+            7.0,
+            Paint()
+              ..color = paint.color.withOpacity(0.6)
+              ..style = PaintingStyle.fill
+              ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 5.0));
+        canvas.drawCircle(
+            tangent.position,
+            2.5,
+            Paint()
+              ..color = Colors.white
+              ..style = PaintingStyle.fill);
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
+}
+
+// ── Project Flow Node Card Widget ─────────────────────────────────────────────
+
+class _EbmProjectFlowNodeCard extends StatefulWidget {
+  final String title;
+  final String subtitle;
+  final String dateText;
+  final String trackingId;
+  final String statusText;
+  final Color statusColor;
+  final Color brandColor;
+  final IconData icon;
+  final VoidCallback? onTap;
+
+  const _EbmProjectFlowNodeCard({
+    required this.title,
+    required this.subtitle,
+    required this.dateText,
+    required this.trackingId,
+    required this.statusText,
+    required this.statusColor,
+    required this.brandColor,
+    required this.icon,
+    this.onTap,
+  });
+
+  @override
+  State<_EbmProjectFlowNodeCard> createState() => _EbmProjectFlowNodeCardState();
+}
+
+class _EbmProjectFlowNodeCardState extends State<_EbmProjectFlowNodeCard> {
+  bool _isHovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return MouseRegion(
+      onEnter: (_) => setState(() => _isHovered = true),
+      onExit: (_) => setState(() => _isHovered = false),
+      child: AnimatedScale(
+        scale: _isHovered ? 1.04 : 1.0,
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.easeOutCubic,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 250),
+          width: 240,
+          height: 80,
+          decoration: BoxDecoration(
+            color: isDark
+                ? (_isHovered
+                    ? const Color(0xFF1E2230)
+                    : const Color(0xFF11131A))
+                : (_isHovered
+                    ? const Color(0xFFE2E8F0)
+                    : const Color(0xFFF8FAFC)),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: _isHovered
+                  ? widget.brandColor.withOpacity(0.8)
+                  : (isDark
+                      ? Colors.white.withOpacity(0.08)
+                      : Colors.black.withOpacity(0.08)),
+              width: _isHovered ? 1.8 : 1.0,
             ),
-            child: Icon(icon, color: color, size: 20),
+            boxShadow: [
+              BoxShadow(
+                color: _isHovered
+                    ? widget.brandColor.withOpacity(0.25)
+                    : Colors.transparent,
+                blurRadius: 16,
+                spreadRadius: 2,
+                offset: const Offset(0, 4),
+              ),
+              BoxShadow(
+                color: Colors.black.withOpacity(0.1),
+                blurRadius: 6,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(14),
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: widget.onTap,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      // Header row
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(5),
+                            decoration: BoxDecoration(
+                              color: widget.brandColor.withOpacity(0.12),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Icon(widget.icon,
+                                color: widget.brandColor, size: 14),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              widget.subtitle,
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w600,
+                                color: isDark ? Colors.white54 : Colors.black54,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          // Status badge
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: widget.statusColor.withOpacity(0.12),
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(
+                                  color: widget.statusColor.withOpacity(0.3),
+                                  width: 0.8),
+                            ),
+                            child: Text(
+                              widget.statusText,
+                              style: TextStyle(
+                                color: widget.statusColor,
+                                fontSize: 8,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: 0.5,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+
+                      // Title with tooltip
+                      Tooltip(
+                        waitDuration: Duration.zero,
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: isDark ? const Color(0xFF1E2230) : Colors.white,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                              color: widget.brandColor.withOpacity(0.3),
+                              width: 1.5),
+                        ),
+                        richMessage: TextSpan(
+                          children: [
+                            TextSpan(
+                              text: '${widget.title}\n',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 12,
+                                color: isDark ? Colors.white : Colors.black87,
+                              ),
+                            ),
+                            TextSpan(
+                              text: 'Status: ${widget.statusText} • ID: ${widget.trackingId}\n',
+                              style: TextStyle(
+                                  fontSize: 10, color: widget.brandColor, height: 1.5),
+                            ),
+                            TextSpan(
+                              text: widget.dateText,
+                              style: TextStyle(
+                                  fontSize: 9,
+                                  color: isDark ? Colors.white38 : Colors.black38),
+                            ),
+                          ],
+                        ),
+                        child: Text(
+                          widget.title,
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: isDark
+                                ? Colors.white.withOpacity(0.9)
+                                : Colors.black.withOpacity(0.9),
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+
+                      // Footer: date + copy UID
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            widget.dateText,
+                            style: TextStyle(
+                              fontSize: 8,
+                              color: isDark ? Colors.white38 : Colors.black38,
+                            ),
+                          ),
+                          Material(
+                            color: Colors.transparent,
+                            child: InkWell(
+                              onTap: () {
+                                Clipboard.setData(
+                                    ClipboardData(text: widget.trackingId));
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text('Copied: ${widget.trackingId}'),
+                                    behavior: SnackBarBehavior.floating,
+                                    backgroundColor: widget.brandColor,
+                                    duration: const Duration(seconds: 2),
+                                  ),
+                                );
+                              },
+                              borderRadius: BorderRadius.circular(4),
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 4, vertical: 2),
+                                child: Row(
+                                  children: [
+                                    Text(
+                                      widget.trackingId,
+                                      style: TextStyle(
+                                        fontSize: 8,
+                                        fontWeight: FontWeight.w800,
+                                        color: widget.brandColor,
+                                        letterSpacing: 0.5,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Icon(Icons.copy_rounded,
+                                        size: 8, color: widget.brandColor),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
           ),
         ),
       ),
     );
   }
+}
 
-  List<Widget> _buildRadarNodes(BuildContext context, Project project, List<SystemTask> tasks, bool isDark, double canvasWidth) {
-    List<Widget> nodes = [];
-    final double startY = 100;
-    final Offset centerTop = Offset(canvasWidth / 2, startY);
-    
-    // 1. Root Project Hub
-    nodes.add(_radarNode(
-      context: context,
-      offset: centerTop,
-      title: project.name,
-      icon: IconsaxPlusLinear.box,
-      color: project.brandColor,
-      isCore: true,
-      isDark: isDark,
-    ));
+// ── Shared Project Radar Helpers (EBM) ────────────────────────────────────────
 
-    // Unified Coordinate System Constants
-    final double planY = startY + 250;
-    final double planSpacing = 400; // Consistent horizontal spacing
-    final double taskStartY = planY + 180; // Start tasks after insight box
-    final double taskSpacingY = 130; // Consistent vertical spacing
-
-    final double totalPlansWidth = (project.plans.length - 1) * planSpacing;
-    final double startX = (canvasWidth / 2) - (totalPlansWidth / 2);
-
-    for (int i = 0; i < project.plans.length; i++) {
-        final plan = project.plans[i];
-        final Offset pNodePos = Offset(startX + (i * planSpacing), planY);
-        final planTasks = tasks.where((t) => t.planId == plan.id).toList();
-
-        // 3. Unified Real-Time Insight Hub
-        nodes.add(_unifiedPlanHub(
-          offset: pNodePos,
-          plan: plan,
-          tasks: planTasks,
-          color: project.brandColor,
-          isDark: isDark,
-          context: context,
-        ));
-
-        // 4. Tasks (Pixel-Perfect Vertical Cascading)
-        final displayTasks = planTasks.take(10).toList(); // Show more tasks per plan
-        for (int j = 0; j < displayTasks.length; j++) {
-            final task = displayTasks[j];
-            final Offset tNodePos = Offset(pNodePos.dx, taskStartY + (j * taskSpacingY));
-
-            nodes.add(_taskMicroNode(
-              context: context,
-              offset: tNodePos,
-              task: task,
-              color: _getStatusColor(task.status),
-              isDark: isDark,
-            ));
-        }
-    }
-    return nodes;
+Color _ebmPlanStatusColor(ProjectStatus s) {
+  switch (s) {
+    case ProjectStatus.completed:
+      return Colors.green;
+    case ProjectStatus.inProgress:
+      return Colors.blueAccent;
+    case ProjectStatus.delayed:
+      return Colors.orange;
+    case ProjectStatus.archived:
+      return Colors.grey;
+    default:
+      return Colors.grey;
   }
+}
 
-  Widget _unifiedPlanHub({
-    required Offset offset, 
-    required Plan plan, 
-    required List<SystemTask> tasks, 
-    required Color color, 
-    required bool isDark,
-    required BuildContext context,
-  }) {
-    final double totalAmount = tasks.fold(0, (sum, t) => sum + t.grandTotal);
-    final todoCount = tasks.where((t) => t.status == TaskStatus.todo).length;
-    final doneCount = tasks.where((t) => t.status == TaskStatus.done || t.status == TaskStatus.completed).length;
+Color _ebmTaskStatusColor(TaskStatus status) {
+  switch (status) {
+    case TaskStatus.todo:
+      return Colors.orangeAccent;
+    case TaskStatus.inProgress:
+      return Colors.blueAccent;
+    case TaskStatus.completed:
+      return Colors.green;
+    case TaskStatus.review:
+      return Colors.amberAccent;
+    case TaskStatus.done:
+      return Colors.tealAccent;
+  }
+}
 
-    return Positioned(
-      left: offset.dx - 100,
-      top: offset.dy - 40, 
-      child: Column(
-        children: [
-          // Plan Header Tab (i-CODE)
-          InkWell(
-            onTap: () {
-               Clipboard.setData(ClipboardData(text: plan.icode));
-               ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('i-CODE Copied: ${plan.icode}'), behavior: SnackBarBehavior.floating, backgroundColor: color));
-            },
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              constraints: const BoxConstraints(maxWidth: 220),
-              decoration: BoxDecoration(
-                color: color,
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
-                boxShadow: [BoxShadow(color: color.withValues(alpha: 0.5), blurRadius: 15, spreadRadius: 2)],
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(IconsaxPlusLinear.status, color: Colors.white, size: 14),
-                  const SizedBox(width: 8),
-                  Flexible(
-                    child: Text(
-                      plan.title, 
-                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 11),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  const SizedBox(width: 6),
-                  Text(plan.icode, style: TextStyle(color: Colors.white.withValues(alpha: 0.8), fontSize: 9, fontWeight: FontWeight.w600)),
-                ],
-              ),
-            ),
-          ),
-          // Insights Body
-          Container(
-            width: 200,
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: isDark ? Colors.black.withValues(alpha: 0.9) : Colors.white,
-              borderRadius: const BorderRadius.vertical(bottom: Radius.circular(20)),
-              border: Border.all(color: color.withValues(alpha: 0.4), width: 1.5),
-              boxShadow: [BoxShadow(color: color.withValues(alpha: 0.1), blurRadius: 20)],
-            ),
-            child: Column(
+Color _ebmPriorityColor(TaskPriority priority) {
+  switch (priority) {
+    case TaskPriority.low:
+      return Colors.blueGrey;
+    case TaskPriority.medium:
+      return Colors.blueAccent;
+    case TaskPriority.high:
+      return Colors.orangeAccent;
+    case TaskPriority.critical:
+      return Colors.redAccent;
+  }
+}
+
+Widget _buildEbmPlanModal({
+  required BuildContext context,
+  required Plan plan,
+  required Color color,
+  required bool isDark,
+  double totalBudget = 0.0,
+}) {
+  return Dialog(
+    backgroundColor: Colors.transparent,
+    insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 40),
+    child: GlassContainer(
+      borderRadius: 24,
+      padding: const EdgeInsets.all(24),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 450),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    _insightItem('AMT', '\$${totalAmount.toInt()}', color),
-                    _insightItem('TODO', '$todoCount', Colors.orangeAccent),
-                    _insightItem('DONE', '$doneCount', Colors.greenAccent),
-                  ],
-                ),
-                const SizedBox(height: 12),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
-                    color: color.withValues(alpha: 0.05),
-                    borderRadius: BorderRadius.circular(6),
+                    color: color.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: color.withOpacity(0.3)),
                   ),
-                  child: Text('${tasks.length} Active Operations', style: TextStyle(color: color, fontSize: 8, fontWeight: FontWeight.bold, letterSpacing: 1)),
+                  child: Text(plan.icode,
+                      style: TextStyle(
+                          color: color,
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 1)),
                 ),
+                IconButton(
+                    icon: const Icon(Icons.close, size: 20),
+                    onPressed: () => Navigator.pop(context)),
               ],
             ),
-          ),
-        ],
-      ).animate().fadeIn().scale(duration: 400.ms, curve: Curves.easeOutBack),
-    );
-  }
-
-  Widget _insightItem(String label, String val, Color color) {
-    return Column(
-      children: [
-        Text(label, style: const TextStyle(fontSize: 7, color: Colors.grey, fontWeight: FontWeight.bold)),
-        Text(val, style: TextStyle(fontSize: 10, color: color, fontWeight: FontWeight.bold)),
-      ],
-    );
-  }
-
-  Color _getStatusColor(TaskStatus status) {
-    switch (status) {
-      case TaskStatus.todo: return Colors.orangeAccent;
-      case TaskStatus.inProgress: return Colors.blueAccent;
-      case TaskStatus.review: return Colors.purpleAccent;
-      case TaskStatus.done: return Colors.greenAccent;
-      case TaskStatus.completed: return Colors.teal;
-      default: return Colors.grey;
-    }
-  }
-
-  Widget _taskMicroNode({
-    required BuildContext context,
-    required Offset offset,
-    required SystemTask task,
-    required Color color,
-    required bool isDark,
-  }) {
-    return Positioned(
-      left: offset.dx - 35,
-      top: offset.dy - 35,
-      child: Column(
-        children: [
-          Container(
-            width: 45,
-            height: 45,
-            decoration: BoxDecoration(
-              color: isDark ? Colors.black : Colors.white,
-              shape: BoxShape.circle,
-              border: Border.all(color: color, width: 2),
-              boxShadow: [BoxShadow(color: color.withValues(alpha: 0.4), blurRadius: 8)],
+            const SizedBox(height: 16),
+            Text(plan.title,
+                style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: isDark ? Colors.white : Colors.black87)),
+            const SizedBox(height: 8),
+            Text(
+              'A critical programmatic node mapping system goals to resource allocation and active development phases.',
+              style: TextStyle(
+                  fontSize: 14,
+                  color: isDark ? Colors.white70 : Colors.black54,
+                  height: 1.5),
             ),
-            child: Icon(IconsaxPlusLinear.task_square, color: color, size: 18),
-          ),
-          const SizedBox(height: 4),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.9),
-              borderRadius: BorderRadius.circular(4),
-            ),
-            child: Column(
+            const SizedBox(height: 16),
+            const Divider(color: Colors.white10),
+            const SizedBox(height: 16),
+            Row(
               children: [
-                Text(task.taskNumber, style: const TextStyle(color: Colors.white, fontSize: 7, fontWeight: FontWeight.bold)),
-                Text('\$${task.grandTotal.toInt()}', style: const TextStyle(color: Colors.white70, fontSize: 6, fontWeight: FontWeight.w600)),
+                Expanded(
+                    child: _ebmModalItem(
+                        'STATUS',
+                        plan.status.name.toUpperCase(),
+                        plan.status == ProjectStatus.completed
+                            ? Colors.green
+                            : Colors.blueAccent,
+                        isDark)),
+                Expanded(
+                    child: _ebmModalItem(
+                        'TASKS BUDGETED',
+                        '\$${totalBudget.toStringAsFixed(2)}',
+                        Colors.blueAccent,
+                        isDark)),
               ],
             ),
-          ),
-        ],
-      ).animate().fadeIn(delay: 200.ms).scale(),
-    );
-  }
-
-  Widget _radarNode({
-    required BuildContext context,
-    required Offset offset,
-    required String title,
-    required IconData icon,
-    required Color color,
-    bool isCore = false,
-    String? subTitle,
-    required bool isDark,
-    bool isCopyable = false,
-  }) {
-    return Positioned(
-      left: offset.dx - (isCore ? 60 : 50),
-      top: offset.dy - (isCore ? 60 : 50),
-      child: Column(
-        children: [
-          Container(
-            width: isCore ? 120 : 100,
-            height: isCore ? 120 : 100,
-            decoration: BoxDecoration(
-              color: isDark ? Colors.black.withValues(alpha: 0.8) : Colors.white,
-              shape: BoxShape.circle,
-              border: Border.all(color: color, width: isCore ? 4 : 2),
-              boxShadow: [
-                BoxShadow(color: color.withValues(alpha: 0.5), blurRadius: 20, spreadRadius: isCore ? 5 : 2),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(child: _ebmModalItem('TASKS LINKED', '${plan.taskIds.length}', color, isDark)),
+                Expanded(
+                    child: _ebmModalItem(
+                        'CREATED',
+                        '${plan.createdAt.year}-${plan.createdAt.month.toString().padLeft(2, '0')}-${plan.createdAt.day.toString().padLeft(2, '0')}',
+                        isDark ? Colors.white70 : Colors.black87,
+                        isDark)),
               ],
             ),
-            child: Icon(icon, color: color, size: isCore ? 40 : 28),
-          ),
-          const SizedBox(height: 8),
-          InkWell(
-            onTap: isCopyable && subTitle != null ? () {
-              Clipboard.setData(ClipboardData(text: subTitle));
-              ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                content: Text('i-CODE Copied: $subTitle'),
-                behavior: SnackBarBehavior.floating,
-                backgroundColor: color,
-              ));
-            } : null,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-              decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.9),
-                borderRadius: BorderRadius.circular(8),
-                boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.2), blurRadius: 4)],
-              ),
-              child: Column(
-                children: [
-                  Text(title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 10), textAlign: TextAlign.center, maxLines: 1, overflow: TextOverflow.ellipsis),
-                  if (subTitle != null)
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(subTitle, style: const TextStyle(color: Colors.white70, fontSize: 8, fontWeight: FontWeight.w600)),
-                        if (isCopyable) ...[
-                          const SizedBox(width: 4),
-                          const Icon(IconsaxPlusLinear.copy, size: 8, color: Colors.white70),
-                        ],
-                      ],
-                    ),
-                ],
+            const SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () => Navigator.pop(context),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: color,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  elevation: 0,
+                ),
+                child: const Text('CLOSE BRIEF',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, letterSpacing: 1)),
               ),
             ),
-          ),
-        ],
-      ).animate().scale(duration: 400.ms, curve: Curves.easeOutBack),
-    );
-  }
+          ],
+        ),
+      ),
+    ),
+  );
 }
 
-class _RadarRipplePainter extends CustomPainter {
-  final double progress;
-  final Color color;
-
-  _RadarRipplePainter({required this.progress, required this.color});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final center = Offset(size.width / 2, size.height / 2);
-    final paint = Paint()
-      ..color = color.withValues(alpha: (1 - progress) * 0.3)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 2;
-
-    canvas.drawCircle(center, 120 + (progress * 200), paint);
-    canvas.drawCircle(center, 120 + ((progress + 0.5) % 1.0 * 200), paint);
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
+Widget _buildEbmTaskModal({
+  required BuildContext context,
+  required SystemTask task,
+  required Color color,
+  required bool isDark,
+  required TaskProvider taskProvider,
+}) {
+  return Dialog(
+    backgroundColor: Colors.transparent,
+    insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 40),
+    child: GlassContainer(
+      borderRadius: 24,
+      padding: const EdgeInsets.all(24),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 450),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: color.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: color.withOpacity(0.3)),
+                  ),
+                  child: Text(task.taskNumber,
+                      style: TextStyle(
+                          color: color,
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 1)),
+                ),
+                IconButton(
+                    icon: const Icon(Icons.close, size: 20),
+                    onPressed: () => Navigator.pop(context)),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Text(task.title,
+                style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: isDark ? Colors.white : Colors.black87)),
+            if (task.description.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Text(task.description,
+                  style: TextStyle(
+                      fontSize: 14,
+                      color: isDark ? Colors.white70 : Colors.black54,
+                      height: 1.5)),
+            ],
+            const SizedBox(height: 16),
+            const Divider(color: Colors.white10),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                    child: _ebmModalItem(
+                        'STATUS', task.status.displayName, _ebmTaskStatusColor(task.status), isDark)),
+                Expanded(
+                    child: _ebmModalItem(
+                        'PRIORITY',
+                        task.priority.name.toUpperCase(),
+                        _ebmPriorityColor(task.priority),
+                        isDark)),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                    child: _ebmModalItem(
+                        'ALLOCATED BUDGET', '\$${task.allocatedCost.toStringAsFixed(2)}', color, isDark)),
+                Expanded(
+                    child: _ebmModalItem(
+                        'ASSIGNEE', task.assignee, isDark ? Colors.white70 : Colors.black87, isDark)),
+              ],
+            ),
+            const SizedBox(height: 24),
+            DropdownButtonFormField<TaskStatus>(
+              value: task.status,
+              decoration: InputDecoration(
+                labelText: 'CHANGE STATUS',
+                labelStyle: TextStyle(
+                    color: color,
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 1),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              ),
+              items: TaskStatus.values
+                  .map((s) => DropdownMenuItem<TaskStatus>(
+                      value: s,
+                      child: Text(s.displayName, style: const TextStyle(fontSize: 12))))
+                  .toList(),
+              onChanged: (newStatus) {
+                if (newStatus != null && newStatus != task.status) {
+                  taskProvider.updateTaskStatus(task.id, newStatus);
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                    content: Text('Status updated to ${newStatus.displayName}'),
+                    behavior: SnackBarBehavior.floating,
+                    backgroundColor: color,
+                  ));
+                }
+              },
+            ),
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () => Navigator.pop(context),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: color,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  elevation: 0,
+                ),
+                child: const Text('CLOSE BRIEF',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, letterSpacing: 1)),
+              ),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
 }
 
-class _RadarLinkPainter extends CustomPainter {
-  final Project project;
-  final List<SystemTask> tasks;
-  final Color lineColor;
-  final double canvasWidth;
-
-  _RadarLinkPainter({required this.project, required this.tasks, required this.lineColor, required this.canvasWidth});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = lineColor.withValues(alpha: 0.25)
-      ..strokeWidth = 2.0
-      ..strokeCap = StrokeCap.round
-      ..style = PaintingStyle.stroke;
-
-    final double startY = 100;
-    final Offset centerTop = Offset(canvasWidth / 2, startY);
-    final double planY = startY + 250;
-    final double planSpacing = 400;
-    final double taskStartY = planY + 180;
-    final double taskSpacingY = 130;
-
-    final double totalPlansWidth = (project.plans.length - 1) * planSpacing;
-    final double startX = (canvasWidth / 2) - (totalPlansWidth / 2);
-
-    // Main Horizontal Bus Line (Correctly Offset)
-    if (project.plans.length > 1) {
-       canvas.drawLine(
-         Offset(startX, planY - 110), 
-         Offset(startX + totalPlansWidth, planY - 110), 
-         paint
-       );
-    }
-
-    // Line from Project to Drive Line
-    canvas.drawLine(centerTop, Offset(canvasWidth / 2, planY - 110), paint);
-
-    for (int i = 0; i < project.plans.length; i++) {
-        final plan = project.plans[i];
-        final Offset pNodePos = Offset(startX + (i * planSpacing), planY);
-
-        // Vertical drop to Plan Hub
-        canvas.drawLine(Offset(pNodePos.dx, planY - 110), Offset(pNodePos.dx, planY - 40), paint);
-
-        final linkedTasks = tasks.where((t) => t.planId == plan.id).toList();
-        final taskPaint = Paint()
-          ..strokeWidth = 1.5
-          ..strokeCap = StrokeCap.round
-          ..style = PaintingStyle.stroke;
-
-        // Cascade Tasks line
-        if (linkedTasks.isNotEmpty) {
-           final double lastTaskY = taskStartY + ((linkedTasks.take(10).length - 1) * taskSpacingY);
-           // Line from bottom of Insight Box (appx planY + 120) to the last task
-           canvas.drawLine(Offset(pNodePos.dx, planY + 120), Offset(pNodePos.dx, lastTaskY), taskPaint..color = lineColor.withValues(alpha: 0.1));
-        }
-    }
-  }
-
-  Color _getStatusColor(TaskStatus status) {
-    switch (status) {
-      case TaskStatus.todo: return Colors.orangeAccent;
-      case TaskStatus.inProgress: return Colors.blueAccent;
-      case TaskStatus.review: return Colors.purpleAccent;
-      case TaskStatus.done: return Colors.greenAccent;
-      case TaskStatus.completed: return Colors.teal;
-      default: return Colors.grey;
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
+Widget _ebmModalItem(String label, String value, Color valColor, bool isDark) {
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Text(label,
+          style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.bold,
+              color: isDark ? Colors.white38 : Colors.black38,
+              letterSpacing: 1.2)),
+      const SizedBox(height: 6),
+      Text(value, style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: valColor)),
+    ],
+  );
 }

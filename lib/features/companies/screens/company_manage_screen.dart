@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
@@ -9,6 +10,7 @@ import 'package:ebficbm/widgets/glass_container.dart';
 import 'package:ebficbm/widgets/ebm_image.dart';
 import 'package:ebficbm/features/companies/models/company.dart';
 import 'package:ebficbm/features/companies/providers/company_provider.dart';
+import 'package:ebficbm/features/projects/models/project.dart';
 import 'package:ebficbm/features/projects/providers/project_provider.dart';
 import 'package:ebficbm/features/projects/screens/project_workspace_screen.dart';
 import 'package:ebficbm/features/tasks/models/system_task.dart';
@@ -64,13 +66,14 @@ class _CompanyManageScreenState extends State<CompanyManageScreen> {
   int _settingsTabIndex = 0;
   final List<String> _settingsTabs = ['General', 'Customize', 'Advanced'];
 
-  final List<String> _tabNames = ['Overview', 'Blueprint', 'Records', 'Analytics', 'Project', 'Settings'];
+  final List<String> _tabNames = ['Overview', 'Blueprint', 'Records', 'Analytics', 'Project', 'Radar', 'Settings'];
   final List<IconData> _tabIcons = [
     IconsaxPlusLinear.element_3,
     IconsaxPlusLinear.edit_2,
     IconsaxPlusLinear.document_text_1,
     IconsaxPlusLinear.chart_2,
     IconsaxPlusLinear.folder_open,
+    IconsaxPlusLinear.radar,
     IconsaxPlusLinear.setting_2
   ];
 
@@ -322,6 +325,9 @@ class _CompanyManageScreenState extends State<CompanyManageScreen> {
         content = KeyedSubtree(key: const ValueKey('projects'), child: _buildProjectHubTab(company, isDark));
         break;
       case 5:
+        content = KeyedSubtree(key: const ValueKey('radar'), child: _EbmStrategicCompanyRadar(company: company));
+        break;
+      case 6:
         content = KeyedSubtree(key: const ValueKey('settings'), child: _buildSettingsTab(company, isDark));
         break;
       default:
@@ -3125,4 +3131,1156 @@ class _CompanyManageScreenState extends State<CompanyManageScreen> {
       }
     }
   }
+}
+
+// ── Strategic Company Radar (EBM – Provider Pattern) ─────────────────────────
+
+class _EbmStrategicCompanyRadar extends StatefulWidget {
+  final Company company;
+  const _EbmStrategicCompanyRadar({required this.company});
+
+  @override
+  State<_EbmStrategicCompanyRadar> createState() => _EbmStrategicCompanyRadarState();
+}
+
+class _EbmStrategicCompanyRadarState extends State<_EbmStrategicCompanyRadar>
+    with SingleTickerProviderStateMixin {
+  final TransformationController _controller = TransformationController();
+  late AnimationController _rippleController;
+  Timer? _refreshTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    _rippleController =
+        AnimationController(vsync: this, duration: const Duration(seconds: 4))..repeat();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _syncData();
+        _controller.value = Matrix4.identity();
+      }
+    });
+
+    _refreshTimer = Timer.periodic(const Duration(seconds: 10), (_) {
+      if (mounted) _syncData();
+    });
+  }
+
+  void _syncData() {
+    context.read<TaskProvider>().syncWithDatabase();
+    context.read<ProjectProvider>().reload();
+  }
+
+  @override
+  void dispose() {
+    _refreshTimer?.cancel();
+    _rippleController.dispose();
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _zoom(double val) {
+    final Matrix4 currentMatrix = _controller.value;
+    final double scale = currentMatrix.getMaxScaleOnAxis();
+    final double newScale = (scale + val).clamp(0.2, 2.0);
+    _controller.value = Matrix4.identity()..scale(newScale, newScale, 1.0);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    const brandColor = AppColors.primary;
+
+    // Get all projects belonging to this company
+    final companyProjects = context
+        .watch<ProjectProvider>()
+        .allProjects
+        .where((p) => p.companyId == widget.company.id)
+        .toList();
+
+    final projectIds = companyProjects.map((p) => p.id).toSet();
+    final realTasks = context
+        .watch<TaskProvider>()
+        .allTasks
+        .where((t) => projectIds.contains(t.projectId))
+        .toList();
+
+    final List<SystemTask> tasks = [];
+    if (realTasks.isNotEmpty) {
+      tasks.addAll(realTasks);
+    } else {
+      for (var project in companyProjects) {
+        for (var plan in project.plans) {
+          final prefix = project.pid.substring(
+              0, project.pid.length > 3 ? 3 : project.pid.length);
+          tasks.addAll([
+            SystemTask(
+              id: '${plan.id}-t1',
+              planId: plan.id,
+              projectId: project.id,
+              taskNumber: 'TSK-$prefix-01',
+              title: 'Strategic Onboarding',
+              allocatedCost: plan.budget * 0.20,
+              status: TaskStatus.completed,
+              assignee: 'Operations Lead',
+              dueDate: DateTime.now().add(const Duration(days: 2)),
+              description:
+                  'Conduct foundational alignment session and initialize project blueprint.',
+            ),
+            SystemTask(
+              id: '${plan.id}-t2',
+              planId: plan.id,
+              projectId: project.id,
+              taskNumber: 'TSK-$prefix-02',
+              title: 'Integrate Core Services',
+              allocatedCost: plan.budget * 0.50,
+              status: TaskStatus.inProgress,
+              assignee: 'Development Team',
+              dueDate: DateTime.now().add(const Duration(days: 7)),
+              description:
+                  'Build dynamic UI widgets and deploy service API layers.',
+            ),
+            SystemTask(
+              id: '${plan.id}-t3',
+              planId: plan.id,
+              projectId: project.id,
+              taskNumber: 'TSK-$prefix-03',
+              title: 'Governance & Auditing',
+              allocatedCost: plan.budget * 0.30,
+              status: TaskStatus.todo,
+              assignee: 'Quality Analyst',
+              dueDate: DateTime.now().add(const Duration(days: 14)),
+              description:
+                  'Validate checklist, audit security, perform user acceptance tests.',
+            ),
+          ]);
+        }
+      }
+    }
+
+    // ── Canvas Layout Calculations ─────────────────────────────────────────
+    const double verticalSpacing = 95.0;
+    const double companyX = 50.0;
+    const double projectX = 400.0;
+    const double planX = 750.0;
+    const double taskX = 1100.0;
+
+    double currentY = 40.0;
+    final Map<String, Offset> projectPositions = {};
+    final Map<String, Offset> planPositions = {};
+    final Map<String, Offset> taskPositions = {};
+
+    for (final project in companyProjects) {
+      final plans = project.plans;
+
+      for (final plan in plans) {
+        final planTasks = tasks.where((t) => t.planId == plan.id).toList();
+        final int taskCount = planTasks.length;
+        final double clusterHeight = (taskCount > 0 ? taskCount : 1) * verticalSpacing;
+        final double planY = currentY + (clusterHeight / 2) - 40.0;
+        planPositions[plan.id] = Offset(planX, planY);
+
+        for (int j = 0; j < taskCount; j++) {
+          final task = planTasks[j];
+          final double taskY =
+              currentY + (j * verticalSpacing) + (verticalSpacing / 2) - 40.0;
+          taskPositions[task.id] = Offset(taskX, taskY);
+        }
+        currentY += clusterHeight + 40.0;
+      }
+
+      if (plans.isEmpty) {
+        projectPositions[project.id] = Offset(projectX, currentY);
+        currentY += verticalSpacing + 40.0;
+      } else {
+        final firstPlanY = planPositions[plans.first.id]!.dy;
+        final lastPlanY = planPositions[plans.last.id]!.dy;
+        projectPositions[project.id] = Offset(projectX, (firstPlanY + lastPlanY) / 2);
+      }
+      currentY += 20.0;
+    }
+
+    double companyY = 100.0;
+    if (companyProjects.isNotEmpty &&
+        projectPositions.containsKey(companyProjects.first.id) &&
+        projectPositions.containsKey(companyProjects.last.id)) {
+      final firstProjectY = projectPositions[companyProjects.first.id]!.dy;
+      final lastProjectY = projectPositions[companyProjects.last.id]!.dy;
+      companyY = (firstProjectY + lastProjectY) / 2;
+    }
+    final Offset companyPos = Offset(companyX, companyY);
+    final double canvasHeight = currentY.clamp(650.0, 10000.0);
+    const double canvasWidth = 1450.0;
+
+    return Stack(
+      children: [
+        RepaintBoundary(
+          child: InteractiveViewer(
+            transformationController: _controller,
+            constrained: false,
+            boundaryMargin: const EdgeInsets.all(500),
+            minScale: 0.1,
+            maxScale: 2.0,
+            child: Container(
+              width: canvasWidth,
+              height: canvasHeight,
+              color: Colors.transparent,
+              child: Stack(
+                children: [
+                  // Bezier flow paths with neon pulse animations
+                  AnimatedBuilder(
+                    animation: _rippleController,
+                    builder: (context, _) {
+                      return CustomPaint(
+                        size: Size(canvasWidth, canvasHeight),
+                        painter: _EbmCompanyMapLinkPainter(
+                          projects: companyProjects,
+                          tasks: tasks,
+                          companyPos: companyPos,
+                          projectPositions: projectPositions,
+                          planPositions: planPositions,
+                          taskPositions: taskPositions,
+                          pulseValue: _rippleController.value,
+                        ),
+                      );
+                    },
+                  ),
+
+                  // 1. Root Company Node
+                  Positioned(
+                    left: companyPos.dx,
+                    top: companyPos.dy,
+                    child: _EbmCompanyFlowNodeCard(
+                      title: widget.company.name,
+                      subtitle: 'COMPANY ROOT NODE',
+                      dateText: 'Portal Node ID',
+                      trackingId: widget.company.id
+                          .substring(0, widget.company.id.length > 8 ? 8 : widget.company.id.length)
+                          .toUpperCase(),
+                      statusText: 'ACTIVE',
+                      statusColor: Colors.green,
+                      brandColor: brandColor,
+                      icon: IconsaxPlusLinear.building_3,
+                    ),
+                  ),
+
+                  // 2. Project Nodes
+                  ...companyProjects.map((project) {
+                    final pos = projectPositions[project.id];
+                    if (pos == null) return const SizedBox.shrink();
+                    return Positioned(
+                      left: pos.dx,
+                      top: pos.dy,
+                      child: _EbmCompanyFlowNodeCard(
+                        title: project.name,
+                        subtitle: project.category.toUpperCase(),
+                        dateText:
+                            '${project.startDate.year}-${project.startDate.month.toString().padLeft(2, '0')}-${project.startDate.day.toString().padLeft(2, '0')}',
+                        trackingId: project.pid,
+                        statusText: project.status.name.toUpperCase(),
+                        statusColor:
+                            project.isApproved ? Colors.green : Colors.orangeAccent,
+                        brandColor: project.brandColor,
+                        icon: IconsaxPlusLinear.box,
+                      ),
+                    );
+                  }),
+
+                  // 3. Plan Hub Nodes
+                  ...companyProjects.expand((p) => p.plans.map((plan) {
+                        final planPos = planPositions[plan.id];
+                        if (planPos == null) return const SizedBox.shrink();
+                        final planTasks =
+                            tasks.where((t) => t.planId == plan.id).toList();
+                        final double totalAmount =
+                            planTasks.fold(0.0, (sum, t) => sum + t.allocatedCost);
+                        return Positioned(
+                          left: planPos.dx,
+                          top: planPos.dy,
+                          child: _EbmCompanyFlowNodeCard(
+                            title: plan.title,
+                            subtitle: '\$${totalAmount.toInt()} BUDGETED',
+                            dateText: 'i-CODE Hub Node',
+                            trackingId: plan.icode,
+                            statusText: plan.status.name.toUpperCase(),
+                            statusColor: _ebmPlanStatusColor(plan.status),
+                            brandColor: p.brandColor,
+                            icon: IconsaxPlusLinear.hierarchy,
+                            onTap: () => showDialog(
+                              context: context,
+                              builder: (_) => _buildEbmPlanModal(
+                                context: context,
+                                plan: plan,
+                                color: p.brandColor,
+                                isDark: isDark,
+                                totalBudget: totalAmount,
+                              ),
+                            ),
+                          ),
+                        );
+                      })),
+
+                  // 4. Task Micro Nodes
+                  ...tasks.map((task) {
+                    final taskPos = taskPositions[task.id];
+                    if (taskPos == null) return const SizedBox.shrink();
+                    final project = companyProjects.firstWhere(
+                        (p) => p.id == task.projectId,
+                        orElse: () => companyProjects.first);
+                    final formattedDate = task.dueDate != null
+                        ? '${task.dueDate!.year}-${task.dueDate!.month.toString().padLeft(2, '0')}-${task.dueDate!.day.toString().padLeft(2, '0')}'
+                        : 'No Due Date';
+                    return Positioned(
+                      left: taskPos.dx,
+                      top: taskPos.dy,
+                      child: _EbmCompanyFlowNodeCard(
+                        title: task.title,
+                        subtitle: 'ASSIGNEE: ${task.assignee.toUpperCase()}',
+                        dateText: 'DUE: $formattedDate',
+                        trackingId: task.taskNumber,
+                        statusText: task.status.displayName,
+                        statusColor: _ebmTaskStatusColor(task.status),
+                        brandColor: project.brandColor,
+                        icon: IconsaxPlusLinear.task_square,
+                        onTap: () {
+                          final taskProv = context.read<TaskProvider>();
+                          showDialog(
+                            context: context,
+                            builder: (ctx) => _buildEbmTaskModal(
+                              context: ctx,
+                              task: task,
+                              color: project.brandColor,
+                              isDark: isDark,
+                              taskProvider: taskProv,
+                            ),
+                          );
+                        },
+                      ),
+                    );
+                  }),
+                ],
+              ),
+            ),
+          ),
+        ),
+
+        // Zoom Controls HUD
+        Positioned(
+          bottom: 20,
+          right: 20,
+          child: Container(
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              color: isDark
+                  ? const Color(0xFF1E1E24).withOpacity(0.9)
+                  : Colors.white.withOpacity(0.9),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                  color: isDark ? Colors.white10 : Colors.black.withOpacity(0.05)),
+              boxShadow: [
+                BoxShadow(
+                    color: Colors.black.withOpacity(0.08),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4))
+              ],
+            ),
+            child: Column(
+              children: [
+                _ebmZoomBtn(Icons.add, () => _zoom(0.15), brandColor, isDark),
+                const SizedBox(height: 6),
+                _ebmZoomBtn(Icons.remove, () => _zoom(-0.15), brandColor, isDark),
+              ],
+            ),
+          ),
+        ),
+
+        // Header label
+        Positioned(
+          top: 12,
+          left: 16,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: isDark
+                  ? const Color(0xFF1E1E24).withOpacity(0.92)
+                  : Colors.white.withOpacity(0.92),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(
+                  color: isDark ? Colors.white10 : Colors.black.withOpacity(0.06)),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(IconsaxPlusLinear.radar, size: 14, color: brandColor),
+                const SizedBox(width: 6),
+                Text(
+                  'Strategic Radar  —  ${widget.company.name}',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: isDark ? Colors.white70 : Colors.black54,
+                    letterSpacing: 0.4,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _ebmZoomBtn(
+      IconData icon, VoidCallback onTap, Color color, bool isDark) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(10),
+      child: Container(
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: isDark
+              ? Colors.white.withOpacity(0.04)
+              : Colors.black.withOpacity(0.02),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Icon(icon, color: color, size: 18),
+      ),
+    );
+  }
+}
+
+// ── Company Flow Graph Node Card ──────────────────────────────────────────────
+
+class _EbmCompanyFlowNodeCard extends StatefulWidget {
+  final String title;
+  final String subtitle;
+  final String dateText;
+  final String trackingId;
+  final String statusText;
+  final Color statusColor;
+  final Color brandColor;
+  final IconData icon;
+  final VoidCallback? onTap;
+
+  const _EbmCompanyFlowNodeCard({
+    required this.title,
+    required this.subtitle,
+    required this.dateText,
+    required this.trackingId,
+    required this.statusText,
+    required this.statusColor,
+    required this.brandColor,
+    required this.icon,
+    this.onTap,
+  });
+
+  @override
+  State<_EbmCompanyFlowNodeCard> createState() =>
+      _EbmCompanyFlowNodeCardState();
+}
+
+class _EbmCompanyFlowNodeCardState extends State<_EbmCompanyFlowNodeCard> {
+  bool _isHovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return MouseRegion(
+      onEnter: (_) => setState(() => _isHovered = true),
+      onExit: (_) => setState(() => _isHovered = false),
+      child: AnimatedScale(
+        scale: _isHovered ? 1.04 : 1.0,
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.easeOutCubic,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 250),
+          width: 240,
+          height: 80,
+          decoration: BoxDecoration(
+            color: isDark
+                ? (_isHovered
+                    ? const Color(0xFF1E2230)
+                    : const Color(0xFF11131A))
+                : (_isHovered
+                    ? const Color(0xFFE2E8F0)
+                    : const Color(0xFFF8FAFC)),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: _isHovered
+                  ? widget.brandColor.withOpacity(0.8)
+                  : (isDark
+                      ? Colors.white.withOpacity(0.08)
+                      : Colors.black.withOpacity(0.08)),
+              width: _isHovered ? 1.8 : 1.0,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: _isHovered
+                    ? widget.brandColor.withOpacity(0.25)
+                    : Colors.transparent,
+                blurRadius: 16,
+                spreadRadius: 2,
+                offset: const Offset(0, 4),
+              ),
+              BoxShadow(
+                color: Colors.black.withOpacity(0.1),
+                blurRadius: 6,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(14),
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: widget.onTap,
+                child: Padding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      // Header row
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(5),
+                            decoration: BoxDecoration(
+                              color: widget.brandColor.withOpacity(0.12),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Icon(widget.icon,
+                                color: widget.brandColor, size: 14),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              widget.subtitle,
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w600,
+                                color: isDark
+                                    ? Colors.white54
+                                    : Colors.black54,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          // Status badge
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: widget.statusColor.withOpacity(0.12),
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(
+                                  color: widget.statusColor.withOpacity(0.3),
+                                  width: 0.8),
+                            ),
+                            child: Text(
+                              widget.statusText,
+                              style: TextStyle(
+                                color: widget.statusColor,
+                                fontSize: 8,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: 0.5,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+
+                      // Title with tooltip
+                      Tooltip(
+                        waitDuration: Duration.zero,
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color:
+                              isDark ? const Color(0xFF1E2230) : Colors.white,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                              color: widget.brandColor.withOpacity(0.3),
+                              width: 1.5),
+                        ),
+                        richMessage: TextSpan(
+                          children: [
+                            TextSpan(
+                              text: '${widget.title}\n',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 12,
+                                color:
+                                    isDark ? Colors.white : Colors.black87,
+                              ),
+                            ),
+                            TextSpan(
+                              text:
+                                  'Status: ${widget.statusText} • ID: ${widget.trackingId}\n',
+                              style: TextStyle(
+                                  fontSize: 10, color: widget.brandColor, height: 1.5),
+                            ),
+                            TextSpan(
+                              text: widget.dateText,
+                              style: TextStyle(
+                                  fontSize: 9,
+                                  color: isDark
+                                      ? Colors.white38
+                                      : Colors.black38),
+                            ),
+                          ],
+                        ),
+                        child: Text(
+                          widget.title,
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: isDark
+                                ? Colors.white.withOpacity(0.9)
+                                : Colors.black.withOpacity(0.9),
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+
+                      // Footer: date + copy UID
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            widget.dateText,
+                            style: TextStyle(
+                              fontSize: 8,
+                              color: isDark ? Colors.white38 : Colors.black38,
+                            ),
+                          ),
+                          Material(
+                            color: Colors.transparent,
+                            child: InkWell(
+                              onTap: () {
+                                Clipboard.setData(
+                                    ClipboardData(text: widget.trackingId));
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                        'Copied: ${widget.trackingId}'),
+                                    behavior: SnackBarBehavior.floating,
+                                    backgroundColor: widget.brandColor,
+                                    duration:
+                                        const Duration(seconds: 2),
+                                  ),
+                                );
+                              },
+                              borderRadius: BorderRadius.circular(4),
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 4, vertical: 2),
+                                child: Row(
+                                  children: [
+                                    Text(
+                                      widget.trackingId,
+                                      style: TextStyle(
+                                        fontSize: 8,
+                                        fontWeight: FontWeight.w800,
+                                        color: widget.brandColor,
+                                        letterSpacing: 0.5,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Icon(Icons.copy_rounded,
+                                        size: 8, color: widget.brandColor),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Company Bezier Link Painter ───────────────────────────────────────────────
+
+class _EbmCompanyMapLinkPainter extends CustomPainter {
+  final List<dynamic> projects; // List<Project>
+  final List<SystemTask> tasks;
+  final Offset companyPos;
+  final Map<String, Offset> projectPositions;
+  final Map<String, Offset> planPositions;
+  final Map<String, Offset> taskPositions;
+  final double pulseValue;
+
+  _EbmCompanyMapLinkPainter({
+    required this.projects,
+    required this.tasks,
+    required this.companyPos,
+    required this.projectPositions,
+    required this.planPositions,
+    required this.taskPositions,
+    required this.pulseValue,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final startPort = Offset(companyPos.dx + 240.0, companyPos.dy + 40.0);
+
+    for (final project in projects) {
+      final projectPos = projectPositions[project.id];
+      if (projectPos != null) {
+        final endPort = Offset(projectPos.dx, projectPos.dy + 40.0);
+        final path = Path()
+          ..moveTo(startPort.dx, startPort.dy)
+          ..cubicTo(startPort.dx + 80.0, startPort.dy,
+              endPort.dx - 80.0, endPort.dy, endPort.dx, endPort.dy);
+        canvas.drawPath(
+            path,
+            Paint()
+              ..color = (project.brandColor as Color).withOpacity(0.18)
+              ..style = PaintingStyle.stroke
+              ..strokeWidth = 2.0
+              ..strokeCap = StrokeCap.round);
+        _drawPulse(canvas, path,
+            Paint()..color = project.brandColor as Color, pulseValue);
+      }
+    }
+
+    for (final project in projects) {
+      final projectPos = projectPositions[project.id];
+      if (projectPos != null) {
+        final projectStartPort =
+            Offset(projectPos.dx + 240.0, projectPos.dy + 40.0);
+        for (final plan in project.plans) {
+          final planPos = planPositions[plan.id];
+          if (planPos != null) {
+            final endPort = Offset(planPos.dx, planPos.dy + 40.0);
+            final path = Path()
+              ..moveTo(projectStartPort.dx, projectStartPort.dy)
+              ..cubicTo(
+                  projectStartPort.dx + 80.0,
+                  projectStartPort.dy,
+                  endPort.dx - 80.0,
+                  endPort.dy,
+                  endPort.dx,
+                  endPort.dy);
+            canvas.drawPath(
+                path,
+                Paint()
+                  ..color = (project.brandColor as Color).withOpacity(0.15)
+                  ..style = PaintingStyle.stroke
+                  ..strokeWidth = 1.8
+                  ..strokeCap = StrokeCap.round);
+            _drawPulse(canvas, path,
+                Paint()..color = project.brandColor as Color, pulseValue);
+          }
+        }
+      }
+    }
+
+    for (final project in projects) {
+      for (final plan in project.plans) {
+        final planPos = planPositions[plan.id];
+        if (planPos != null) {
+          final planTasks =
+              tasks.where((t) => t.planId == plan.id).toList();
+          final planStartPort =
+              Offset(planPos.dx + 240.0, planPos.dy + 40.0);
+          for (final task in planTasks) {
+            final taskPos = taskPositions[task.id];
+            if (taskPos != null) {
+              final endPort = Offset(taskPos.dx, taskPos.dy + 40.0);
+              final path = Path()
+                ..moveTo(planStartPort.dx, planStartPort.dy)
+                ..cubicTo(
+                    planStartPort.dx + 80.0,
+                    planStartPort.dy,
+                    endPort.dx - 80.0,
+                    endPort.dy,
+                    endPort.dx,
+                    endPort.dy);
+              final taskColor = _ebmTaskStatusColor(task.status);
+              canvas.drawPath(
+                  path,
+                  Paint()
+                    ..color = taskColor.withOpacity(0.12)
+                    ..style = PaintingStyle.stroke
+                    ..strokeWidth = 1.5
+                    ..strokeCap = StrokeCap.round);
+              _drawPulse(canvas, path, Paint()..color = taskColor, pulseValue);
+            }
+          }
+        }
+      }
+    }
+  }
+
+  void _drawPulse(Canvas canvas, Path path, Paint paint, double t) {
+    for (final metric in path.computeMetrics()) {
+      final tangent =
+          metric.getTangentForOffset(metric.length * t);
+      if (tangent != null) {
+        canvas.drawCircle(
+            tangent.position,
+            7.0,
+            Paint()
+              ..color = paint.color.withOpacity(0.6)
+              ..style = PaintingStyle.fill
+              ..maskFilter =
+                  const MaskFilter.blur(BlurStyle.normal, 5.0));
+        canvas.drawCircle(
+            tangent.position,
+            2.5,
+            Paint()
+              ..color = Colors.white
+              ..style = PaintingStyle.fill);
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
+}
+
+// ── Shared Radar Helpers (EBM) ────────────────────────────────────────────────
+
+Color _ebmPlanStatusColor(ProjectStatus s) {
+  switch (s) {
+    case ProjectStatus.completed: return Colors.green;
+    case ProjectStatus.inProgress: return Colors.blueAccent;
+    case ProjectStatus.delayed: return Colors.orange;
+    case ProjectStatus.archived: return Colors.grey;
+    default: return Colors.grey;
+  }
+}
+
+Color _ebmTaskStatusColor(TaskStatus status) {
+  switch (status) {
+    case TaskStatus.todo: return Colors.orangeAccent;
+    case TaskStatus.inProgress: return Colors.blueAccent;
+    case TaskStatus.completed: return Colors.green;
+    case TaskStatus.review: return Colors.amberAccent;
+    case TaskStatus.done: return Colors.tealAccent;
+  }
+}
+
+Color _ebmPriorityColor(TaskPriority priority) {
+  switch (priority) {
+    case TaskPriority.low: return Colors.blueGrey;
+    case TaskPriority.medium: return Colors.blueAccent;
+    case TaskPriority.high: return Colors.orangeAccent;
+    case TaskPriority.critical: return Colors.redAccent;
+  }
+}
+
+Widget _buildEbmPlanModal({
+  required BuildContext context,
+  required Plan plan,
+  required Color color,
+  required bool isDark,
+  double totalBudget = 0.0,
+}) {
+  return Dialog(
+    backgroundColor: Colors.transparent,
+    insetPadding:
+        const EdgeInsets.symmetric(horizontal: 20, vertical: 40),
+    child: GlassContainer(
+      borderRadius: 24,
+      padding: const EdgeInsets.all(24),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 450),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: color.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                    border:
+                        Border.all(color: color.withOpacity(0.3)),
+                  ),
+                  child: Text(plan.icode,
+                      style: TextStyle(
+                          color: color,
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 1)),
+                ),
+                IconButton(
+                    icon: const Icon(Icons.close, size: 20),
+                    onPressed: () => Navigator.pop(context)),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Text(plan.title,
+                style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: isDark ? Colors.white : Colors.black87)),
+            const SizedBox(height: 8),
+            Text(
+              'A critical programmatic node mapping system goals to resource allocation and active development phases.',
+              style: TextStyle(
+                  fontSize: 14,
+                  color: isDark ? Colors.white70 : Colors.black54,
+                  height: 1.5),
+            ),
+            const SizedBox(height: 16),
+            const Divider(color: Colors.white10),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                    child: _ebmModalItem(
+                        'STATUS',
+                        plan.status.name.toUpperCase(),
+                        plan.status == ProjectStatus.completed
+                            ? Colors.green
+                            : Colors.blueAccent,
+                        isDark)),
+                Expanded(
+                    child: _ebmModalItem(
+                        'TASKS BUDGETED',
+                        '\$${totalBudget.toStringAsFixed(2)}',
+                        Colors.blueAccent,
+                        isDark)),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                    child: _ebmModalItem(
+                        'TASKS LINKED',
+                        '${plan.taskIds.length}',
+                        color,
+                        isDark)),
+                Expanded(
+                    child: _ebmModalItem(
+                        'CREATED',
+                        '${plan.createdAt.year}-${plan.createdAt.month.toString().padLeft(2, '0')}-${plan.createdAt.day.toString().padLeft(2, '0')}',
+                        isDark ? Colors.white70 : Colors.black87,
+                        isDark)),
+              ],
+            ),
+            const SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () => Navigator.pop(context),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: color,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  elevation: 0,
+                ),
+                child: const Text('CLOSE BRIEF',
+                    style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12,
+                        letterSpacing: 1)),
+              ),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
+Widget _buildEbmTaskModal({
+  required BuildContext context,
+  required SystemTask task,
+  required Color color,
+  required bool isDark,
+  required TaskProvider taskProvider,
+}) {
+  return Dialog(
+    backgroundColor: Colors.transparent,
+    insetPadding:
+        const EdgeInsets.symmetric(horizontal: 20, vertical: 40),
+    child: GlassContainer(
+      borderRadius: 24,
+      padding: const EdgeInsets.all(24),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 450),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: color.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                    border:
+                        Border.all(color: color.withOpacity(0.3)),
+                  ),
+                  child: Text(task.taskNumber,
+                      style: TextStyle(
+                          color: color,
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 1)),
+                ),
+                IconButton(
+                    icon: const Icon(Icons.close, size: 20),
+                    onPressed: () => Navigator.pop(context)),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Text(task.title,
+                style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: isDark ? Colors.white : Colors.black87)),
+            if (task.description.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Text(task.description,
+                  style: TextStyle(
+                      fontSize: 14,
+                      color:
+                          isDark ? Colors.white70 : Colors.black54,
+                      height: 1.5)),
+            ],
+            const SizedBox(height: 16),
+            const Divider(color: Colors.white10),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                    child: _ebmModalItem(
+                        'STATUS',
+                        task.status.displayName,
+                        _ebmTaskStatusColor(task.status),
+                        isDark)),
+                Expanded(
+                    child: _ebmModalItem(
+                        'PRIORITY',
+                        task.priority.name.toUpperCase(),
+                        _ebmPriorityColor(task.priority),
+                        isDark)),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                    child: _ebmModalItem(
+                        'ALLOCATED BUDGET',
+                        '\$${task.allocatedCost.toStringAsFixed(2)}',
+                        color,
+                        isDark)),
+                Expanded(
+                    child: _ebmModalItem(
+                        'ASSIGNEE',
+                        task.assignee,
+                        isDark ? Colors.white70 : Colors.black87,
+                        isDark)),
+              ],
+            ),
+            const SizedBox(height: 24),
+            DropdownButtonFormField<TaskStatus>(
+              value: task.status,
+              decoration: InputDecoration(
+                labelText: 'CHANGE STATUS',
+                labelStyle: TextStyle(
+                    color: color,
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 1),
+                border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12)),
+                contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 12, vertical: 8),
+              ),
+              items: TaskStatus.values
+                  .map((s) => DropdownMenuItem<TaskStatus>(
+                      value: s,
+                      child: Text(s.displayName,
+                          style: const TextStyle(fontSize: 12))))
+                  .toList(),
+              onChanged: (newStatus) {
+                if (newStatus != null && newStatus != task.status) {
+                  taskProvider.updateTaskStatus(task.id, newStatus);
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                    content: Text(
+                        'Status updated to ${newStatus.displayName}'),
+                    behavior: SnackBarBehavior.floating,
+                    backgroundColor: color,
+                  ));
+                }
+              },
+            ),
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () => Navigator.pop(context),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: color,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  elevation: 0,
+                ),
+                child: const Text('CLOSE BRIEF',
+                    style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12,
+                        letterSpacing: 1)),
+              ),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
+Widget _ebmModalItem(
+    String label, String value, Color valColor, bool isDark) {
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Text(label,
+          style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.bold,
+              color: isDark ? Colors.white38 : Colors.black38,
+              letterSpacing: 1.2)),
+      const SizedBox(height: 6),
+      Text(value,
+          style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+              color: valColor)),
+    ],
+  );
 }

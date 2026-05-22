@@ -51,6 +51,8 @@ class Plan {
   final DateTime createdAt;
   final ProjectStatus status;
   final List<HistoryLog> historyLogs; // New: Traceability Logs
+  final double budget; // New: Plan Budget
+  final double consumedBudget; // New: Consumed Budget
 
   Plan({
     required this.id,
@@ -63,12 +65,14 @@ class Plan {
     required this.createdAt,
     this.status = ProjectStatus.planned,
     this.historyLogs = const [],
+    this.budget = 10000.0,
+    this.consumedBudget = 0.0,
   });
 
   Plan copyWith({
     String? id, String? icode, String? title, String? description, List<String>? taskIds,
     String? author, String? assignedAuthor, DateTime? createdAt, ProjectStatus? status,
-    List<HistoryLog>? historyLogs,
+    List<HistoryLog>? historyLogs, double? budget, double? consumedBudget,
   }) {
     return Plan(
       id: id ?? this.id,
@@ -81,6 +85,8 @@ class Plan {
       createdAt: createdAt ?? this.createdAt,
       status: status ?? this.status,
       historyLogs: historyLogs ?? this.historyLogs,
+      budget: budget ?? this.budget,
+      consumedBudget: consumedBudget ?? this.consumedBudget,
     );
   }
   Map<String, dynamic> toMap() {
@@ -95,6 +101,8 @@ class Plan {
       'createdAt': createdAt.toIso8601String(),
       'status': status.index,
       'historyLogs': historyLogs.map((l) => l.toMap()).toList(),
+      'budget': budget,
+      'consumedBudget': consumedBudget,
     };
   }
 
@@ -110,6 +118,8 @@ class Plan {
       createdAt: DateTime.parse(map['createdAt'] ?? DateTime.now().toIso8601String()),
       status: Project._parseStatus(map['status']), // Reuse Project's parser
       historyLogs: (map['historyLogs'] as List? ?? []).map((l) => HistoryLog.fromMap(l)).toList(),
+      budget: (map['budget'] ?? 10000.0).toDouble(),
+      consumedBudget: (map['consumedBudget'] ?? map['consumed_budget'] ?? 0.0).toDouble(),
     );
   }
 }
