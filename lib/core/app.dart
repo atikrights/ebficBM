@@ -87,22 +87,42 @@ class BizOSApp extends StatelessWidget {
                     title: 'ebficBM',
                     debugShowCheckedModeBanner: false,
                     builder: (context, child) => ResponsiveBreakpoints.builder(
-                      child: isDesktop 
-                        ? Material(
-                            child: Stack(
-                              children: [
-                                Padding(
-                                  padding: const EdgeInsets.only(top: 33),
-                                  child: ClipRect(child: child!),
+                      child: Builder(
+                        builder: (context) {
+                          final bp = ResponsiveBreakpoints.of(context);
+                          
+                          final Widget mainContent = isDesktop 
+                            ? Material(
+                                child: Stack(
+                                  children: [
+                                    Padding(
+                                      padding: const EdgeInsets.only(top: 33),
+                                      child: ClipRect(child: child!),
+                                    ),
+                                    Positioned(
+                                      top: 0, left: 0, right: 0,
+                                      child: CustomTitleBar(isDark: isDark),
+                                    ),
+                                  ],
                                 ),
-                                Positioned(
-                                  top: 0, left: 0, right: 0,
-                                  child: CustomTitleBar(isDark: isDark),
-                                ),
-                              ],
-                            ),
-                          )
-                        : child!,
+                              )
+                            : child!;
+
+                          if (bp.isMobile) {
+                            return ResponsiveScaledBox(
+                              width: 450,
+                              child: mainContent,
+                            );
+                          } else if (bp.isTablet) {
+                            return ResponsiveScaledBox(
+                              width: 800,
+                              child: mainContent,
+                            );
+                          }
+
+                          return mainContent;
+                        },
+                      ),
                       breakpoints: [
                         const Breakpoint(start: 0, end: 450, name: MOBILE),
                         const Breakpoint(start: 451, end: 800, name: TABLET),
