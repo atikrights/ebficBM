@@ -534,71 +534,87 @@ class _CompanyDetailViewState extends State<CompanyDetailView> {
 
   Widget _buildHealthWidgets(bool isDark, Color textColor) {
     final bool isCritical = widget.company.healthScore < 0.7;
+    final w = MediaQuery.of(context).size.width;
+    final isMobile = w < 600;
+
+    final healthScoreCard = GlassContainer(
+      padding: const EdgeInsets.all(24),
+      border: isCritical ? Border.all(color: AppColors.error, width: 2) : null,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text('Health Score', style: TextStyle(fontSize: 14, color: isDark ? Colors.white70 : Colors.black54)),
+              Icon(isCritical ? IconsaxPlusLinear.warning_2 : IconsaxPlusLinear.shield_tick, color: isCritical ? AppColors.error : AppColors.success),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Text('${(widget.company.healthScore * 100).toInt()}%', style: TextStyle(fontSize: 36, fontWeight: FontWeight.bold, color: isCritical ? AppColors.error : AppColors.success)),
+          const SizedBox(height: 8),
+          LinearProgressIndicator(
+            value: widget.company.healthScore,
+            backgroundColor: (isCritical ? AppColors.error : AppColors.success).withValues(alpha: 0.2),
+            color: isCritical ? AppColors.error : AppColors.success,
+            minHeight: 8,
+            borderRadius: BorderRadius.circular(4),
+          )
+        ],
+      ),
+    );
+
+    final budgetUtilCard = GlassContainer(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Budget Utilization', style: TextStyle(fontSize: 14, color: isDark ? Colors.white70 : Colors.black54)),
+          const SizedBox(height: 16),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(r'$' + '${(widget.company.budgetUtilized / 1000).toStringAsFixed(0)}k', style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: textColor)),
+              const SizedBox(width: 8),
+              Padding(
+                padding: const EdgeInsets.only(bottom: 6),
+                child: Text('of \$${(widget.company.annualRevenue / 1000).toStringAsFixed(0)}k', style: const TextStyle(fontSize: 14, color: Colors.grey)),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          LinearProgressIndicator(
+            value: widget.company.budgetUtilized / widget.company.annualRevenue,
+            backgroundColor: AppColors.primary.withValues(alpha: 0.2),
+            color: AppColors.primary,
+            minHeight: 8,
+            borderRadius: BorderRadius.circular(4),
+          )
+        ],
+      ),
+    );
+
+    if (isMobile) {
+      return Column(
+        children: [
+          healthScoreCard,
+          const SizedBox(height: 16),
+          budgetUtilCard,
+        ],
+      );
+    }
 
     return Row(
       children: [
         Expanded(
           flex: 2,
-          child: GlassContainer(
-            padding: const EdgeInsets.all(24),
-            border: isCritical ? Border.all(color: AppColors.error, width: 2) : null,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text('Health Score', style: TextStyle(fontSize: 14, color: isDark ? Colors.white70 : Colors.black54)),
-                    Icon(isCritical ? IconsaxPlusLinear.warning_2 : IconsaxPlusLinear.shield_tick, color: isCritical ? AppColors.error : AppColors.success),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                Text('${(widget.company.healthScore * 100).toInt()}%', style: TextStyle(fontSize: 36, fontWeight: FontWeight.bold, color: isCritical ? AppColors.error : AppColors.success)),
-                const SizedBox(height: 8),
-                LinearProgressIndicator(
-                  value: widget.company.healthScore,
-                  backgroundColor: (isCritical ? AppColors.error : AppColors.success).withValues(alpha: 0.2),
-                  color: isCritical ? AppColors.error : AppColors.success,
-                  minHeight: 8,
-                  borderRadius: BorderRadius.circular(4),
-                )
-              ],
-            ),
-          ),
+          child: healthScoreCard,
         ),
         const SizedBox(width: 16),
         Expanded(
           flex: 3,
-          child: GlassContainer(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Budget Utilization', style: TextStyle(fontSize: 14, color: isDark ? Colors.white70 : Colors.black54)),
-                const SizedBox(height: 16),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Text(r'$' + '${(widget.company.budgetUtilized / 1000).toStringAsFixed(0)}k', style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: textColor)),
-                    const SizedBox(width: 8),
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 6),
-                      child: Text('of \$${(widget.company.annualRevenue / 1000).toStringAsFixed(0)}k', style: const TextStyle(fontSize: 14, color: Colors.grey)),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                LinearProgressIndicator(
-                  value: widget.company.budgetUtilized / widget.company.annualRevenue,
-                  backgroundColor: AppColors.primary.withValues(alpha: 0.2),
-                  color: AppColors.primary,
-                  minHeight: 8,
-                  borderRadius: BorderRadius.circular(4),
-                )
-              ],
-            ),
-          ),
-        )
+          child: budgetUtilCard,
+        ),
       ],
     );
   }
