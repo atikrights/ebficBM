@@ -249,7 +249,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
       case 'failed':
         return const Icon(Icons.error_outline, size: 13, color: Colors.redAccent);
       case 'read':
-        return const Icon(Icons.done_all, size: 13, color: Colors.cyanAccent);
+        return const Icon(Icons.done_all, size: 13, color: Color(0xFF34B7F1));
       case 'delivered':
         return const Icon(Icons.done_all, size: 13, color: Colors.white70);
       case 'sent':

@@ -186,7 +186,10 @@ class _ChatListScreenState extends State<ChatListScreen> {
       final msgDate = DateTime(date.year, date.month, date.day);
 
       if (msgDate == today) {
-        return "${date.hour}:${date.minute.toString().padLeft(2, '0')}";
+        final hour = date.hour > 12 ? date.hour - 12 : (date.hour == 0 ? 12 : date.hour);
+        final minute = date.minute.toString().padLeft(2, '0');
+        final period = date.hour >= 12 ? 'PM' : 'AM';
+        return "$hour:$minute $period";
       } else if (msgDate == yesterday) {
         return "Yesterday";
       } else if (now.difference(date).inDays < 7) {
@@ -250,8 +253,8 @@ class _ChatListScreenState extends State<ChatListScreen> {
             style: GoogleFonts.outfit(fontSize: 12, color: textColor.withOpacity(0.6))
           ),
         ),
-        onTap: () {
-          Navigator.push(
+        onTap: () async {
+          await Navigator.push(
             context,
             MaterialPageRoute(
               builder: (context) => ChatDetailScreen(
@@ -261,6 +264,9 @@ class _ChatListScreenState extends State<ChatListScreen> {
               ),
             ),
           );
+          if (mounted) {
+            context.read<ChatProvider>().loadSessions();
+          }
         },
       ),
     );
@@ -269,7 +275,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
   Widget _buildStatusIcon(String status) {
     switch (status) {
       case 'read':
-        return const Icon(Icons.done_all, size: 16, color: Colors.blueAccent);
+        return const Icon(Icons.done_all, size: 16, color: Color(0xFF34B7F1));
       case 'delivered':
         return const Icon(Icons.done_all, size: 16, color: Colors.white38);
       case 'sent':
@@ -393,8 +399,8 @@ class _ChatListScreenState extends State<ChatListScreen> {
                   ],
                 ),
               ),
-              onTap: () {
-                Navigator.push(
+              onTap: () async {
+                await Navigator.push(
                   context,
                   MaterialPageRoute(
                     builder: (context) => ChatDetailScreen(
@@ -404,6 +410,9 @@ class _ChatListScreenState extends State<ChatListScreen> {
                     ),
                   ),
                 );
+                if (mounted) {
+                  context.read<ChatProvider>().loadSessions();
+                }
               },
             ),
           ),

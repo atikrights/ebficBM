@@ -20,6 +20,7 @@ import 'package:ebficbm/features/notices/screens/notice_screen.dart';
 import 'package:ebficbm/features/assets/screens/asset_library_screen.dart';
 import 'package:ebficbm/features/analysis/screens/analysis_screen.dart';
 import 'package:ebficbm/features/chat/presentation/chat_list_screen.dart';
+import 'package:ebficbm/features/chat/presentation/chat_dashboard_screen.dart';
 
 
 class HomeScreen extends StatefulWidget {
@@ -90,6 +91,7 @@ class _HomeScreenState extends State<HomeScreen> {
       const UpdateScreen(),
       const GuidelinesScreen(),
       const ModuleScreen(),
+      const ChatDashboardScreen(),
     ];
     if (kIsWeb) {
       screens.removeAt(13); // Remove UpdateScreen (adjusted index)
@@ -115,6 +117,7 @@ class _HomeScreenState extends State<HomeScreen> {
       'Software Update',
       'System Guidelines',
       'App Modules',
+      'Chat Dashboard',
     ];
     if (kIsWeb) {
       titles.removeAt(13); // Remove Software Update title (adjusted index)

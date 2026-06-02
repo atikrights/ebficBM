@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
 
@@ -61,5 +62,19 @@ class LocalDatabaseService {
       whereArgs: [partnerId, partnerId],
       orderBy: 'id ASC'
     );
+  }
+
+  Future<void> wipeDatabase() async {
+    if (_database != null) {
+      await _database!.close();
+      _database = null;
+    }
+    try {
+      final dbPath = join(await getDatabasesPath(), 'ebm_chat_mobile_v2.db');
+      final file = File(dbPath);
+      if (await file.exists()) {
+        await file.delete();
+      }
+    } catch (_) {}
   }
 }

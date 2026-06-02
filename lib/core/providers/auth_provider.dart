@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:math' as math;
 import 'dart:typed_data';
@@ -8,9 +9,11 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../network/api_service.dart';
 import '../services/pusher_service.dart';
+import '../../features/chat/data/local_database_service.dart';
 
 class AuthProvider extends ChangeNotifier {
   final ApiService _api = ApiService();
+  Timer? _sessionVerifyTimer;
   
   bool _isLoggedIn = false;
   bool _isInitializing = true;
@@ -81,6 +84,27 @@ class AuthProvider extends ChangeNotifier {
     });
   }
 
+  void _startSessionVerifyTimer() {
+    _sessionVerifyTimer?.cancel();
+    // Verify session every 60 seconds to support robust real-time session eviction on Windows Desktop natively
+    _sessionVerifyTimer = Timer.periodic(const Duration(seconds: 60), (timer) {
+      if (_isLoggedIn && _api.token != null) {
+        _verifySessionAsync(
+          _api.token!,
+          _userRole ?? 'STAFF',
+          _userName,
+          _userEmail,
+          _userId,
+        );
+      }
+    });
+  }
+
+  void _stopSessionVerifyTimer() {
+    _sessionVerifyTimer?.cancel();
+    _sessionVerifyTimer = null;
+  }
+
   Future<void> _restoreSession() async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -115,6 +139,8 @@ class AuthProvider extends ChangeNotifier {
         _chatBio = prefs.getString('chat_bio');
         _chatAbout = prefs.getString('chat_about');
         
+        _startSessionVerifyTimer();
+
         // 2. Initialize Pusher immediately with current token
         if (_userId != null) {
           try {
@@ -288,6 +314,8 @@ class AuthProvider extends ChangeNotifier {
       _chatAbout = userData['chat_about'];
       _isLoading = false;
       
+      _startSessionVerifyTimer();
+
       // Subscribe to private channels
       await PusherService().init(token: token);
       PusherService().subscribeToUserChannels(_userId!);
@@ -339,6 +367,8 @@ class AuthProvider extends ChangeNotifier {
       _chatAbout = userData['chat_about'];
       _isLoading = false;
       
+      _startSessionVerifyTimer();
+
       if (_userId != null) {
         await PusherService().init(token: token);
         PusherService().subscribeToUserChannels(_userId!);
@@ -397,6 +427,8 @@ class AuthProvider extends ChangeNotifier {
       _chatAbout = userData['chat_about'];
       _isLoading = false;
       
+      _startSessionVerifyTimer();
+
       if (_userId != null) {
         PusherService().subscribeToUserChannels(_userId!);
       }
@@ -411,9 +443,15 @@ class AuthProvider extends ChangeNotifier {
   }
 
   Future<void> logout() async {
+    _stopSessionVerifyTimer();
     final prefs = await SharedPreferences.getInstance();
     await prefs.clear();
     await SecureLocalStore.clear('auth_token');
+    
+    // Secure Cleanup: Wipe local SQLite database file entirely on logout
+    try {
+      await LocalDatabaseService().wipeDatabase();
+    } catch (_) {}
     
     _api.clearToken();
     _isLoggedIn = false;
@@ -442,6 +480,12 @@ class AuthProvider extends ChangeNotifier {
     if (bio != null) _chatBio = bio;
     if (about != null) _chatAbout = about;
     notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    _sessionVerifyTimer?.cancel();
+    super.dispose();
   }
 }
 

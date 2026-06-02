@@ -8,6 +8,8 @@ import 'package:ebficbm/features/notifications/screens/notifications_panel.dart'
 import 'package:flutter/foundation.dart';
 import 'package:ebficbm/core/providers/auth_provider.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:ebficbm/features/chat/presentation/chat_settings_screen.dart';
+import 'package:ebficbm/features/chat/providers/chat_provider.dart';
 
 class ResponsiveLayout extends StatelessWidget {
   final Widget body;
@@ -106,6 +108,8 @@ class _SidebarState extends State<_Sidebar> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final chatProvider = Provider.of<ChatProvider>(context);
+    final unreadChatCount = chatProvider.totalUnreadCount;
 
     return Container(
       width: widget.isCollapsed ? 80 : 260,
@@ -122,128 +126,226 @@ class _SidebarState extends State<_Sidebar> {
             child: ListView(
               padding: const EdgeInsets.symmetric(horizontal: 12),
               children: [
-                // --- OVERVIEW GROUP ---
-                _NavGroup(
-                  label: 'Overview',
-                  icon: IconsaxPlusLinear.home,
-                  isCollapsed: widget.isCollapsed,
-                  isExpanded: _expandedGroups['Overview'] ?? false,
-                  onToggle: () => _toggleGroup('Overview'),
-                  children: [
-                    _SubNavItem(
-                      label: 'Dashboard',
-                      icon: IconsaxPlusLinear.element_3,
-                      isSelected: widget.selectedIndex == 0,
-                      onTap: () => widget.onNavigationChanged(0),
-                      isFirst: true,
-                    ),
-                    _SubNavItem(
-                      label: 'Analysis',
-                      icon: IconsaxPlusLinear.graph,
-                      isSelected: widget.selectedIndex == 1,
-                      onTap: () => widget.onNavigationChanged(1),
-                      isLast: true,
-                    ),
-                  ],
-                ),
+                if (!widget.isCollapsed) ...[
+                  // --- OVERVIEW GROUP ---
+                  _NavGroup(
+                    label: 'Overview',
+                    icon: Icons.home_rounded,
+                    isCollapsed: widget.isCollapsed,
+                    isExpanded: _expandedGroups['Overview'] ?? false,
+                    onToggle: () => _toggleGroup('Overview'),
+                    isSelected: widget.selectedIndex == 0 || widget.selectedIndex == 1,
+                    children: [
+                      _SubNavItem(
+                        label: 'Dashboard',
+                        icon: Icons.dashboard_rounded,
+                        isSelected: widget.selectedIndex == 0,
+                        onTap: () => widget.onNavigationChanged(0),
+                        isNested: true,
+                        isFirst: true,
+                      ),
+                      _SubNavItem(
+                        label: 'Analysis',
+                        icon: Icons.analytics_rounded,
+                        isSelected: widget.selectedIndex == 1,
+                        onTap: () => widget.onNavigationChanged(1),
+                        isNested: true,
+                        isLast: true,
+                      ),
+                    ],
+                  ),
 
-                // --- WORKPLACE GROUP ---
-                _NavGroup(
-                  label: 'Workplace',
-                  icon: IconsaxPlusLinear.briefcase,
-                  isCollapsed: widget.isCollapsed,
-                  isExpanded: _expandedGroups['Workplace'] ?? false,
-                  onToggle: () => _toggleGroup('Workplace'),
-                  children: [
-                    _SubNavItem(
-                      label: 'Companies',
-                      icon: IconsaxPlusLinear.building,
-                      isSelected: widget.selectedIndex == 2,
-                      onTap: () => widget.onNavigationChanged(2),
-                      isFirst: true,
-                    ),
-                    _SubNavItem(
-                      label: 'Projects',
-                      icon: IconsaxPlusLinear.category,
-                      isSelected: widget.selectedIndex == 3,
-                      onTap: () => widget.onNavigationChanged(3),
-                    ),
-                    _SubNavItem(
-                      label: 'Tasks',
-                      icon: IconsaxPlusLinear.task_square,
-                      isSelected: widget.selectedIndex == 4,
-                      onTap: () => widget.onNavigationChanged(4),
-                    ),
-                    _SubNavItem(
-                      label: 'Finance',
-                      icon: IconsaxPlusLinear.card,
-                      isSelected: widget.selectedIndex == 5,
-                      onTap: () => widget.onNavigationChanged(5),
-                    ),
-                    _SubNavItem(
-                      label: 'Reports',
-                      icon: IconsaxPlusLinear.document_text,
-                      isSelected: widget.selectedIndex == 6,
-                      onTap: () => widget.onNavigationChanged(6),
-                      isLast: true,
-                    ),
-                  ],
-                ),
+                  // --- WORKPLACE GROUP ---
+                  _NavGroup(
+                    label: 'Workplace',
+                    icon: Icons.work_rounded,
+                    isCollapsed: widget.isCollapsed,
+                    isExpanded: _expandedGroups['Workplace'] ?? false,
+                    onToggle: () => _toggleGroup('Workplace'),
+                    isSelected: widget.selectedIndex >= 2 && widget.selectedIndex <= 6,
+                    children: [
+                      _SubNavItem(
+                        label: 'Companies',
+                        icon: Icons.business_rounded,
+                        isSelected: widget.selectedIndex == 2,
+                        onTap: () => widget.onNavigationChanged(2),
+                        isNested: true,
+                        isFirst: true,
+                      ),
+                      _SubNavItem(
+                        label: 'Projects',
+                        icon: Icons.assignment_rounded,
+                        isSelected: widget.selectedIndex == 3,
+                        onTap: () => widget.onNavigationChanged(3),
+                        isNested: true,
+                      ),
+                      _SubNavItem(
+                        label: 'Tasks',
+                        icon: Icons.task_alt_rounded,
+                        isSelected: widget.selectedIndex == 4,
+                        onTap: () => widget.onNavigationChanged(4),
+                        isNested: true,
+                      ),
+                      _SubNavItem(
+                        label: 'Finance',
+                        icon: Icons.payments_rounded,
+                        isSelected: widget.selectedIndex == 5,
+                        onTap: () => widget.onNavigationChanged(5),
+                        isNested: true,
+                      ),
+                      _SubNavItem(
+                        label: 'Reports',
+                        icon: Icons.description_rounded,
+                        isSelected: widget.selectedIndex == 6,
+                        onTap: () => widget.onNavigationChanged(6),
+                        isNested: true,
+                        isLast: true,
+                      ),
+                    ],
+                  ),
 
-                // --- CHAT GROUP ---
-                _NavGroup(
-                  label: 'Chat',
-                  icon: IconsaxPlusLinear.messages_1,
-                  isCollapsed: widget.isCollapsed,
-                  isExpanded: _expandedGroups['Chat'] ?? false,
-                  onToggle: () => _toggleGroup('Chat'),
-                  isSpecial: true,
-                  children: [
-                    _SubNavItem(
-                      label: 'All Chat',
-                      icon: IconsaxPlusLinear.message_2,
-                      isSelected: widget.selectedIndex == 10,
-                      onTap: () => widget.onNavigationChanged(10),
-                      isNested: true,
-                      isFirst: true,
-                    ),
-                    _SubNavItem(
-                      label: 'Broadcast',
-                      icon: IconsaxPlusLinear.radar,
-                      isSelected: widget.selectedIndex == 9,
-                      onTap: () => widget.onNavigationChanged(9),
-                      isNested: true,
-                    ),
-                    _SubNavItem(
-                      label: 'Settings',
-                      icon: IconsaxPlusLinear.setting_2,
-                      isSelected: false,
-                      onTap: () {},
-                      isNested: true,
-                      isLast: true,
-                    ),
-                  ],
-                ),
+                  // --- CHAT GROUP ---
+                  _NavGroup(
+                    label: 'Chat',
+                    icon: Icons.chat_bubble_rounded,
+                    isCollapsed: widget.isCollapsed,
+                    isExpanded: _expandedGroups['Chat'] ?? false,
+                    onToggle: () {
+                      _toggleGroup('Chat');
+                      widget.onNavigationChanged(kIsWeb ? 15 : 16);
+                    },
+                    isSpecial: true,
+                    isSelected: widget.selectedIndex == (kIsWeb ? 15 : 16) || widget.selectedIndex == 10 || widget.selectedIndex == 9,
+                    badgeCount: unreadChatCount,
+                    children: [
+                      _SubNavItem(
+                        label: 'All Chat',
+                        icon: Icons.forum_rounded,
+                        isSelected: widget.selectedIndex == 10,
+                        onTap: () => widget.onNavigationChanged(10),
+                        isNested: true,
+                        isFirst: true,
+                        badgeCount: unreadChatCount,
+                      ),
+                      _SubNavItem(
+                        label: 'Broadcast',
+                        icon: Icons.radar_rounded,
+                        isSelected: widget.selectedIndex == 9,
+                        onTap: () => widget.onNavigationChanged(9),
+                        isNested: true,
+                      ),
+                      _SubNavItem(
+                        label: 'Settings',
+                        icon: Icons.settings_rounded,
+                        isSelected: false,
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (context) => const ChatSettingsScreen()),
+                          );
+                        },
+                        isNested: true,
+                        isLast: true,
+                      ),
+                    ],
+                  ),
+                ] else ...[
+                  // --- COLLAPSED ICON NAVIGATION LIST ---
+                  _SubNavItem(
+                    label: 'Dashboard',
+                    icon: Icons.dashboard_rounded,
+                    isSelected: widget.selectedIndex == 0,
+                    onTap: () => widget.onNavigationChanged(0),
+                    isCollapsed: true,
+                  ),
+                  _SubNavItem(
+                    label: 'Analysis',
+                    icon: Icons.analytics_rounded,
+                    isSelected: widget.selectedIndex == 1,
+                    onTap: () => widget.onNavigationChanged(1),
+                    isCollapsed: true,
+                  ),
+                  const SizedBox(height: 8),
+                  _SubNavItem(
+                    label: 'Companies',
+                    icon: Icons.business_rounded,
+                    isSelected: widget.selectedIndex == 2,
+                    onTap: () => widget.onNavigationChanged(2),
+                    isCollapsed: true,
+                  ),
+                  _SubNavItem(
+                    label: 'Projects',
+                    icon: Icons.assignment_rounded,
+                    isSelected: widget.selectedIndex == 3,
+                    onTap: () => widget.onNavigationChanged(3),
+                    isCollapsed: true,
+                  ),
+                  _SubNavItem(
+                    label: 'Tasks',
+                    icon: Icons.task_alt_rounded,
+                    isSelected: widget.selectedIndex == 4,
+                    onTap: () => widget.onNavigationChanged(4),
+                    isCollapsed: true,
+                  ),
+                  _SubNavItem(
+                    label: 'Finance',
+                    icon: Icons.payments_rounded,
+                    isSelected: widget.selectedIndex == 5,
+                    onTap: () => widget.onNavigationChanged(5),
+                    isCollapsed: true,
+                  ),
+                  _SubNavItem(
+                    label: 'Reports',
+                    icon: Icons.description_rounded,
+                    isSelected: widget.selectedIndex == 6,
+                    onTap: () => widget.onNavigationChanged(6),
+                    isCollapsed: true,
+                  ),
+                  const SizedBox(height: 8),
+                  _SubNavItem(
+                    label: 'Chat Dashboard',
+                    icon: Icons.chat_bubble_rounded,
+                    isSelected: widget.selectedIndex == (kIsWeb ? 15 : 16),
+                    onTap: () => widget.onNavigationChanged(kIsWeb ? 15 : 16),
+                    isCollapsed: true,
+                    badgeCount: unreadChatCount,
+                  ),
+                  _SubNavItem(
+                    label: 'All Chat',
+                    icon: Icons.forum_rounded,
+                    isSelected: widget.selectedIndex == 10,
+                    onTap: () => widget.onNavigationChanged(10),
+                    isCollapsed: true,
+                    badgeCount: unreadChatCount,
+                  ),
+                  _SubNavItem(
+                    label: 'Broadcast',
+                    icon: Icons.radar_rounded,
+                    isSelected: widget.selectedIndex == 9,
+                    onTap: () => widget.onNavigationChanged(9),
+                    isCollapsed: true,
+                  ),
+                ],
 
                 const SizedBox(height: 12),
                 // --- FLAT ITEMS (No Section Headers) ---
                 _SubNavItem(
                   label: 'Notices',
-                  icon: IconsaxPlusLinear.notification_status,
+                  icon: Icons.campaign_rounded,
                   isSelected: widget.selectedIndex == 7,
                   onTap: () => widget.onNavigationChanged(7),
                   isCollapsed: widget.isCollapsed,
                 ),
                 _SubNavItem(
                   label: 'Notes',
-                  icon: IconsaxPlusLinear.document_text,
+                  icon: Icons.sticky_note_2_rounded,
                   isSelected: widget.selectedIndex == 8,
                   onTap: () => widget.onNavigationChanged(8),
                   isCollapsed: widget.isCollapsed,
                 ),
                 _SubNavItem(
                   label: 'Asset Library',
-                  icon: IconsaxPlusLinear.folder_cloud,
+                  icon: Icons.photo_library_rounded,
                   isSelected: widget.selectedIndex == 11,
                   onTap: () => widget.onNavigationChanged(11),
                   isCollapsed: widget.isCollapsed,
@@ -252,21 +354,21 @@ class _SidebarState extends State<_Sidebar> {
                 if (!kIsWeb)
                   _SubNavItem(
                     label: 'Update',
-                    icon: IconsaxPlusLinear.refresh,
+                    icon: Icons.system_update_rounded,
                     isSelected: widget.selectedIndex == 13,
                     onTap: () => widget.onNavigationChanged(13),
                     isCollapsed: widget.isCollapsed,
                   ),
                 _SubNavItem(
                   label: 'Guidelines',
-                  icon: IconsaxPlusLinear.book,
+                  icon: Icons.menu_book_rounded,
                   isSelected: widget.selectedIndex == (kIsWeb ? 13 : 14),
                   onTap: () => widget.onNavigationChanged(kIsWeb ? 13 : 14),
                   isCollapsed: widget.isCollapsed,
                 ),
                 _SubNavItem(
                   label: 'Modules',
-                  icon: IconsaxPlusLinear.category,
+                  icon: Icons.extension_rounded,
                   isSelected: widget.selectedIndex == (kIsWeb ? 14 : 15),
                   onTap: () => widget.onNavigationChanged(kIsWeb ? 14 : 15),
                   isCollapsed: widget.isCollapsed,
@@ -289,6 +391,8 @@ class _NavGroup extends StatelessWidget {
   final VoidCallback onToggle;
   final List<Widget> children;
   final bool isSpecial;
+  final bool isSelected;
+  final int badgeCount;
 
   const _NavGroup({
     required this.label,
@@ -298,14 +402,17 @@ class _NavGroup extends StatelessWidget {
     required this.onToggle,
     required this.children,
     this.isSpecial = false,
+    this.isSelected = false,
+    this.badgeCount = 0,
   });
 
   @override
   Widget build(BuildContext context) {
     if (isCollapsed) return Column(children: children);
 
+    final primaryColor = AppColors.primary;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final color = isDark ? Colors.white : Colors.black87;
+    final color = isDark ? Colors.white70 : Colors.black87;
 
     return Column(
       children: [
@@ -314,20 +421,71 @@ class _NavGroup extends StatelessWidget {
           borderRadius: BorderRadius.circular(12),
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              color: isSelected ? primaryColor.withOpacity(0.08) : Colors.transparent,
+              borderRadius: BorderRadius.circular(12),
+              border: isSelected ? Border.all(color: primaryColor.withOpacity(0.1), width: 0.5) : null,
+            ),
             child: Row(
               children: [
-                Icon(icon, size: 20, color: isSpecial ? const Color(0xFF34D399) : (isDark ? Colors.grey[400] : Colors.grey[600])),
+                if (isSelected)
+                  Container(
+                    width: 3,
+                    height: 16,
+                    margin: const EdgeInsets.only(right: 12),
+                    decoration: BoxDecoration(
+                      color: primaryColor,
+                      borderRadius: BorderRadius.circular(10),
+                      boxShadow: [BoxShadow(color: primaryColor.withOpacity(0.5), blurRadius: 4)],
+                    ),
+                  ),
+                Icon(
+                  icon, 
+                  size: 20, 
+                  color: isSelected 
+                      ? primaryColor 
+                      : (isSpecial ? const Color(0xFF34D399) : (isDark ? Colors.white54 : Colors.black54)),
+                ),
                 const SizedBox(width: 16),
                 Expanded(
                   child: Text(
                     label,
-                    style: TextStyle(fontSize: 14, fontWeight: isExpanded ? FontWeight.bold : FontWeight.w500, color: color),
+                    style: TextStyle(
+                      fontSize: 14, 
+                      fontWeight: isSelected ? FontWeight.bold : (isExpanded ? FontWeight.bold : FontWeight.w500), 
+                      color: isSelected ? (isDark ? Colors.white : primaryColor) : color,
+                    ),
                   ),
                 ),
+                if (badgeCount > 0) ...[
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFEF4444),
+                      borderRadius: BorderRadius.circular(10),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFFEF4444).withOpacity(0.3),
+                          blurRadius: 4,
+                          spreadRadius: 1,
+                        ),
+                      ],
+                    ),
+                    child: Text(
+                      badgeCount.toString(),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                ],
                 Icon(
                   isExpanded ? Icons.keyboard_arrow_up_rounded : Icons.keyboard_arrow_down_rounded,
                   size: 18,
-                  color: isDark ? Colors.white24 : Colors.black12,
+                  color: isSelected ? primaryColor : (isDark ? Colors.white30 : Colors.black26),
                 ),
               ],
             ),
@@ -335,7 +493,7 @@ class _NavGroup extends StatelessWidget {
         ),
         if (isExpanded)
           Padding(
-            padding: const EdgeInsets.only(left: 6),
+            padding: const EdgeInsets.only(left: 12),
             child: Column(children: children),
           ),
       ],
@@ -352,6 +510,7 @@ class _SubNavItem extends StatelessWidget {
   final bool isCollapsed;
   final bool isFirst;
   final bool isLast;
+  final int badgeCount;
 
   const _SubNavItem({
     required this.label,
@@ -362,6 +521,7 @@ class _SubNavItem extends StatelessWidget {
     this.isCollapsed = false,
     this.isFirst = false,
     this.isLast = false,
+    this.badgeCount = 0,
   });
 
   @override
@@ -369,9 +529,52 @@ class _SubNavItem extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     if (isCollapsed) {
-      return IconButton(
-        onPressed: onTap,
-        icon: Icon(icon, color: isSelected ? AppColors.primary : (isDark ? Colors.white24 : Colors.black12)),
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 2, horizontal: 8),
+        child: Tooltip(
+          message: label,
+          preferBelow: false,
+          child: InkWell(
+            onTap: onTap,
+            borderRadius: BorderRadius.circular(12),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: isSelected ? AppColors.primary.withOpacity(0.12) : Colors.transparent,
+                borderRadius: BorderRadius.circular(12),
+                border: isSelected 
+                    ? Border.all(color: AppColors.primary.withOpacity(0.25), width: 0.5)
+                    : null,
+              ),
+              child: Center(
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    Icon(
+                      icon,
+                      size: 20,
+                      color: isSelected ? AppColors.primary : (isDark ? Colors.white54 : Colors.black54),
+                    ),
+                    if (badgeCount > 0)
+                      Positioned(
+                        right: -4,
+                        top: -4,
+                        child: Container(
+                          width: 8,
+                          height: 8,
+                          decoration: const BoxDecoration(
+                            color: Color(0xFFEF4444),
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
       );
     }
 
@@ -379,24 +582,33 @@ class _SubNavItem extends StatelessWidget {
       child: Row(
         children: [
           // Hierarchy Lines (Mirrors EBM Central)
-          if (!isCollapsed && (isNested || isFirst || isLast || true))
-            Container(
-              width: 32,
-              child: Stack(
-                children: [
-                  // Vertical Line
-                  if (!isFirst || !isLast)
-                    Positioned(
-                      left: 15, top: isFirst ? 20 : 0, bottom: isLast ? 24 : 0,
-                      child: Container(width: 1.5, color: isDark ? Colors.white.withOpacity(0.08) : Colors.black.withOpacity(0.05)),
+          if (!isCollapsed && isNested)
+            Row(
+              children: [
+                Column(
+                  children: [
+                    Container(
+                      width: 1.0,
+                      height: 18,
+                      margin: const EdgeInsets.only(left: 14),
+                      color: isDark ? Colors.white.withOpacity(0.1) : Colors.black.withOpacity(0.05),
                     ),
-                  // Horizontal Line
-                  Positioned(
-                    left: 15, top: 24,
-                    child: Container(width: 10, height: 1.5, color: isDark ? Colors.white.withOpacity(0.08) : Colors.black.withOpacity(0.05)),
-                  ),
-                ],
-              ),
+                    if (!isLast)
+                      Expanded(
+                        child: Container(
+                          width: 1.0,
+                          margin: const EdgeInsets.only(left: 14),
+                          color: isDark ? Colors.white.withOpacity(0.1) : Colors.black.withOpacity(0.05),
+                        ),
+                      ),
+                  ],
+                ),
+                Container(
+                  width: 14,
+                  height: 1.0,
+                  color: isDark ? Colors.white.withOpacity(0.1) : Colors.black.withOpacity(0.05),
+                ),
+              ],
             ),
           
           Expanded(
@@ -415,17 +627,42 @@ class _SubNavItem extends StatelessWidget {
                     Icon(
                       icon,
                       size: 18,
-                      color: isSelected ? AppColors.primary : (isDark ? Colors.grey[500] : Colors.grey[600]),
+                      color: isSelected ? AppColors.primary : (isDark ? Colors.white54 : Colors.black54),
                     ),
                     const SizedBox(width: 14),
-                    Text(
-                      label,
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                        color: isSelected ? (isDark ? Colors.white : AppColors.primary) : (isDark ? Colors.grey[400] : Colors.grey[700]),
+                    Expanded(
+                      child: Text(
+                        label,
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                          color: isSelected ? (isDark ? Colors.white : AppColors.primary) : (isDark ? Colors.white70 : Colors.black87),
+                        ),
                       ),
                     ),
+                    if (badgeCount > 0)
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFEF4444),
+                          borderRadius: BorderRadius.circular(10),
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(0xFFEF4444).withOpacity(0.3),
+                              blurRadius: 4,
+                              spreadRadius: 1,
+                            ),
+                          ],
+                        ),
+                        child: Text(
+                          badgeCount.toString(),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
                   ],
                 ),
               ),
@@ -454,7 +691,7 @@ class _Logo extends StatelessWidget {
             borderRadius: BorderRadius.circular(12),
             boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.3), blurRadius: 8, offset: const Offset(0, 4))],
           ),
-          child: const Icon(IconsaxPlusBold.flag, color: Colors.white, size: 24),
+          child: const Icon(Icons.flag_rounded, color: Colors.white, size: 24),
         ),
         if (!isCollapsed) ...[
           const SizedBox(width: 12),
@@ -731,19 +968,40 @@ class _ProfileSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: () => context.read<AuthProvider>().logout(),
-      child: Container(
-        padding: const EdgeInsets.all(24),
-        child: Row(
-          mainAxisAlignment: isCollapsed ? MainAxisAlignment.center : MainAxisAlignment.start,
-          children: [
-            Icon(IconsaxPlusLinear.logout, color: Colors.grey, size: 20),
-            if (!isCollapsed) ...[
-              const SizedBox(width: 12),
-              const Text('Logout', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.w500)),
-            ],
+    final content = Container(
+      padding: EdgeInsets.symmetric(horizontal: isCollapsed ? 12 : 16, vertical: 12),
+      child: Row(
+        mainAxisAlignment: isCollapsed ? MainAxisAlignment.center : MainAxisAlignment.start,
+        children: [
+          Icon(
+            Icons.logout_rounded, 
+            color: isDark ? Colors.white54 : Colors.black54, 
+            size: 20
+          ),
+          if (!isCollapsed) ...[
+            const SizedBox(width: 16),
+            Text(
+              'Logout', 
+              style: TextStyle(
+                color: isDark ? Colors.white70 : Colors.black87, 
+                fontWeight: FontWeight.w500,
+                fontSize: 14,
+              )
+            ),
           ],
+        ],
+      ),
+    );
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      child: Tooltip(
+        message: 'Logout',
+        child: InkWell(
+          onTap: () => context.read<AuthProvider>().logout(),
+          borderRadius: BorderRadius.circular(12),
+          hoverColor: Colors.redAccent.withOpacity(0.08),
+          child: content,
         ),
       ),
     );

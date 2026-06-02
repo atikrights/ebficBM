@@ -17,6 +17,8 @@ class PusherService {
   factory PusherService() => _instance;
   PusherService._internal();
 
+  bool get isSupported => _isPusherSupported;
+
   // Nullable — never instantiated on unsupported platforms
   PusherChannelsFlutter? _pusher;
 

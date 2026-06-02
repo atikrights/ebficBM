@@ -102,7 +102,7 @@ class ChatService {
   /// AI Assistant logic (Generate response)
   Future<String> getAiReply(String prompt) async {
     try {
-      final response = await _api.post('/chat/ai/generate', {'prompt': prompt});
+      final response = await _api.post('/chat/ai/generate', {'message': prompt});
       return response['reply'] ?? '';
     } catch (e) {
       debugPrint('ChatService Error (getAiReply): $e');

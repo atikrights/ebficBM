@@ -3,6 +3,7 @@ import '../data/chat_service.dart';
 import '../../../core/services/pusher_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
+import 'dart:async';
 
 class ChatProvider extends ChangeNotifier with WidgetsBindingObserver {
   final ChatService _service;
@@ -13,21 +14,43 @@ class ChatProvider extends ChangeNotifier with WidgetsBindingObserver {
   final Map<String, bool> _typingStatus = {};
   bool _isLoading = false;
   String? _activeChatId;
+  Timer? _pollTimer;
 
   List<Map<String, dynamic>> get sessions => _sessions;
   bool get isLoading => _isLoading;
   ChatService get service => _service;
   Map<String, bool> get typingStatus => _typingStatus;
 
+  int get totalUnreadCount {
+    return _sessions.fold<int>(0, (sum, session) {
+      return sum + (int.tryParse(session['unread_count']?.toString() ?? '0') ?? 0);
+    });
+  }
+
   ChatProvider(this._service) {
     WidgetsBinding.instance.addObserver(this);
     _initPusherListener();
+    if (!_pusher.isSupported) {
+      _startPolling();
+    }
   }
 
   @override
   void dispose() {
+    _pollTimer?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
+  }
+
+  void _startPolling() {
+    _pollTimer?.cancel();
+    _pollTimer = Timer.periodic(const Duration(seconds: 3), (_) {
+      performDeltaSync();
+      loadSessions();
+      if (_activeChatId != null && (_messages[_activeChatId] == null || _messages[_activeChatId]!.isEmpty)) {
+        loadMessages(_activeChatId!);
+      }
+    });
   }
 
   @override
@@ -57,6 +80,12 @@ class ChatProvider extends ChangeNotifier with WidgetsBindingObserver {
 
   void setActiveChat(String receiverType) {
     _activeChatId = receiverType;
+    for (var session in _sessions) {
+      if (session['receiver_type']?.toString() == receiverType) {
+        session['unread_count'] = 0;
+      }
+    }
+    notifyListeners();
     if (int.tryParse(receiverType) != null) {
       _service.markAsRead(int.parse(receiverType));
     }
@@ -152,9 +181,12 @@ class ChatProvider extends ChangeNotifier with WidgetsBindingObserver {
   void _handleMessageUpdate(dynamic rawData) {
     if (rawData == null) return;
     try {
-      final Map<String, dynamic> data = rawData is String ? json.decode(rawData) : Map<String, dynamic>.from(rawData);
+      final Map<String, dynamic> rawPayload = rawData is String ? json.decode(rawData) : Map<String, dynamic>.from(rawData);
+      final Map<String, dynamic> data = (rawPayload['data'] is Map)
+          ? Map<String, dynamic>.from(rawPayload['data'])
+          : rawPayload;
       final action = data['action'];
-      final targetId = data['id'].toString();
+      final targetId = data['id']?.toString() ?? '';
       final receiverType = data['receiver_type']?.toString() ?? data['receiver_id']?.toString() ?? '';
 
       if (action == 'system_wipe') {
@@ -164,14 +196,16 @@ class ChatProvider extends ChangeNotifier with WidgetsBindingObserver {
         return;
       }
 
-      if (action == 'deleted' && _messages.containsKey(receiverType)) {
-        _messages[receiverType]!.removeWhere((m) => m['id'].toString() == targetId);
-      } else if (action == 'edited' && _messages.containsKey(receiverType)) {
-        final newMsg = data['message'] ?? data['new_content'];
-        for (var msg in _messages[receiverType]!) {
-          if (msg['id'].toString() == targetId) msg['message'] = newMsg;
+      if (action == 'deleted') {
+        if (_messages.containsKey(receiverType)) {
+          _messages[receiverType]!.removeWhere((m) => m['id'].toString() == targetId);
         }
-        _updateSessionLastMessage(receiverType, newMsg, isMe: true);
+        loadSessions();
+      } else if (action == 'edited' || action == 'visibility_toggle') {
+        if (receiverType.isNotEmpty) {
+          loadMessages(receiverType);
+        }
+        loadSessions();
       }
       notifyListeners();
     } catch (e) {}
@@ -216,7 +250,6 @@ class ChatProvider extends ChangeNotifier with WidgetsBindingObserver {
         if (id > maxId) maxId = id;
       }
     });
-    if (maxId == 0) return;
     try {
       final List<dynamic> newMessages = await _service.getDeltaSync(maxId);
       for (var msg in newMessages) _handleNewMessage(msg);
