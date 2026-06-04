@@ -4115,6 +4115,8 @@ Widget _buildEbmTaskModal({
   required bool isDark,
   required TaskProvider taskProvider,
 }) {
+  final auth = context.watch<AuthProvider>();
+  final canApprove = canUserApproveTask(task, auth);
   return Dialog(
     backgroundColor: Colors.transparent,
     insetPadding:
@@ -4207,9 +4209,9 @@ Widget _buildEbmTaskModal({
             DropdownButtonFormField<TaskStatus>(
               value: task.status,
               decoration: InputDecoration(
-                labelText: 'CHANGE STATUS',
+                labelText: canApprove ? 'CHANGE STATUS' : 'CHANGE STATUS (LOCKED - READ ONLY)',
                 labelStyle: TextStyle(
-                    color: color,
+                    color: canApprove ? color : Colors.grey,
                     fontSize: 10,
                     fontWeight: FontWeight.bold,
                     letterSpacing: 1),
@@ -4224,7 +4226,7 @@ Widget _buildEbmTaskModal({
                       child: Text(s.displayName,
                           style: const TextStyle(fontSize: 12))))
                   .toList(),
-              onChanged: (newStatus) {
+              onChanged: canApprove ? (newStatus) {
                 if (newStatus != null && newStatus != task.status) {
                   taskProvider.updateTaskStatus(task.id, newStatus);
                   Navigator.pop(context);
@@ -4235,7 +4237,7 @@ Widget _buildEbmTaskModal({
                     backgroundColor: color,
                   ));
                 }
-              },
+              } : null,
             ),
             const SizedBox(height: 16),
             SizedBox(
@@ -4283,4 +4285,21 @@ Widget _ebmModalItem(
               color: valColor)),
     ],
   );
+}
+
+bool canUserApproveTask(SystemTask task, AuthProvider auth) {
+  switch (task.status) {
+    case TaskStatus.todo:
+      return auth.isAdmin || auth.isSubAdmin || auth.isManager;
+    case TaskStatus.inProgress: // ACTION
+      return auth.isManager;
+    case TaskStatus.review: // REVIEW
+      return auth.isAdmin || auth.isSubAdmin;
+    case TaskStatus.done: // DONE
+      return auth.isManager;
+    case TaskStatus.completed: // COMPLETED
+      return auth.isAdmin || auth.isSubAdmin;
+    default:
+      return false;
+  }
 }

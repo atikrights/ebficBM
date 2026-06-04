@@ -23,6 +23,8 @@ import 'package:ebficbm/features/tasks/screens/task_list_screen.dart';
 import 'package:ebficbm/features/tasks/screens/task_workspace_screen.dart';
 import 'package:ebficbm/core/services/refresh_service.dart';
 import 'package:ebficbm/features/settings/screens/settings_screen.dart';
+import 'package:ebficbm/core/providers/auth_provider.dart';
+import 'package:flutter/foundation.dart';
 
 class ProjectWorkspaceScreen extends StatefulWidget {
   final String projectId;
@@ -1769,6 +1771,10 @@ class _PlanConsoleBoard extends StatefulWidget {
 class _PlanConsoleBoardState extends State<_PlanConsoleBoard> {
   final _searchCtrl = TextEditingController();
 
+  bool _canApprove(SystemTask task, AuthProvider auth) {
+    return canUserApproveTask(task, auth);
+  }
+
   @override
   void dispose() {
     _searchCtrl.dispose();
@@ -1777,6 +1783,7 @@ class _PlanConsoleBoardState extends State<_PlanConsoleBoard> {
 
   @override
   Widget build(BuildContext context) {
+    final auth = context.watch<AuthProvider>();
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final color = widget.project.brandColor;
     final isDesktop = MediaQuery.of(context).size.width > 750;
@@ -2016,17 +2023,40 @@ class _PlanConsoleBoardState extends State<_PlanConsoleBoard> {
     }
   }
 
-  void _exportConsoleData(List<SystemTask> tasks) {
+  void _exportConsoleData(List<SystemTask> tasks) async {
     if (tasks.isEmpty) return;
     final encoded = json.encode(tasks.map((t) => t.toMap()).toList());
-    final bytes = utf8.encode(encoded);
-    final blob = html.Blob([bytes]);
-    final url = html.Url.createObjectUrlFromBlob(blob);
-    final anchor = html.AnchorElement(href: url)
-      ..setAttribute("download", "Console_Bundle_${widget.plan.title}_${DateTime.now().millisecondsSinceEpoch}.json")
-      ..click();
-    html.Url.revokeObjectUrl(url);
-    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Console bundle exported successfully.')));
+
+    if (kIsWeb) {
+      final bytes = utf8.encode(encoded);
+      final blob = html.Blob([bytes]);
+      final url = html.Url.createObjectUrlFromBlob(blob);
+      final anchor = html.AnchorElement(href: url)
+        ..setAttribute("download", "Console_Bundle_${widget.plan.title}_${DateTime.now().millisecondsSinceEpoch}.json")
+        ..click();
+      html.Url.revokeObjectUrl(url);
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Console bundle exported successfully.')));
+    } else {
+      try {
+        final outputFile = await FilePicker.saveFile(
+          dialogTitle: 'Export Console Bundle',
+          fileName: "Console_Bundle_${widget.plan.title}_${DateTime.now().millisecondsSinceEpoch}.json",
+          type: FileType.custom,
+          allowedExtensions: ['json'],
+        );
+        if (outputFile != null) {
+          final File file = File(outputFile);
+          await file.writeAsString(encoded);
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Console bundle exported successfully.'), behavior: SnackBarBehavior.floating));
+          }
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error exporting data: $e'), behavior: SnackBarBehavior.floating));
+        }
+      }
+    }
   }
 
   Future<void> _importConsoleData(BuildContext context) async {
@@ -2364,6 +2394,7 @@ class _PlanConsoleBoardState extends State<_PlanConsoleBoard> {
       context: context,
       builder: (ctx) => Consumer<TaskProvider>(
         builder: (context, tp, _) {
+          final auth = context.watch<AuthProvider>();
           final currentTask = tp.allTasks.firstWhere((t) => t.id == task.id, orElse: () => task);
           return Dialog(
             backgroundColor: isDark ? AppColors.darkSurface : Colors.white,
@@ -2406,7 +2437,7 @@ class _PlanConsoleBoardState extends State<_PlanConsoleBoard> {
                           ),
                         ),
                       const Spacer(),
-                      if (currentTask.status != TaskStatus.todo)
+                      if (currentTask.status != TaskStatus.todo && canUserApproveTask(currentTask, auth))
                         InkWell(
                           onTap: () {
                             TaskStatus prevStatus = currentTask.status;
@@ -2566,20 +2597,45 @@ class _PlanConsoleBoardState extends State<_PlanConsoleBoard> {
   }
 
   Widget _buildColumnList(List<SystemTask> tasks, Color accent, bool isDark) {
+    final auth = context.watch<AuthProvider>();
     if (tasks.isEmpty) {
       return Center(child: Text('No active nodes', style: TextStyle(color: isDark ? Colors.white12 : Colors.black12, fontSize: 10)));
     }
     return ListView.builder(
-      padding: const EdgeInsets.symmetric(horizontal: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
       itemCount: tasks.length,
-      itemBuilder: (context, idx) => Padding(
-        padding: const EdgeInsets.only(bottom: 8.0),
-        child: _buildConsoleNode(context, tasks[idx], accent, isDark),
-      ),
+      itemBuilder: (context, idx) {
+        final task = tasks[idx];
+        final nodeWidget = _buildConsoleNode(context, task, accent, isDark);
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 8.0),
+          child: Draggable<SystemTask>(
+            data: task,
+            maxSimultaneousDrags: _canApprove(task, auth) ? 1 : 0,
+            feedback: Material(
+              color: Colors.transparent,
+              child: SizedBox(
+                width: 220,
+                child: Opacity(
+                  opacity: 0.8,
+                  child: nodeWidget,
+                ),
+              ),
+            ),
+            childWhenDragging: Opacity(
+              opacity: 0.3,
+              child: nodeWidget,
+            ),
+            child: nodeWidget,
+          ),
+        );
+      },
     );
   }
 
   Widget _buildConsoleNode(BuildContext context, SystemTask task, Color accent, bool isDark) {
+    final auth = context.watch<AuthProvider>();
+    final canApprove = _canApprove(task, auth);
     return Container(
       padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
@@ -2665,44 +2721,54 @@ class _PlanConsoleBoardState extends State<_PlanConsoleBoard> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                InkWell(
-                  onTap: () {
-                    if (task.status == TaskStatus.completed) {
-                      context.read<TaskProvider>().updateTask(task.copyWith(isArchived: true));
-                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Task Archived to History!'), behavior: SnackBarBehavior.floating));
-                      return;
-                    }
+                if (canApprove)
+                  InkWell(
+                    onTap: () {
+                      if (task.status == TaskStatus.completed) {
+                        context.read<TaskProvider>().updateTask(task.copyWith(isArchived: true));
+                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Task Archived to History!'), behavior: SnackBarBehavior.floating));
+                        return;
+                      }
 
-                    TaskStatus nextStatus = task.status;
-                    if (task.status == TaskStatus.todo) nextStatus = TaskStatus.inProgress;
-                    else if (task.status == TaskStatus.inProgress) nextStatus = TaskStatus.review;
-                    else if (task.status == TaskStatus.review) nextStatus = TaskStatus.done;
-                    else if (task.status == TaskStatus.done) nextStatus = TaskStatus.completed;
+                      TaskStatus nextStatus = task.status;
+                      if (task.status == TaskStatus.todo) nextStatus = TaskStatus.inProgress;
+                      else if (task.status == TaskStatus.inProgress) nextStatus = TaskStatus.review;
+                      else if (task.status == TaskStatus.review) nextStatus = TaskStatus.done;
+                      else if (task.status == TaskStatus.done) nextStatus = TaskStatus.completed;
 
-                    if (nextStatus != task.status) {
-                      final newComment = TaskComment(
-                        id: 'cmt_${DateTime.now().millisecondsSinceEpoch}',
-                        author: 'Admin',
-                        content: 'Node Integrity Approved: Promoted to ${nextStatus.displayName}',
-                        createdAt: DateTime.now()
-                      );
-                      context.read<TaskProvider>().updateTask(task.copyWith(status: nextStatus, comments: [...task.comments, newComment]));
-                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Task Promoted to ${nextStatus.displayName}!'), behavior: SnackBarBehavior.floating));
-                    }
-                  },
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-                    decoration: BoxDecoration(color: task.status == TaskStatus.completed ? Colors.teal.withValues(alpha: 0.1) : Colors.green.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(6)),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(task.status == TaskStatus.completed ? IconsaxPlusLinear.archive_tick : IconsaxPlusLinear.tick_circle, size: 10, color: task.status == TaskStatus.completed ? Colors.teal : Colors.green),
-                        const SizedBox(width: 4),
-                        Text(task.status == TaskStatus.completed ? 'ARCHIVE' : 'APPROVE', style: TextStyle(fontSize: 8, fontWeight: FontWeight.bold, color: task.status == TaskStatus.completed ? Colors.teal : Colors.green)),
-                      ],
+                      if (nextStatus != task.status) {
+                        final newComment = TaskComment(
+                          id: 'cmt_${DateTime.now().millisecondsSinceEpoch}',
+                          author: 'Admin',
+                          content: 'Node Integrity Approved: Promoted to ${nextStatus.displayName}',
+                          createdAt: DateTime.now()
+                        );
+                        context.read<TaskProvider>().updateTask(task.copyWith(status: nextStatus, comments: [...task.comments, newComment]));
+                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Task Promoted to ${nextStatus.displayName}!'), behavior: SnackBarBehavior.floating));
+                      }
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                      decoration: BoxDecoration(color: task.status == TaskStatus.completed ? Colors.teal.withValues(alpha: 0.1) : Colors.green.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(6)),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(task.status == TaskStatus.completed ? IconsaxPlusLinear.archive_tick : IconsaxPlusLinear.tick_circle, size: 10, color: task.status == TaskStatus.completed ? Colors.teal : Colors.green),
+                          const SizedBox(width: 4),
+                          Text(task.status == TaskStatus.completed ? 'ARCHIVE' : 'APPROVE', style: TextStyle(fontSize: 8, fontWeight: FontWeight.bold, color: task.status == TaskStatus.completed ? Colors.teal : Colors.green)),
+                        ],
+                      ),
                     ),
+                  )
+                else
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.lock_outline, size: 10, color: isDark ? Colors.white30 : Colors.black26),
+                      const SizedBox(width: 4),
+                      Text('LOCKED (READ-ONLY)', style: TextStyle(fontSize: 8, color: isDark ? Colors.white30 : Colors.black26, fontWeight: FontWeight.bold)),
+                    ],
                   ),
-                ),
                 Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -3592,6 +3658,8 @@ Widget _buildEbmTaskModal({
   required bool isDark,
   required TaskProvider taskProvider,
 }) {
+  final auth = context.watch<AuthProvider>();
+  final canApprove = canUserApproveTask(task, auth);
   return Dialog(
     backgroundColor: Colors.transparent,
     insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 40),
@@ -3671,9 +3739,9 @@ Widget _buildEbmTaskModal({
             DropdownButtonFormField<TaskStatus>(
               value: task.status,
               decoration: InputDecoration(
-                labelText: 'CHANGE STATUS',
+                labelText: canApprove ? 'CHANGE STATUS' : 'CHANGE STATUS (LOCKED - READ ONLY)',
                 labelStyle: TextStyle(
-                    color: color,
+                    color: canApprove ? color : Colors.grey,
                     fontSize: 10,
                     fontWeight: FontWeight.bold,
                     letterSpacing: 1),
@@ -3685,7 +3753,7 @@ Widget _buildEbmTaskModal({
                       value: s,
                       child: Text(s.displayName, style: const TextStyle(fontSize: 12))))
                   .toList(),
-              onChanged: (newStatus) {
+              onChanged: canApprove ? (newStatus) {
                 if (newStatus != null && newStatus != task.status) {
                   taskProvider.updateTaskStatus(task.id, newStatus);
                   Navigator.pop(context);
@@ -3695,7 +3763,7 @@ Widget _buildEbmTaskModal({
                     backgroundColor: color,
                   ));
                 }
-              },
+              } : null,
             ),
             const SizedBox(height: 16),
             SizedBox(
@@ -3734,4 +3802,21 @@ Widget _ebmModalItem(String label, String value, Color valColor, bool isDark) {
       Text(value, style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: valColor)),
     ],
   );
+}
+
+bool canUserApproveTask(SystemTask task, AuthProvider auth) {
+  switch (task.status) {
+    case TaskStatus.todo:
+      return auth.isAdmin || auth.isSubAdmin || auth.isManager;
+    case TaskStatus.inProgress: // ACTION
+      return auth.isManager;
+    case TaskStatus.review: // REVIEW
+      return auth.isAdmin || auth.isSubAdmin;
+    case TaskStatus.done: // DONE
+      return auth.isManager;
+    case TaskStatus.completed: // COMPLETED
+      return auth.isAdmin || auth.isSubAdmin;
+    default:
+      return false;
+  }
 }
