@@ -62,7 +62,7 @@ class TaskProvider extends ChangeNotifier {
 
   void _startPeriodicSync() {
     _syncTimer?.cancel();
-    _syncTimer = Timer.periodic(const Duration(minutes: 5), (_) => syncWithDatabase());
+    _syncTimer = Timer.periodic(const Duration(seconds: 15), (_) => syncWithDatabase());
     syncWithDatabase();
   }
 

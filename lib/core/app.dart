@@ -6,6 +6,8 @@ import 'package:ebficbm/features/home/screens/home_screen.dart';
 import 'package:provider/provider.dart';
 import 'package:ebficbm/core/providers/theme_provider.dart';
 import 'package:ebficbm/features/companies/providers/company_provider.dart';
+import 'package:ebficbm/features/companies/providers/company_external_quota_provider.dart';
+import 'package:ebficbm/features/companies/providers/company_stock_provider.dart';
 import 'package:ebficbm/features/projects/providers/project_provider.dart';
 import 'package:ebficbm/features/tasks/providers/task_provider.dart';
 import 'package:ebficbm/features/assets/providers/asset_provider.dart';
@@ -39,6 +41,14 @@ class BizOSApp extends StatelessWidget {
         ChangeNotifierProxyProvider<AuthProvider, CompanyProvider>(
           create: (_) => CompanyProvider(),
           update: (_, auth, company) => company!..update(auth.api),
+        ),
+        ChangeNotifierProxyProvider<AuthProvider, CompanyExternalQuotaProvider>(
+          create: (_) => CompanyExternalQuotaProvider(),
+          update: (_, auth, quota) => quota!..update(auth.api),
+        ),
+        ChangeNotifierProxyProvider<AuthProvider, CompanyStockProvider>(
+          create: (_) => CompanyStockProvider(),
+          update: (_, auth, stock) => stock!..update(auth.api),
         ),
         ChangeNotifierProxyProvider<AuthProvider, ProjectProvider>(
           create: (_) => ProjectProvider(),

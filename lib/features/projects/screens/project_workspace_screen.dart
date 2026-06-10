@@ -1775,6 +1775,41 @@ class _PlanConsoleBoardState extends State<_PlanConsoleBoard> {
     return canUserApproveTask(task, auth);
   }
 
+  bool _isValidDragTransition(TaskStatus current, TaskStatus target, AuthProvider auth) {
+    if (current == target) return false;
+    
+    bool isAdjacent = false;
+    if (current == TaskStatus.todo && target == TaskStatus.inProgress) isAdjacent = true;
+    else if (current == TaskStatus.inProgress && (target == TaskStatus.todo || target == TaskStatus.review)) isAdjacent = true;
+    else if (current == TaskStatus.review && (target == TaskStatus.inProgress || target == TaskStatus.done)) isAdjacent = true;
+    else if (current == TaskStatus.done && (target == TaskStatus.review || target == TaskStatus.completed)) isAdjacent = true;
+    else if (current == TaskStatus.completed && target == TaskStatus.done) isAdjacent = true;
+    
+    if (!isAdjacent) return false;
+    
+    final isAdminOrSub = auth.isAdmin || auth.isSubAdmin;
+    
+    if (current == TaskStatus.todo && target == TaskStatus.inProgress) {
+      return isAdminOrSub || auth.isManager;
+    } else if (current == TaskStatus.inProgress && target == TaskStatus.todo) {
+      return isAdminOrSub || auth.isManager;
+    } else if (current == TaskStatus.inProgress && target == TaskStatus.review) {
+      return auth.isManager;
+    } else if (current == TaskStatus.review && target == TaskStatus.inProgress) {
+      return isAdminOrSub;
+    } else if (current == TaskStatus.review && target == TaskStatus.done) {
+      return isAdminOrSub;
+    } else if (current == TaskStatus.done && target == TaskStatus.review) {
+      return auth.isManager;
+    } else if (current == TaskStatus.done && target == TaskStatus.completed) {
+      return auth.isManager;
+    } else if (current == TaskStatus.completed && target == TaskStatus.done) {
+      return isAdminOrSub;
+    }
+    
+    return false;
+  }
+
   @override
   void dispose() {
     _searchCtrl.dispose();
@@ -1897,11 +1932,11 @@ class _PlanConsoleBoardState extends State<_PlanConsoleBoard> {
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Expanded(child: _buildColumn('TO DO', tasks.where((t) => t.status == TaskStatus.todo).toList(), color, isDark, onMove: (t) => _updateNodeStatus(t, TaskStatus.todo))),
-                        Expanded(child: _buildColumn('ACTION', tasks.where((t) => t.status == TaskStatus.inProgress).toList(), Colors.blueAccent, isDark, onMove: (t) => _updateNodeStatus(t, TaskStatus.inProgress))),
-                        Expanded(child: _buildColumn('REVIEW', tasks.where((t) => t.status == TaskStatus.review).toList(), Colors.amberAccent, isDark, onMove: (t) => _updateNodeStatus(t, TaskStatus.review))),
-                        Expanded(child: _buildColumn('DONE', tasks.where((t) => t.status == TaskStatus.done).toList(), Colors.greenAccent, isDark, onMove: (t) => _updateNodeStatus(t, TaskStatus.done))),
-                        Expanded(child: _buildColumn('COMPLETED', tasks.where((t) => t.status == TaskStatus.completed).toList(), Colors.tealAccent, isDark, isLast: true, onMove: (t) => _updateNodeStatus(t, TaskStatus.completed))),
+                        Expanded(child: _buildColumn('TO DO', tasks.where((t) => t.status == TaskStatus.todo).toList(), color, isDark, status: TaskStatus.todo, onMove: (t) => _updateNodeStatus(t, TaskStatus.todo))),
+                        Expanded(child: _buildColumn('ACTION', tasks.where((t) => t.status == TaskStatus.inProgress).toList(), Colors.blueAccent, isDark, status: TaskStatus.inProgress, onMove: (t) => _updateNodeStatus(t, TaskStatus.inProgress))),
+                        Expanded(child: _buildColumn('REVIEW', tasks.where((t) => t.status == TaskStatus.review).toList(), Colors.amberAccent, isDark, status: TaskStatus.review, onMove: (t) => _updateNodeStatus(t, TaskStatus.review))),
+                        Expanded(child: _buildColumn('DONE', tasks.where((t) => t.status == TaskStatus.done).toList(), Colors.greenAccent, isDark, status: TaskStatus.done, onMove: (t) => _updateNodeStatus(t, TaskStatus.done))),
+                        Expanded(child: _buildColumn('COMPLETED', tasks.where((t) => t.status == TaskStatus.completed).toList(), Colors.tealAccent, isDark, isLast: true, status: TaskStatus.completed, onMove: (t) => _updateNodeStatus(t, TaskStatus.completed))),
                       ],
                     ),
                   ),
@@ -2555,7 +2590,8 @@ class _PlanConsoleBoardState extends State<_PlanConsoleBoard> {
     );
   }
 
-  Widget _buildColumn(String title, List<SystemTask> tasks, Color accent, bool isDark, {bool isLast = false, Function(SystemTask)? onMove}) {
+  Widget _buildColumn(String title, List<SystemTask> tasks, Color accent, bool isDark, {bool isLast = false, required TaskStatus status, Function(SystemTask)? onMove}) {
+    final auth = context.read<AuthProvider>();
     return Container(
       width: double.infinity,
       margin: EdgeInsets.only(right: isLast ? 0 : 8),
@@ -2583,6 +2619,9 @@ class _PlanConsoleBoardState extends State<_PlanConsoleBoard> {
           ),
           Expanded(
             child: DragTarget<SystemTask>(
+              onWillAcceptWithDetails: (details) {
+                return _isValidDragTransition(details.data.status, status, auth);
+              },
               onAcceptWithDetails: (details) {
                 if (onMove != null) onMove(details.data);
               },
