@@ -135,7 +135,16 @@ class ApiService {
 
   dynamic _handleResponse(http.Response response) {
     final statusCode = response.statusCode;
-    final body = response.body;
+    String body;
+    try {
+      body = response.body;
+    } catch (e) {
+      debugPrint('❌ Response Body Decode Error: $e');
+      throw ApiException(
+        'Decryption or encoding mismatch: invalid response bytes.',
+        statusCode: statusCode,
+      );
+    }
 
     if (statusCode >= 200 && statusCode < 300) {
       if (body.isEmpty) return null;

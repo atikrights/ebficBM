@@ -45,6 +45,7 @@ class ChatProvider extends ChangeNotifier with WidgetsBindingObserver {
   void _startPolling() {
     _pollTimer?.cancel();
     _pollTimer = Timer.periodic(const Duration(seconds: 3), (_) {
+      if (!_service.hasToken) return;
       performDeltaSync();
       loadSessions();
       if (_activeChatId != null && (_messages[_activeChatId] == null || _messages[_activeChatId]!.isEmpty)) {
@@ -243,6 +244,7 @@ class ChatProvider extends ChangeNotifier with WidgetsBindingObserver {
   }
 
   Future<void> performDeltaSync() async {
+    if (!_service.hasToken) return;
     int maxId = 0;
     _messages.values.forEach((list) {
       for (var m in list) {
@@ -257,6 +259,7 @@ class ChatProvider extends ChangeNotifier with WidgetsBindingObserver {
   }
 
   Future<void> loadSessions() async {
+    if (!_service.hasToken) return;
     if (_isLoading) return; // Prevent duplicate concurrent loads
     _isLoading = true;
     notifyListeners();
@@ -275,6 +278,7 @@ class ChatProvider extends ChangeNotifier with WidgetsBindingObserver {
   }
 
   Future<void> loadMessages(String receiverType) async {
+    if (!_service.hasToken) return;
     _isLoading = true;
     notifyListeners();
     try {
@@ -289,6 +293,7 @@ class ChatProvider extends ChangeNotifier with WidgetsBindingObserver {
   }
 
   Future<void> sendMessage(String receiverType, String text) async {
+    if (!_service.hasToken) return;
     final prefs = await SharedPreferences.getInstance();
     final currentUserId = prefs.getInt('user_id');
     final clientId = 'client_${DateTime.now().millisecondsSinceEpoch}';
@@ -317,6 +322,7 @@ class ChatProvider extends ChangeNotifier with WidgetsBindingObserver {
   }
 
   Future<void> resendMessage(String receiverType, String tempId) async {
+    if (!_service.hasToken) return;
     final idx = _messages[receiverType]?.indexWhere((m) => m['id'] == tempId) ?? -1;
     if (idx == -1) return;
     final text = _messages[receiverType]![idx]['message'];

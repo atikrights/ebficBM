@@ -6,6 +6,8 @@ class ChatService {
 
   ChatService(this._api);
 
+  bool get hasToken => _api.token != null;
+
   /// Fetch all active chat sessions (Communities/DMs)
   Future<List<Map<String, dynamic>>> getChatSessions() async {
     try {

@@ -36,20 +36,20 @@ class GlassContainer extends StatelessWidget {
         boxShadow: [
           if (isDark)
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.25),
+              color: Colors.black.withOpacity(0.25),
               blurRadius: 20,
               spreadRadius: -5,
               offset: const Offset(0, 10),
             )
           else ...[
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.03),
+              color: Colors.black.withOpacity(0.03),
               blurRadius: 10,
               spreadRadius: 0,
               offset: const Offset(0, 4),
             ),
             BoxShadow(
-              color: AppColors.primary.withValues(alpha: 0.02),
+              color: AppColors.primary.withOpacity(0.02),
               blurRadius: 24,
               spreadRadius: -4,
               offset: const Offset(0, 12),
@@ -68,15 +68,15 @@ class GlassContainer extends StatelessWidget {
               gradient: gradient ??
                   LinearGradient(
                     colors: [
-                      isDark ? Colors.white.withValues(alpha: 0.08) : Colors.white.withValues(alpha: 0.98),
-                      isDark ? Colors.white.withValues(alpha: 0.03) : Colors.white.withValues(alpha: 0.85),
+                      isDark ? Colors.white.withOpacity(0.08) : Colors.white.withOpacity(0.98),
+                      isDark ? Colors.white.withOpacity(0.03) : Colors.white.withOpacity(0.85),
                     ],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
               border: border ??
                   Border.all(
-                    color: isDark ? Colors.white.withValues(alpha: 0.15) : Colors.white,
+                    color: isDark ? Colors.white.withOpacity(0.15) : Colors.white,
                     width: isDark ? 1.0 : 1.5,
                   ),
             ),

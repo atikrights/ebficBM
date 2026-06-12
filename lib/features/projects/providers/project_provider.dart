@@ -67,7 +67,7 @@ class ProjectProvider with ChangeNotifier {
   }
 
   Future<void> syncWithDatabase() async {
-    if (_api == null || _isSyncing) return;
+    if (_api == null || _api!.token == null || _isSyncing) return;
     
     try {
       _isSyncing = true;
