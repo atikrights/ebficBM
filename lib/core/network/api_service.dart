@@ -10,8 +10,22 @@ class ApiService {
 
   String? token;
 
+  // Clock offset to sync with server time
+  static int _timeOffset = 0;
+
   void setToken(String newToken) => token = newToken;
   void clearToken() => token = null;
+
+  void _updateTimeOffset(Map<String, String> headers) {
+    final serverTimeHeader = headers['x-ebm-server-time'] ?? headers['X-EBM-Server-Time'];
+    if (serverTimeHeader != null) {
+      final serverTime = int.tryParse(serverTimeHeader);
+      if (serverTime != null) {
+        final localTime = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+        _timeOffset = serverTime - localTime;
+      }
+    }
+  }
 
   Map<String, String> _buildHeaders(String endpoint, [dynamic body]) {
     final base = {
@@ -22,7 +36,7 @@ class ApiService {
         'Authorization': 'Bearer $token',
     };
 
-    final timestamp = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+    final timestamp = (DateTime.now().millisecondsSinceEpoch ~/ 1000) + _timeOffset;
     final timestampStr = timestamp.toString();
     final clientId = 'ebm-app-flutter';
     final secret = 'ebm_app_secure_secret_key_123';
@@ -58,6 +72,16 @@ class ApiService {
         headers: _buildHeaders(endpoint),
       );
       return _handleResponse(response);
+    } on ApiException catch (e) {
+      if (e.statusCode == 403 && e.message.contains('clock skew')) {
+        debugPrint('🔄 Retrying GET due to clock skew adjustment...');
+        final response = await http.get(
+          Uri.parse('$baseUrl$endpoint'),
+          headers: _buildHeaders(endpoint),
+        );
+        return _handleResponse(response);
+      }
+      rethrow;
     } on http.ClientException catch (e) {
       throw ApiException('Network error: ${e.message}', statusCode: 0);
     }
@@ -65,12 +89,25 @@ class ApiService {
 
   Future<dynamic> post(String endpoint, Map<String, dynamic> data) async {
     try {
+      final jsonBody = json.encode(data);
       final response = await http.post(
         Uri.parse('$baseUrl$endpoint'),
-        headers: _buildHeaders(endpoint, data),
-        body: json.encode(data),
+        headers: _buildHeaders(endpoint, jsonBody),
+        body: jsonBody,
       );
       return _handleResponse(response);
+    } on ApiException catch (e) {
+      if (e.statusCode == 403 && e.message.contains('clock skew')) {
+        debugPrint('🔄 Retrying POST due to clock skew adjustment...');
+        final jsonBody = json.encode(data);
+        final response = await http.post(
+          Uri.parse('$baseUrl$endpoint'),
+          headers: _buildHeaders(endpoint, jsonBody),
+          body: jsonBody,
+        );
+        return _handleResponse(response);
+      }
+      rethrow;
     } on http.ClientException catch (e) {
       throw ApiException('Network error: ${e.message}', statusCode: 0);
     }
@@ -78,12 +115,25 @@ class ApiService {
 
   Future<dynamic> put(String endpoint, Map<String, dynamic> data) async {
     try {
+      final jsonBody = json.encode(data);
       final response = await http.put(
         Uri.parse('$baseUrl$endpoint'),
-        headers: _buildHeaders(endpoint, data),
-        body: json.encode(data),
+        headers: _buildHeaders(endpoint, jsonBody),
+        body: jsonBody,
       );
       return _handleResponse(response);
+    } on ApiException catch (e) {
+      if (e.statusCode == 403 && e.message.contains('clock skew')) {
+        debugPrint('🔄 Retrying PUT due to clock skew adjustment...');
+        final jsonBody = json.encode(data);
+        final response = await http.put(
+          Uri.parse('$baseUrl$endpoint'),
+          headers: _buildHeaders(endpoint, jsonBody),
+          body: jsonBody,
+        );
+        return _handleResponse(response);
+      }
+      rethrow;
     } on http.ClientException catch (e) {
       throw ApiException('Network error: ${e.message}', statusCode: 0);
     }
@@ -91,24 +141,51 @@ class ApiService {
 
   Future<dynamic> patch(String endpoint, [Map<String, dynamic>? data]) async {
     try {
+      final jsonBody = data != null ? json.encode(data) : null;
       final response = await http.patch(
         Uri.parse('$baseUrl$endpoint'),
-        headers: _buildHeaders(endpoint, data),
-        body: data != null ? json.encode(data) : null,
+        headers: _buildHeaders(endpoint, jsonBody),
+        body: jsonBody,
       );
       return _handleResponse(response);
+    } on ApiException catch (e) {
+      if (e.statusCode == 403 && e.message.contains('clock skew')) {
+        debugPrint('🔄 Retrying PATCH due to clock skew adjustment...');
+        final jsonBody = data != null ? json.encode(data) : null;
+        final response = await http.patch(
+          Uri.parse('$baseUrl$endpoint'),
+          headers: _buildHeaders(endpoint, jsonBody),
+          body: jsonBody,
+        );
+        return _handleResponse(response);
+      }
+      rethrow;
     } on http.ClientException catch (e) {
       throw ApiException('Network error: ${e.message}', statusCode: 0);
     }
   }
 
-  Future<dynamic> delete(String endpoint) async {
+  Future<dynamic> delete(String endpoint, [Map<String, dynamic>? data]) async {
     try {
+      final jsonBody = data != null ? json.encode(data) : null;
       final response = await http.delete(
         Uri.parse('$baseUrl$endpoint'),
-        headers: _buildHeaders(endpoint),
+        headers: _buildHeaders(endpoint, jsonBody),
+        body: jsonBody,
       );
       return _handleResponse(response);
+    } on ApiException catch (e) {
+      if (e.statusCode == 403 && e.message.contains('clock skew')) {
+        debugPrint('🔄 Retrying DELETE due to clock skew adjustment...');
+        final jsonBody = data != null ? json.encode(data) : null;
+        final response = await http.delete(
+          Uri.parse('$baseUrl$endpoint'),
+          headers: _buildHeaders(endpoint, jsonBody),
+          body: jsonBody,
+        );
+        return _handleResponse(response);
+      }
+      rethrow;
     } on http.ClientException catch (e) {
       throw ApiException('Network error: ${e.message}', statusCode: 0);
     }
@@ -126,6 +203,9 @@ class ApiService {
       final streamedResponse = await request.send();
       final response = await http.Response.fromStream(streamedResponse);
       return _handleResponse(response);
+    } on ApiException catch (e) {
+      // For multipart, we can't easily auto-retry because the byte stream has been consumed.
+      rethrow;
     } on http.ClientException catch (e) {
       throw ApiException('Network error: ${e.message}', statusCode: 0);
     }
@@ -134,6 +214,7 @@ class ApiService {
   VoidCallback? onUnauthorized;
 
   dynamic _handleResponse(http.Response response) {
+    _updateTimeOffset(response.headers);
     final statusCode = response.statusCode;
     String body;
     try {

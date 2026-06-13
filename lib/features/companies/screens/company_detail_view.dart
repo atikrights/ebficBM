@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 import 'package:ebficbm/core/theme/colors.dart';
@@ -26,6 +27,42 @@ class _CompanyDetailViewState extends State<CompanyDetailView> {
   Project? _searchedProject;
   bool _isSearching = false;
   bool _isActioning = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPersistedTab();
+  }
+
+  void _loadPersistedTab() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final index = prefs.getInt('company_detail_tab_${widget.company.id}');
+      if (index != null && mounted) {
+        setState(() {
+          _selectedTabIndex = index;
+        });
+      }
+    } catch (_) {}
+  }
+
+  void _savePersistedTab(int index) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setInt('company_detail_tab_${widget.company.id}', index);
+    } catch (_) {}
+  }
+
+  @override
+  void setState(VoidCallback fn) {
+    final oldTab = _selectedTabIndex;
+    if (mounted) {
+      super.setState(fn);
+      if (_selectedTabIndex != oldTab) {
+        _savePersistedTab(_selectedTabIndex);
+      }
+    }
+  }
 
   @override
   void dispose() {

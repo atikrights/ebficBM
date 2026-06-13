@@ -81,6 +81,7 @@ class _ProjectListScreenState extends State<ProjectListScreen> {
     final nameCtrl = TextEditingController();
     bool isCreating = false;
     Project? createdProject;
+    String? selectedCompanyId; // null = no company (private project)
 
     showDialog(
       context: context,
@@ -89,6 +90,9 @@ class _ProjectListScreenState extends State<ProjectListScreen> {
           if (createdProject != null) {
             return _buildSuccessDialog(ctx, createdProject!, isDark);
           }
+
+          final cp = Provider.of<CompanyProvider>(context, listen: false);
+          final availableCompanies = cp.companies;
 
           return AlertDialog(
             backgroundColor: Colors.transparent,
@@ -131,6 +135,48 @@ class _ProjectListScreenState extends State<ProjectListScreen> {
                     const SizedBox(height: 8),
                     _buildDialogField(nameCtrl, 'Enter project name...', IconsaxPlusLinear.edit_2, isDark),
                     
+                    const SizedBox(height: 20),
+                    
+                    // Optional company attachment
+                    _buildFieldLabel('ATTACH TO COMPANY (OPTIONAL)', isDark),
+                    const SizedBox(height: 8),
+                    Container(
+                      height: 40,
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      decoration: BoxDecoration(
+                        color: isDark ? Colors.white.withOpacity(0.04) : Colors.black.withOpacity(0.02),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: isDark ? Colors.white10 : Colors.black.withOpacity(0.05)),
+                      ),
+                      child: DropdownButtonHideUnderline(
+                        child: DropdownButton<String?>(
+                          value: selectedCompanyId,
+                          isExpanded: true,
+                          dropdownColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+                          style: TextStyle(color: isDark ? Colors.white70 : Colors.black87, fontSize: 13),
+                          hint: Text('No Company (Private)', style: TextStyle(color: isDark ? Colors.white38 : Colors.black38, fontSize: 12)),
+                          items: [
+                            DropdownMenuItem<String?>(
+                              value: null,
+                              child: Text('No Company (Private)', style: TextStyle(color: isDark ? Colors.white38 : Colors.black45, fontSize: 12)),
+                            ),
+                            ...availableCompanies.map((company) => DropdownMenuItem<String?>(
+                              value: company.id,
+                              child: Text(company.name, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 13)),
+                            )),
+                          ],
+                          onChanged: (val) => setDialogState(() => selectedCompanyId = val),
+                        ),
+                      ),
+                    ),
+                    if (selectedCompanyId == null) ...[
+                      const SizedBox(height: 6),
+                      Text(
+                        'Private projects require admin approval to go public.',
+                        style: TextStyle(fontSize: 10, color: isDark ? Colors.white24 : Colors.black26, letterSpacing: 0.2),
+                      ),
+                    ],
+                    
                     const SizedBox(height: 32),
                     SizedBox(
                       width: double.infinity,
@@ -140,18 +186,12 @@ class _ProjectListScreenState extends State<ProjectListScreen> {
                           if (nameCtrl.text.isNotEmpty) {
                             setDialogState(() => isCreating = true);
                             try {
-                              final cp = Provider.of<CompanyProvider>(context, listen: false);
-                              final companyId = cp.selectedCompany?.id ?? (cp.companies.isNotEmpty ? cp.companies.first.id : null);
-                              
                               final projectProv = Provider.of<ProjectProvider>(context, listen: false);
                               final resultId = await projectProv.deployProject(
                                 name: nameCtrl.text.trim(),
-                                companyId: companyId,
+                                companyId: selectedCompanyId, // optional — null = private
                               );
                               
-                              // Since deployProject currently returns String? (ID or error, actually let's just fetch the created project or refetch)
-                              // Wait, ProjectProvider in EBM app uses `deployProject` which returns `Future<String?>`.
-                              // If successful, we can get it from allProjects.
                               if (resultId != null) {
                                 final proj = projectProv.allProjects.firstWhere(
                                   (p) => p.id == resultId, 
@@ -197,6 +237,7 @@ class _ProjectListScreenState extends State<ProjectListScreen> {
       ),
     );
   }
+
 
   Widget _buildSuccessDialog(BuildContext context, Project project, bool isDark) {
     return AlertDialog(
