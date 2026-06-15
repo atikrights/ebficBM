@@ -35,9 +35,12 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: 65002
           timeout: 300s
-          source: "build/web/*"
+          source: "build/web/*,build/web/.htaccess"
           target: "domains/ebfic.store/public_html/ebm"
           strip_components: 2
+      - name: 🧹 Purge Web Cache
+        run: |
+          curl -sS "https://ebm.ebfic.store/clear_cache.php" || true
 
   # 🤖 অ্যান্ড্রয়েড বিল্ড (Resilient APK Build)
   build-android:
