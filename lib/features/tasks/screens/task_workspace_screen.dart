@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:archive/archive.dart';
 import 'dart:convert';
+import 'dart:math';
+import 'dart:ui' as ui;
 import 'package:universal_html/html.dart' as html; // For Web downloads
 import 'package:provider/provider.dart';
 import 'package:responsive_framework/responsive_framework.dart';
@@ -13,6 +15,9 @@ import 'package:ebficbm/features/tasks/providers/task_provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:ebficbm/features/assets/providers/asset_provider.dart';
+import 'package:ebficbm/core/providers/td_set_provider.dart';
+import 'package:ebficbm/features/projects/providers/project_provider.dart';
+import 'package:ebficbm/features/projects/models/project.dart';
 
 class TaskWorkspaceScreen extends StatefulWidget {
   final String taskId;
@@ -25,10 +30,14 @@ class TaskWorkspaceScreen extends StatefulWidget {
 
 class _TaskWorkspaceScreenState extends State<TaskWorkspaceScreen> {
   int _selectedIndex = 0;
+  bool _isRecordDescExpanded = false;
+  bool _isSaving = false;
+  final Set<String> _expandedStepIds = {};
 
-  final List<String> _tabNames = ['Task Overview', 'Create Task', 'Execution Roadmap', 'Task Trace', 'Task Core Settings'];
+  final List<String> _tabNames = ['Overview', 'Records', 'Blueprint', 'Roadmap', 'Trace', 'Settings'];
   final List<IconData> _tabIcons = [
     IconsaxPlusLinear.radar,
+    IconsaxPlusLinear.document_text,
     IconsaxPlusLinear.add_circle,
     IconsaxPlusLinear.route_square,
     IconsaxPlusLinear.activity,
@@ -49,12 +58,15 @@ class _TaskWorkspaceScreenState extends State<TaskWorkspaceScreen> {
   final _subTaskTitleCtrl = TextEditingController();
   final _subTaskCostCtrl = TextEditingController();
   final _roadmapStepCtrl = TextEditingController();
+  final _roadmapStepDescCtrl = TextEditingController();
   final _traceCommentCtrl = TextEditingController();
   String _activeDocTab = 'ALL';
   bool _isDragOver = false;
   final List<String> _docTabs = ['ALL', 'PDF', 'PNG', 'JPG', 'XLS', 'TXT', 'DOC', 'OTHER'];
 
   bool _isInitialized = false;
+  Project? _selectedProject;
+  Plan? _selectedPlan;
 
   @override
   void didChangeDependencies() {
@@ -74,6 +86,21 @@ class _TaskWorkspaceScreenState extends State<TaskWorkspaceScreen> {
         _subTasks.addAll(task.subTasks);
         _roadmapSteps.addAll(task.roadmapSteps);
         _documents.addAll(task.documents);
+
+        final projects = Provider.of<ProjectProvider>(context, listen: false).allProjects;
+        if (task.projectId != null || task.planId != null) {
+          for (var proj in projects) {
+            if (proj.id == task.projectId) {
+              _selectedProject = proj;
+            }
+            for (var plan in proj.plans) {
+              if (plan.id == task.planId) {
+                _selectedPlan = plan;
+                _selectedProject = proj;
+              }
+            }
+          }
+        }
       }
       _isInitialized = true;
     }
@@ -88,6 +115,7 @@ class _TaskWorkspaceScreenState extends State<TaskWorkspaceScreen> {
     _subTaskTitleCtrl.dispose();
     _subTaskCostCtrl.dispose();
     _roadmapStepCtrl.dispose();
+    _roadmapStepDescCtrl.dispose();
     _traceCommentCtrl.dispose();
     super.dispose();
   }
@@ -243,10 +271,11 @@ class _TaskWorkspaceScreenState extends State<TaskWorkspaceScreen> {
     Widget content;
     switch (_selectedIndex) {
       case 0: content = _buildOverviewTab(task, isDark); break;
-      case 1: content = _buildCreateTaskTab(isDark); break;
-      case 2: content = _buildRoadmapTab(task, isDark); break;
-      case 3: content = _buildTaskTraceTab(task, isDark); break;
-      case 4: content = _buildSettingsTab(task, isDark); break;
+      case 1: content = _buildRecordTab(task, isDark); break;
+      case 2: content = _buildCreateTaskTab(isDark); break;
+      case 3: content = _buildRoadmapTab(task, isDark); break;
+      case 4: content = _buildTaskTraceTab(task, isDark); break;
+      case 5: content = _buildSettingsTab(task, isDark); break;
       default: content = const SizedBox();
     }
     return AnimatedSwitcher(
@@ -257,9 +286,425 @@ class _TaskWorkspaceScreenState extends State<TaskWorkspaceScreen> {
   }
 
   // ═══════════════════════════════════════════════
-  // TAB 0: OVERVIEW
+  // NEW MENU: RECORD (Premium Layout)
+  // ═══════════════════════════════════════════════
+  Widget _buildRecordTab(SystemTask task, bool isDark) {
+    final cs = context.watch<TdSetProvider>().currencySymbol;
+    final textColor = isDark ? Colors.white : Colors.black;
+    final subColor = isDark ? Colors.white54 : Colors.black54;
+    final cardColor = isDark ? const Color(0xFF1E1E2E) : Colors.white;
+    final borderColor = isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.05);
+
+    return LayoutBuilder(builder: (context, constraints) {
+      final isWide = constraints.maxWidth > 900;
+      final isTablet = constraints.maxWidth > 600 && constraints.maxWidth <= 900;
+      final isMobile = constraints.maxWidth <= 600;
+
+      return SingleChildScrollView(
+        physics: const BouncingScrollPhysics(),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // ── HEADER & UID ──
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Flexible(
+                  child: Text('Task Record', 
+                    style: TextStyle(fontSize: isMobile ? 22 : 28, fontWeight: FontWeight.bold, color: textColor),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Row(mainAxisSize: MainAxisSize.min, children: [
+                  // Export Bundle Button
+                  if (!isMobile)
+                    _actionButton(
+                      label: 'Export Bundle',
+                      icon: IconsaxPlusLinear.document_download,
+                      color: Colors.indigoAccent,
+                      onTap: () => _simulateZipExport(context, task),
+                    ),
+                  if (!isMobile) const SizedBox(width: 12),
+                  InkWell(
+                    onTap: () {
+                      Clipboard.setData(ClipboardData(text: task.taskNumber));
+                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                        content: Text('UID Copied: ${task.taskNumber}'),
+                        backgroundColor: Colors.indigoAccent,
+                        behavior: SnackBarBehavior.floating,
+                        duration: const Duration(seconds: 1),
+                        margin: const EdgeInsets.all(20),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      ));
+                    },
+                    borderRadius: BorderRadius.circular(6),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(color: Colors.indigoAccent.withOpacity(0.1), borderRadius: BorderRadius.circular(6), border: Border.all(color: Colors.indigoAccent.withOpacity(0.2))),
+                      child: Row(mainAxisSize: MainAxisSize.min, children: [
+                        Text(task.taskNumber, style: const TextStyle(color: Colors.indigoAccent, fontWeight: FontWeight.bold, fontSize: 13)),
+                        const SizedBox(width: 8),
+                        const Icon(IconsaxPlusLinear.copy, size: 14, color: Colors.indigoAccent),
+                      ]),
+                    ),
+                  ),
+                ]),
+              ],
+            ),
+            if (isMobile) ...[
+              const SizedBox(height: 12),
+              _actionButton(
+                label: 'Export Asset Bundle (ZIP)',
+                icon: IconsaxPlusLinear.document_download,
+                color: Colors.indigoAccent,
+                isFullWidth: true,
+                onTap: () => _simulateZipExport(context, task),
+              ),
+            ],
+            const SizedBox(height: 24),
+
+            // ── TOP STATS BANNER ──
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(colors: isDark ? [const Color(0xFF2E2E48), const Color(0xFF1E1E2E)] : [Colors.white, Colors.grey.shade50], begin: Alignment.topLeft, end: Alignment.bottomRight),
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 20, offset: const Offset(0, 10))],
+                border: Border.all(color: borderColor),
+              ),
+              child: Wrap(
+                spacing: 20, runSpacing: 20,
+                alignment: WrapAlignment.spaceBetween,
+                children: [
+                  _overviewStat('Execution Status', _statusLabel(task.status), _statusColor(task.status), IconsaxPlusLinear.activity, isDark),
+                  _overviewStat('Priority Level', task.priority.name.toUpperCase(), _priorityColor(task.priority), IconsaxPlusLinear.radar, isDark),
+                  _overviewStat('Allocated Multiplier', '$cs${task.grandTotal.toStringAsFixed(0)}', Colors.indigoAccent, IconsaxPlusLinear.wallet, isDark),
+                  _overviewStat('Total Assets', '${task.documents.length} Files', Colors.teal, IconsaxPlusLinear.document_copy, isDark),
+                ],
+              ),
+            ),
+            const SizedBox(height: 24),
+
+            // ── MAIN CONTENT GRID (Without Roadmap) ──
+            if (isWide)
+              Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Expanded(flex: 2, child: _buildPrimaryInfo(task, isDark, textColor, subColor, cardColor, borderColor, showRoadmap: false)),
+                const SizedBox(width: 20),
+                Expanded(flex: 1, child: _buildSecondaryInfo(task, isDark, textColor, subColor, cardColor, borderColor, cs)),
+              ])
+            else if (isTablet)
+              Column(children: [
+                _buildPrimaryInfo(task, isDark, textColor, subColor, cardColor, borderColor, showRoadmap: false),
+                const SizedBox(height: 20),
+                _buildSecondaryInfo(task, isDark, textColor, subColor, cardColor, borderColor, cs),
+              ])
+            else
+              Column(children: [
+                _buildPrimaryInfo(task, isDark, textColor, subColor, cardColor, borderColor, showRoadmap: false),
+                const SizedBox(height: 20),
+                _buildSecondaryInfo(task, isDark, textColor, subColor, cardColor, borderColor, cs),
+              ]),
+          ],
+        ),
+      );
+    });
+  }
+
+  Widget _buildRecordSpecsCard(SystemTask task, bool isDark, Color textColor, Color subColor, Color cardColor, Color borderColor) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: cardColor,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: borderColor),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(isDark ? 0.05 : 0.01),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          )
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(IconsaxPlusLinear.info_circle, size: 14, color: AppColors.primary),
+              const SizedBox(width: 8),
+              const Text(
+                'SPECIFICATIONS',
+                style: TextStyle(color: AppColors.primary, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 0.5),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          _recordDetailRow('Priority Level', task.priority.name.toUpperCase(), isDark, valueColor: _priorityColor(task.priority), isBoldValue: true),
+          _recordDetailRow('Task Location', task.location.isNotEmpty ? task.location : 'Not Specified', isDark, isLast: true),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRecordBudgetCard(SystemTask task, bool isDark, Color textColor, Color subColor, Color cardColor, Color borderColor) {
+    final totalBudget = task.allocatedCost + task.totalSubTaskCost;
+    final cs = context.watch<TdSetProvider>().currencySymbol;
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: cardColor,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: borderColor),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(isDark ? 0.05 : 0.01),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          )
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(IconsaxPlusLinear.wallet, size: 14, color: AppColors.primary),
+              const SizedBox(width: 8),
+              const Text(
+                'BUDGET OVERVIEW',
+                style: TextStyle(color: AppColors.primary, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 0.5),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          _recordDetailRow('Task Base Cost', '$cs${task.allocatedCost.toStringAsFixed(2)}', isDark, isMonospace: true),
+          _recordDetailRow('Sub-Tasks Cost', '$cs${task.totalSubTaskCost.toStringAsFixed(2)}', isDark, isMonospace: true),
+          const SizedBox(height: 8),
+          const Divider(height: 1),
+          const SizedBox(height: 8),
+          _recordDetailRow('Total Task Budget', '$cs${totalBudget.toStringAsFixed(2)}', isDark, isMonospace: true, isLast: true, isBoldValue: true, valueColor: AppColors.success),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRecordDocumentsSection(SystemTask task, bool isDark, Color textColor, Color subColor, Color cardColor, Color borderColor) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: cardColor,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: borderColor),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(isDark ? 0.05 : 0.01),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          )
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(IconsaxPlusLinear.document_upload, size: 14, color: AppColors.primary),
+              const SizedBox(width: 8),
+              const Text(
+                'ATTACHED DOCUMENTS',
+                style: TextStyle(color: AppColors.primary, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 0.5),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          if (task.documents.isEmpty)
+            Center(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 20),
+                child: Text(
+                  'No documents uploaded for this task.',
+                  style: TextStyle(fontSize: 12, color: subColor, fontStyle: FontStyle.italic),
+                ),
+              ),
+            )
+          else
+            ...task.documents.map((d) => Container(
+              margin: const EdgeInsets.only(bottom: 8),
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: isDark ? Colors.white.withOpacity(0.02) : Colors.black.withOpacity(0.015),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: borderColor),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 32,
+                    height: 32,
+                    decoration: BoxDecoration(
+                      color: _docColor(d.type).withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Icon(_docIcon(d.type), size: 16, color: _docColor(d.type)),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          d.name,
+                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: textColor),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        Text(
+                          '${d.type.toUpperCase()} • ${_formatDate(d.uploadedAt)}',
+                          style: TextStyle(fontSize: 9, color: subColor),
+                        ),
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(IconsaxPlusLinear.export_1, size: 14, color: AppColors.primary),
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                    onPressed: () {
+                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                        content: Text('Downloading ${d.name}...'),
+                        duration: const Duration(seconds: 1),
+                      ));
+                    },
+                  ),
+                ],
+              ),
+            )),
+        ],
+      ),
+    );
+  }
+
+  Widget _recordDetailRow(
+    String label,
+    String value,
+    bool isDark, {
+    bool isLast = false,
+    bool isBoldValue = false,
+    bool isMonospace = false,
+    Color? valueColor,
+  }) {
+    final subTextColor = isDark ? Colors.white38 : Colors.black38;
+    final valueTextColor = valueColor ?? (isDark ? Colors.white70 : Colors.black87);
+
+    return Padding(
+      padding: EdgeInsets.only(bottom: isLast ? 0 : 10),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            label,
+            style: TextStyle(fontSize: 12, color: subTextColor),
+          ),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: isBoldValue ? FontWeight.bold : FontWeight.w600,
+              fontFamily: isMonospace ? 'Courier New' : null,
+              color: valueTextColor,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildExpandableText({
+    required String text,
+    required int wordLimit,
+    required TextStyle style,
+    required bool isExpanded,
+    required VoidCallback onToggle,
+  }) {
+    final words = text.split(RegExp(r'\s+'));
+    if (words.length <= wordLimit) {
+      return Text(text, style: style);
+    }
+
+    final displayText = isExpanded ? text : '${words.take(wordLimit).join(' ')}...';
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(displayText, style: style),
+        const SizedBox(height: 4),
+        InkWell(
+          onTap: onToggle,
+          child: Text(
+            isExpanded ? 'Collapse' : 'See more',
+            style: TextStyle(
+              color: AppColors.primary,
+              fontSize: (style.fontSize ?? 14) - 2,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildRoadmapStepDescription(String text, String stepId, bool isDark) {
+    final subColor = isDark ? Colors.white54 : Colors.black54;
+    final style = TextStyle(
+      color: subColor,
+      fontSize: 12.0,
+      height: 1.3,
+    );
+    final words = text.split(RegExp(r'\s+'));
+    const int wordLimit = 40; // Same as records page
+    if (words.length <= wordLimit) {
+      return Text(text, style: style);
+    }
+
+    final isExpanded = _expandedStepIds.contains(stepId);
+    final displayText = isExpanded ? text : '${words.take(wordLimit).join(' ')}...';
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(displayText, style: style),
+        const SizedBox(height: 4),
+        InkWell(
+          onTap: () {
+            setState(() {
+              if (isExpanded) {
+                _expandedStepIds.remove(stepId);
+              } else {
+                _expandedStepIds.add(stepId);
+              }
+            });
+          },
+          child: Text(
+            isExpanded ? 'Collapse' : 'See more',
+            style: TextStyle(
+              color: Colors.indigoAccent,
+              fontSize: 10,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ═══════════════════════════════════════════════
+  // TAB 1: OVERVIEW
   // ═══════════════════════════════════════════════
   Widget _buildOverviewTab(SystemTask task, bool isDark) {
+    final cs = context.watch<TdSetProvider>().currencySymbol;
     final textColor = isDark ? Colors.white : Colors.black;
     final subColor = isDark ? Colors.white54 : Colors.black54;
     final cardColor = isDark ? const Color(0xFF1E1E2E) : Colors.white;
@@ -335,47 +780,26 @@ class _TaskWorkspaceScreenState extends State<TaskWorkspaceScreen> {
             ],
             const SizedBox(height: 24),
 
-            // ── TOP STATS BANNER (Responsive) ──
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(colors: isDark ? [const Color(0xFF2E2E48), const Color(0xFF1E1E2E)] : [Colors.white, Colors.grey.shade50], begin: Alignment.topLeft, end: Alignment.bottomRight),
-                borderRadius: BorderRadius.circular(20),
-                boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 20, offset: const Offset(0, 10))],
-                border: Border.all(color: borderColor),
-              ),
-              child: Wrap(
-                spacing: 20, runSpacing: 20,
-                alignment: WrapAlignment.spaceBetween,
-                children: [
-                  _overviewStat('Execution Status', _statusLabel(task.status), _statusColor(task.status), IconsaxPlusLinear.activity, isDark),
-                  _overviewStat('Priority Level', task.priority.name.toUpperCase(), _priorityColor(task.priority), IconsaxPlusLinear.radar, isDark),
-                  _overviewStat('Allocated Multiplier', '\$${task.grandTotal.toStringAsFixed(0)}', Colors.indigoAccent, IconsaxPlusLinear.wallet, isDark),
-                  _overviewStat('Total Assets', '${task.documents.length} Files', Colors.teal, IconsaxPlusLinear.document_copy, isDark),
-                ],
-              ),
-            ),
-            const SizedBox(height: 24),
+            _buildOverviewAnalysisCards(task, isDark, constraints.maxWidth),
 
             // ── MAIN CONTENT GRID ──
             if (isWide)
               Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Expanded(flex: 2, child: _buildPrimaryInfo(task, isDark, textColor, subColor, cardColor, borderColor)),
                 const SizedBox(width: 20),
-                Expanded(flex: 1, child: _buildSecondaryInfo(task, isDark, textColor, subColor, cardColor, borderColor)),
+                Expanded(flex: 1, child: _buildSecondaryInfo(task, isDark, textColor, subColor, cardColor, borderColor, cs)),
               ])
             else if (isTablet)
               Column(children: [
                 _buildPrimaryInfo(task, isDark, textColor, subColor, cardColor, borderColor),
                 const SizedBox(height: 20),
-                _buildSecondaryInfo(task, isDark, textColor, subColor, cardColor, borderColor),
+                _buildSecondaryInfo(task, isDark, textColor, subColor, cardColor, borderColor, cs),
               ])
             else
               Column(children: [
                 _buildPrimaryInfo(task, isDark, textColor, subColor, cardColor, borderColor),
                 const SizedBox(height: 20),
-                _buildSecondaryInfo(task, isDark, textColor, subColor, cardColor, borderColor),
+                _buildSecondaryInfo(task, isDark, textColor, subColor, cardColor, borderColor, cs),
               ]),
           ],
         ),
@@ -383,7 +807,7 @@ class _TaskWorkspaceScreenState extends State<TaskWorkspaceScreen> {
     });
   }
 
-  Widget _buildPrimaryInfo(SystemTask task, bool isDark, Color textColor, Color subColor, Color cardColor, Color borderColor) {
+  Widget _buildPrimaryInfo(SystemTask task, bool isDark, Color textColor, Color subColor, Color cardColor, Color borderColor, {bool showRoadmap = true}) {
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       // Basic Identification
       _overviewCard(isDark, title: 'Scope & Identification', children: [
@@ -418,7 +842,7 @@ class _TaskWorkspaceScreenState extends State<TaskWorkspaceScreen> {
       const SizedBox(height: 20),
 
       // Execution Roadmap (Steps)
-      if (task.roadmapSteps.isNotEmpty)
+      if (showRoadmap && task.roadmapSteps.isNotEmpty)
         _overviewCard(isDark, title: 'Strategic Roadmap Steps', children: [
           ...task.roadmapSteps.asMap().entries.map((e) => Padding(
             padding: const EdgeInsets.only(bottom: 16),
@@ -433,8 +857,10 @@ class _TaskWorkspaceScreenState extends State<TaskWorkspaceScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(e.value.title, style: TextStyle(color: textColor, fontSize: 14, fontWeight: FontWeight.bold, height: 1.3)),
-                  if (e.value.description.isNotEmpty)
-                    Text(e.value.description, style: TextStyle(color: subColor, fontSize: 11, height: 1.4)),
+                  if (e.value.description.isNotEmpty) ...[
+                    const SizedBox(height: 4),
+                    _buildRoadmapStepDescription(e.value.description, e.value.id, isDark),
+                  ],
                 ],
               )),
             ]),
@@ -443,15 +869,15 @@ class _TaskWorkspaceScreenState extends State<TaskWorkspaceScreen> {
     ]);
   }
 
-  Widget _buildSecondaryInfo(SystemTask task, bool isDark, Color textColor, Color subColor, Color cardColor, Color borderColor) {
+  Widget _buildSecondaryInfo(SystemTask task, bool isDark, Color textColor, Color subColor, Color cardColor, Color borderColor, String cs) {
     return Column(children: [
       // Financial Health
       _overviewCard(isDark, title: 'Commercial Summary', children: [
-        _financialRow('Basic Allocation', task.allocatedCost, Colors.indigoAccent, isDark, textColor),
+        _financialRow('Basic Allocation', task.allocatedCost, Colors.indigoAccent, isDark, textColor, cs),
         const SizedBox(height: 12),
-        _financialRow('Sub-Tasks Overhead', task.totalSubTaskCost, Colors.orangeAccent, isDark, textColor),
+        _financialRow('Sub-Tasks Overhead', task.totalSubTaskCost, Colors.orangeAccent, isDark, textColor, cs),
         const Divider(height: 32),
-        _financialRow('Total Net Budget', task.grandTotal, AppColors.success, isDark, textColor, isBold: true),
+        _financialRow('Total Net Budget', task.grandTotal, AppColors.success, isDark, textColor, cs, isBold: true),
       ]),
       const SizedBox(width: 20, height: 20),
 
@@ -466,7 +892,7 @@ class _TaskWorkspaceScreenState extends State<TaskWorkspaceScreen> {
               Icon(s.isCompleted ? IconsaxPlusLinear.tick_circle : IconsaxPlusLinear.record_circle, size: 18, color: s.isCompleted ? AppColors.success : subColor),
               const SizedBox(width: 12),
               Expanded(child: Text(s.title, style: TextStyle(color: textColor, fontSize: 13, fontWeight: s.isCompleted ? FontWeight.normal : FontWeight.w600))),
-              Text('\$${s.additionalCost.toStringAsFixed(0)}', style: const TextStyle(color: Colors.indigoAccent, fontSize: 12, fontWeight: FontWeight.bold)),
+              Text('$cs${s.additionalCost.toStringAsFixed(0)}', style: const TextStyle(color: Colors.indigoAccent, fontSize: 12, fontWeight: FontWeight.bold)),
             ]),
           )),
         ]),
@@ -541,10 +967,10 @@ class _TaskWorkspaceScreenState extends State<TaskWorkspaceScreen> {
     ]);
   }
 
-  Widget _financialRow(String label, double amount, Color color, bool isDark, Color textColor, {bool isBold = false}) {
+  Widget _financialRow(String label, double amount, Color color, bool isDark, Color textColor, String cs, {bool isBold = false}) {
     return Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
       Text(label, style: TextStyle(color: isBold ? textColor : (isDark ? Colors.white70 : Colors.black87), fontSize: 13, fontWeight: isBold ? FontWeight.bold : FontWeight.normal)),
-      Text('\$${amount.toStringAsFixed(2)}', style: TextStyle(color: color, fontSize: 15, fontWeight: FontWeight.bold)),
+      Text('$cs${amount.toStringAsFixed(2)}', style: TextStyle(color: color, fontSize: 15, fontWeight: FontWeight.bold)),
     ]);
   }
 
@@ -552,6 +978,7 @@ class _TaskWorkspaceScreenState extends State<TaskWorkspaceScreen> {
   // TAB 1: CREATE TASK (Full Enterprise Form)
   // ═══════════════════════════════════════════════
   Widget _buildCreateTaskTab(bool isDark) {
+    final cs = context.watch<TdSetProvider>().currencySymbol;
     final textColor = isDark ? Colors.white : Colors.black;
     final subColor = isDark ? Colors.white54 : Colors.black54;
     final fillColor = isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.03);
@@ -585,9 +1012,11 @@ class _TaskWorkspaceScreenState extends State<TaskWorkspaceScreen> {
             ),
             const SizedBox(width: 12),
             ElevatedButton.icon(
-              onPressed: _saveTask,
-              icon: const Icon(IconsaxPlusLinear.tick_circle, size: 18),
-              label: const Text('Save', style: TextStyle(fontWeight: FontWeight.bold)),
+              onPressed: _isSaving ? null : _saveTask,
+              icon: _isSaving
+                  ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                  : const Icon(IconsaxPlusLinear.tick_circle, size: 18),
+              label: Text(_isSaving ? 'Saving...' : 'Save', style: const TextStyle(fontWeight: FontWeight.bold)),
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.indigoAccent, foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
@@ -612,6 +1041,8 @@ class _TaskWorkspaceScreenState extends State<TaskWorkspaceScreen> {
             style: TextStyle(color: textColor),
             decoration: _fieldDeco('Description / Scope of Work', IconsaxPlusLinear.document_text),
           ),
+          const SizedBox(height: 12),
+          _buildPlanSelector(isDark, textColor, subColor, fillColor),
           const SizedBox(height: 12),
           LayoutBuilder(builder: (ctx, constraints) {
             final isWide = constraints.maxWidth > 400;
@@ -669,7 +1100,7 @@ class _TaskWorkspaceScreenState extends State<TaskWorkspaceScreen> {
             controller: _costCtrl,
             keyboardType: TextInputType.number,
             style: TextStyle(color: textColor),
-            decoration: _fieldDeco('Base Task Cost (\$)', IconsaxPlusLinear.money_2),
+            decoration: _fieldDeco('Base Task Cost ($cs)', IconsaxPlusLinear.money_2),
           ),
           const SizedBox(height: 16),
           // Sub-Tasks
@@ -698,7 +1129,7 @@ class _TaskWorkspaceScreenState extends State<TaskWorkspaceScreen> {
                   const Icon(IconsaxPlusLinear.record_circle, size: 16, color: Colors.indigoAccent),
                   const SizedBox(width: 10),
                   Expanded(child: Text(s.title, style: TextStyle(color: textColor, fontSize: 13))),
-                  Text('\$${s.additionalCost.toStringAsFixed(0)}', style: const TextStyle(color: Colors.orangeAccent, fontWeight: FontWeight.bold, fontSize: 13)),
+                  Text('$cs${s.additionalCost.toStringAsFixed(0)}', style: const TextStyle(color: Colors.orangeAccent, fontWeight: FontWeight.bold, fontSize: 13)),
                   const SizedBox(width: 8),
                   InkWell(onTap: () => setState(() => _subTasks.removeAt(i)), child: const Icon(IconsaxPlusLinear.close_circle, size: 16, color: Colors.redAccent)),
                 ]),
@@ -708,7 +1139,7 @@ class _TaskWorkspaceScreenState extends State<TaskWorkspaceScreen> {
             Align(alignment: Alignment.centerRight, child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               decoration: BoxDecoration(color: Colors.orangeAccent.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
-              child: Text('Sub-Task Total: \$${_subTasks.fold(0.0, (s, t) => s + t.additionalCost).toStringAsFixed(0)}',
+              child: Text('Sub-Task Total: $cs${_subTasks.fold(0.0, (s, t) => s + t.additionalCost).toStringAsFixed(0)}',
                 style: const TextStyle(color: Colors.orangeAccent, fontWeight: FontWeight.bold, fontSize: 13)),
             )),
           ],
@@ -858,53 +1289,17 @@ class _TaskWorkspaceScreenState extends State<TaskWorkspaceScreen> {
               }).toList(),
             );
           }),
-          const SizedBox(height: 28),
-
-          // ── SECTION 5: Roadmap Steps ──
-          _sectionHeader('Execution Roadmap', IconsaxPlusLinear.route_square, textColor),
-          const SizedBox(height: 12),
-          Row(children: [
-            Expanded(child: TextFormField(
-              controller: _roadmapStepCtrl,
-              style: TextStyle(color: textColor),
-              decoration: _fieldDeco('Add Roadmap Step', IconsaxPlusLinear.add),
-            )),
-            const SizedBox(width: 12),
-            ElevatedButton(
-              onPressed: () {
-                if (_roadmapStepCtrl.text.trim().isNotEmpty) {
-                  setState(() {
-                    _roadmapSteps.add(RoadmapStep(id: DateTime.now().toString(), title: _roadmapStepCtrl.text.trim()));
-                    _roadmapStepCtrl.clear();
-                  });
-                }
-              },
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.indigoAccent, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), padding: const EdgeInsets.all(16)),
-              child: const Icon(IconsaxPlusLinear.add, size: 20),
-            ),
-          ]),
-          const SizedBox(height: 12),
-          ..._roadmapSteps.asMap().entries.map((e) => Container(
-            margin: const EdgeInsets.only(bottom: 8),
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            decoration: BoxDecoration(color: fillColor, borderRadius: BorderRadius.circular(12), border: Border.all(color: isDark ? Colors.white10 : Colors.black12)),
-            child: Row(children: [
-              Container(width: 24, height: 24, decoration: BoxDecoration(color: Colors.indigoAccent.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(6)),
-                child: Center(child: Text('${e.key + 1}', style: const TextStyle(color: Colors.indigoAccent, fontWeight: FontWeight.bold, fontSize: 11)))),
-              const SizedBox(width: 12),
-              Expanded(child: Text(e.value.title, style: TextStyle(color: textColor, fontSize: 13))),
-              InkWell(onTap: () => setState(() => _roadmapSteps.removeAt(e.key)), child: const Icon(IconsaxPlusLinear.close_circle, size: 14, color: Colors.redAccent)),
-            ]),
-          )),
           const SizedBox(height: 40),
 
           // Save Button (bottom)
           SizedBox(
             width: double.infinity,
             child: ElevatedButton.icon(
-              onPressed: _saveTask,
-              icon: const Icon(IconsaxPlusLinear.tick_circle),
-              label: const Text('Save & Register Task', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              onPressed: _isSaving ? null : _saveTask,
+              icon: _isSaving
+                  ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                  : const Icon(IconsaxPlusLinear.tick_circle),
+              label: Text(_isSaving ? 'Saving...' : 'Save & Register Task', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.indigoAccent, foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(vertical: 18),
@@ -922,9 +1317,228 @@ class _TaskWorkspaceScreenState extends State<TaskWorkspaceScreen> {
   // ═══════════════════════════════════════════════
   // TAB 2: ROADMAP VIEW
   // ═══════════════════════════════════════════════
+  /// Generate a step code in the format STP-TASKNUM-N
+  /// e.g. task.taskNumber = 'TSK-123456' → 'STP-123456-1'
+  String _generateStepCode(SystemTask task) {
+    final base = task.taskNumber.replaceAll('TSK-', '').replaceAll('STP-', '');
+    final n = task.roadmapSteps.length + 1;
+    return 'STP-$base-$n';
+  }
+
+  void _addRoadmapStep(SystemTask task, String title, String description) async {
+    final newCode = _generateStepCode(task);
+    final newStep = RoadmapStep(
+      id: newCode,
+      title: title,
+      description: description,
+      status: 'Process',
+    );
+    final updatedSteps = List<RoadmapStep>.from(task.roadmapSteps)..add(newStep);
+    final updatedTask = task.copyWith(roadmapSteps: updatedSteps);
+
+    try {
+      await Provider.of<TaskProvider>(context, listen: false).updateTask(updatedTask);
+      setState(() {
+        _roadmapSteps.clear();
+        _roadmapSteps.addAll(updatedSteps);
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('✅ Step "$title" added successfully!'),
+          backgroundColor: Colors.indigoAccent,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        ));
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('❌ Sync failed: ${e.toString().replaceAll('ApiException(500): ', '')}'),
+          backgroundColor: Colors.redAccent,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        ));
+      }
+    }
+  }
+
+  void _editRoadmapStep(SystemTask task, int index, String title, String description) async {
+    final stepToEdit = task.roadmapSteps[index];
+    final updatedStep = stepToEdit.copyWith(
+      title: title,
+      description: description,
+    );
+    final updatedSteps = List<RoadmapStep>.from(task.roadmapSteps)..[index] = updatedStep;
+    final updatedTask = task.copyWith(roadmapSteps: updatedSteps);
+
+    try {
+      await Provider.of<TaskProvider>(context, listen: false).updateTask(updatedTask);
+      setState(() {
+        _roadmapSteps.clear();
+        _roadmapSteps.addAll(updatedSteps);
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('✅ Step "$title" updated successfully!'),
+          backgroundColor: Colors.indigoAccent,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        ));
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('❌ Sync failed: ${e.toString().replaceAll('ApiException(500): ', '')}'),
+          backgroundColor: Colors.redAccent,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        ));
+      }
+    }
+  }
+
+  void _deleteRoadmapStep(SystemTask task, int index) async {
+    final stepTitle = task.roadmapSteps[index].title;
+    final updatedSteps = List<RoadmapStep>.from(task.roadmapSteps)..removeAt(index);
+    final updatedTask = task.copyWith(roadmapSteps: updatedSteps);
+
+    try {
+      await Provider.of<TaskProvider>(context, listen: false).updateTask(updatedTask);
+      setState(() {
+        _roadmapSteps.clear();
+        _roadmapSteps.addAll(updatedSteps);
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('✅ Step "$stepTitle" deleted successfully!'),
+          backgroundColor: Colors.indigoAccent,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        ));
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('❌ Sync failed: ${e.toString().replaceAll('ApiException(500): ', '')}'),
+          backgroundColor: Colors.redAccent,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        ));
+      }
+    }
+  }
+
+  void _showDeleteConfirmDialog(BuildContext context, SystemTask task, int index) {
+    final step = task.roadmapSteps[index];
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: isDark ? AppColors.darkSurface : AppColors.lightSurface,
+        title: Text('Delete Step', style: TextStyle(color: isDark ? Colors.white : Colors.black)),
+        content: Text('Are you sure you want to delete step "${step.title}"?', style: TextStyle(color: isDark ? Colors.white70 : Colors.black87)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              _deleteRoadmapStep(task, index);
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
+            child: const Text('Delete', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Cycles step status: Process → Complete → Hold → Process
+  void _cycleRoadmapStepStatus(SystemTask task, int index) async {
+    final step = task.roadmapSteps[index];
+    final String nextStatus;
+    switch (step.status) {
+      case 'Process':
+        nextStatus = 'Complete';
+        break;
+      case 'Complete':
+        nextStatus = 'Hold';
+        break;
+      case 'Hold':
+      default:
+        nextStatus = 'Process';
+        break;
+    }
+    final updatedSteps = task.roadmapSteps.asMap().entries.map((entry) {
+      if (entry.key == index) {
+        return entry.value.copyWith(status: nextStatus);
+      }
+      return entry.value;
+    }).toList();
+
+    final updatedTask = task.copyWith(roadmapSteps: updatedSteps);
+    try {
+      await Provider.of<TaskProvider>(context, listen: false).updateTask(updatedTask);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('✅ Step status → $nextStatus'),
+          backgroundColor: _stepStatusColor(nextStatus),
+          behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 1),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        ));
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('❌ Sync failed: ${e.toString().replaceAll('ApiException(500): ', '')}'),
+          backgroundColor: Colors.redAccent,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        ));
+      }
+    }
+  }
+
+  Color _stepStatusColor(String status) {
+    switch (status) {
+      case 'Complete': return const Color(0xFF10B981);
+      case 'Process': return const Color(0xFF6366F1);
+      case 'Hold': return const Color(0xFFF59E0B);
+      default: return const Color(0xFF6366F1);
+    }
+  }
+
+  IconData _stepStatusIcon(String status) {
+    switch (status) {
+      case 'Complete': return Icons.check;
+      case 'Process': return Icons.play_arrow_rounded;
+      case 'Hold': return Icons.pause;
+      default: return Icons.play_arrow_rounded;
+    }
+  }
+
   Widget _buildRoadmapTab(SystemTask task, bool isDark) {
     final textColor = isDark ? Colors.white : Colors.black;
     final subColor = isDark ? Colors.white54 : Colors.black54;
+    final fillColor = isDark ? Colors.white.withValues(alpha: 0.03) : Colors.black.withValues(alpha: 0.03);
+
+    InputDecoration _fieldDeco(String label, IconData icon) => InputDecoration(
+      labelText: label,
+      labelStyle: TextStyle(color: subColor, fontSize: 13),
+      prefixIcon: Icon(icon, size: 18, color: Colors.indigoAccent.withValues(alpha: 0.7)),
+      filled: true,
+      fillColor: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.03),
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Colors.indigoAccent, width: 1.5)),
+    );
+
+    final totalSteps = task.roadmapSteps.length;
+    final completedSteps = task.roadmapSteps.where((s) => s.isCompleted).length;
+    final progress = totalSteps > 0 ? completedSteps / totalSteps : 0.0;
+
     return SingleChildScrollView(
       physics: const BouncingScrollPhysics(),
       child: Column(
@@ -933,39 +1547,289 @@ class _TaskWorkspaceScreenState extends State<TaskWorkspaceScreen> {
           Text('Execution Roadmap', style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: textColor)),
           const SizedBox(height: 8),
           Text('Step-by-step execution policy for this task', style: TextStyle(color: subColor, fontSize: 13)),
-          const SizedBox(height: 28),
-          if (task.roadmapSteps.isEmpty)
-            Center(child: Column(children: [
-              const SizedBox(height: 60),
-              Icon(IconsaxPlusLinear.route_square, size: 64, color: isDark ? Colors.white24 : Colors.black26),
-              const SizedBox(height: 16),
-              Text('No roadmap steps defined.', style: TextStyle(color: subColor, fontSize: 16)),
-              const SizedBox(height: 8),
-              Text('Add roadmap steps in the Create Task tab.', style: TextStyle(color: isDark ? Colors.white24 : Colors.black26, fontSize: 13)),
-            ]))
+          const SizedBox(height: 24),
+
+          // Creation Form
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: isDark ? Colors.white.withValues(alpha: 0.02) : Colors.black.withValues(alpha: 0.015),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.05)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  'Add Execution Step',
+                  style: TextStyle(color: textColor, fontSize: 14, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: _roadmapStepCtrl,
+                  style: TextStyle(color: textColor, fontSize: 13),
+                  decoration: _fieldDeco('Step Title *', IconsaxPlusLinear.add),
+                ),
+                const SizedBox(height: 10),
+                TextFormField(
+                  controller: _roadmapStepDescCtrl,
+                  style: TextStyle(color: textColor, fontSize: 13),
+                  maxLines: 2,
+                  decoration: _fieldDeco('Step Description (Optional)', IconsaxPlusLinear.document_text),
+                ),
+                const SizedBox(height: 12),
+                ElevatedButton.icon(
+                  onPressed: () {
+                    final title = _roadmapStepCtrl.text.trim();
+                    final desc = _roadmapStepDescCtrl.text.trim();
+                    if (title.isNotEmpty) {
+                      _addRoadmapStep(task, title, desc);
+                      _roadmapStepCtrl.clear();
+                      _roadmapStepDescCtrl.clear();
+                    } else {
+                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                        content: Text('Step title is required!'),
+                        backgroundColor: Colors.redAccent,
+                      ));
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.indigoAccent,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                  ),
+                  icon: const Icon(IconsaxPlusLinear.add, size: 16),
+                  label: const Text('Add Step to Roadmap', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 24),
+
+          // Progress Card
+          if (totalSteps > 0)
+            Container(
+              padding: const EdgeInsets.all(16),
+              margin: const EdgeInsets.only(bottom: 24),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: isDark
+                      ? [Colors.indigoAccent.withValues(alpha: 0.15), Colors.purple.withValues(alpha: 0.05)]
+                      : [Colors.indigoAccent.withValues(alpha: 0.05), Colors.purple.withValues(alpha: 0.02)],
+                ),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: Colors.indigoAccent.withValues(alpha: 0.2)),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Roadmap Progress', style: TextStyle(color: textColor, fontWeight: FontWeight.bold, fontSize: 14)),
+                        const SizedBox(height: 4),
+                        Text('$completedSteps of $totalSteps steps completed (${(progress * 100).toInt()}%)', style: TextStyle(color: subColor, fontSize: 11)),
+                        const SizedBox(height: 12),
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(4),
+                          child: LinearProgressIndicator(
+                            value: progress,
+                            minHeight: 6,
+                            backgroundColor: isDark ? Colors.white10 : Colors.black12,
+                            valueColor: const AlwaysStoppedAnimation<Color>(Colors.indigoAccent),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      SizedBox(
+                        width: 48, height: 48,
+                        child: CircularProgressIndicator(
+                          value: progress,
+                          strokeWidth: 4,
+                          backgroundColor: isDark ? Colors.white10 : Colors.black12,
+                          valueColor: const AlwaysStoppedAnimation<Color>(Colors.indigoAccent),
+                        ),
+                      ),
+                      Icon(
+                        progress >= 1.0 ? IconsaxPlusLinear.tick_circle : IconsaxPlusLinear.route_square,
+                        color: Colors.indigoAccent,
+                        size: 20,
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ).animate().fade().slideY(begin: -0.1, end: 0),
+
+          if (totalSteps == 0)
+            Center(
+              child: Column(
+                children: [
+                  const SizedBox(height: 40),
+                  Icon(IconsaxPlusLinear.route_square, size: 48, color: isDark ? Colors.white24 : Colors.black26),
+                  const SizedBox(height: 12),
+                  Text('No roadmap steps defined.', style: TextStyle(color: subColor, fontSize: 14, fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 4),
+                  Text('Use the form above to add execution steps.', style: TextStyle(color: isDark ? Colors.white24 : Colors.black26, fontSize: 12)),
+                ],
+              ),
+            )
           else
             ...task.roadmapSteps.asMap().entries.map((e) {
               final step = e.value;
-              final isLast = e.key == task.roadmapSteps.length - 1;
-              return Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Column(children: [
-                    Container(width: 36, height: 36, decoration: BoxDecoration(color: step.isCompleted ? AppColors.success.withValues(alpha: 0.2) : Colors.indigoAccent.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(10), border: Border.all(color: step.isCompleted ? AppColors.success : Colors.indigoAccent)),
-                      child: Center(child: step.isCompleted ? const Icon(Icons.check, size: 18, color: AppColors.success) : Text('${e.key + 1}', style: const TextStyle(color: Colors.indigoAccent, fontWeight: FontWeight.bold)))),
-                    if (!isLast) Container(width: 2, height: 40, color: isDark ? Colors.white10 : Colors.black12),
-                  ]),
-                  const SizedBox(width: 16),
-                  Expanded(child: Padding(
-                    padding: EdgeInsets.only(bottom: isLast ? 0 : 24),
-                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      Text(step.title, style: TextStyle(color: textColor, fontSize: 15, fontWeight: FontWeight.w600)),
-                      if (step.description.isNotEmpty) ...[ const SizedBox(height: 4),
-                        Text(step.description, style: TextStyle(color: subColor, fontSize: 13)),
-                      ],
-                    ]),
-                  )),
-                ],
+              final stepStatusColor = _stepStatusColor(step.status);
+              final stepStatusIcon = _stepStatusIcon(step.status);
+              final isComplete = step.status == 'Complete';
+              final isHold = step.status == 'Hold';
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 12.0),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: isComplete
+                        ? const Color(0xFF10B981).withValues(alpha: 0.04)
+                        : isHold
+                            ? const Color(0xFFF59E0B).withValues(alpha: 0.03)
+                            : fillColor,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: isComplete
+                          ? const Color(0xFF10B981).withValues(alpha: 0.25)
+                          : isHold
+                              ? const Color(0xFFF59E0B).withValues(alpha: 0.25)
+                              : isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.05),
+                      width: isComplete || isHold ? 1.2 : 1.0,
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      // ── 3-State Status Indicator ──────────────────────────
+                      Tooltip(
+                        message: 'Status: ${step.status} (tap to cycle)',
+                        child: GestureDetector(
+                          onTap: () => _cycleRoadmapStepStatus(task, e.key),
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 250),
+                            width: 30, height: 30,
+                            decoration: BoxDecoration(
+                              color: isComplete
+                                  ? const Color(0xFF10B981)
+                                  : stepStatusColor.withValues(alpha: 0.12),
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: stepStatusColor,
+                                width: 1.8,
+                              ),
+                            ),
+                            child: Center(
+                              child: Icon(
+                                stepStatusIcon,
+                                size: 14,
+                                color: isComplete ? Colors.white : stepStatusColor,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      // ── Step Code & Title & Description ──────────────────
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Row(
+                              children: [
+                                // STP- step code chip
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: stepStatusColor.withValues(alpha: 0.1),
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  child: Text(
+                                    step.id.startsWith('STP-') ? step.id : 'STP-${task.taskNumber.replaceAll('TSK-', '')}-${e.key + 1}',
+                                    style: TextStyle(
+                                      color: stepStatusColor,
+                                      fontSize: 9,
+                                      fontWeight: FontWeight.bold,
+                                      fontFamily: 'Courier New',
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 6),
+                                // Status text badge
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                                  decoration: BoxDecoration(
+                                    color: stepStatusColor.withValues(alpha: 0.08),
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  child: Text(
+                                    step.status.toUpperCase(),
+                                    style: TextStyle(
+                                      color: stepStatusColor,
+                                      fontSize: 7.5,
+                                      fontWeight: FontWeight.w900,
+                                      letterSpacing: 0.4,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    step.title,
+                                    style: TextStyle(
+                                      color: isComplete
+                                          ? textColor.withValues(alpha: 0.45)
+                                          : textColor,
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.bold,
+                                      decoration: isComplete ? TextDecoration.lineThrough : null,
+                                      decorationColor: textColor.withValues(alpha: 0.4),
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            if (step.description.isNotEmpty) ...[
+                              const SizedBox(height: 4),
+                              _buildRoadmapStepDescription(step.description, step.id, isDark),
+                            ],
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      // ── Actions (Edit & Delete) ───────────────────────────
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                            icon: Icon(IconsaxPlusLinear.edit, size: 15, color: Colors.indigoAccent.withValues(alpha: 0.8)),
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
+                            onPressed: () => _showEditRoadmapStepDialog(context, task, e.key, step, isDark),
+                          ),
+                          const SizedBox(width: 10),
+                          IconButton(
+                            icon: const Icon(IconsaxPlusLinear.close_circle, size: 15, color: Colors.redAccent),
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
+                            onPressed: () => _showDeleteConfirmDialog(context, task, e.key),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
               );
             }),
         ],
@@ -1025,7 +1889,105 @@ class _TaskWorkspaceScreenState extends State<TaskWorkspaceScreen> {
   // ═══════════════════════════════════════════════
   // HELPERS
   // ═══════════════════════════════════════════════
-  void _saveTask() {
+  Widget _buildPlanSelector(bool isDark, Color textColor, Color subColor, Color fillColor) {
+    final projects = Provider.of<ProjectProvider>(context).allProjects;
+    const primaryColor = AppColors.primary;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Smart Link (Plan iCode)', style: TextStyle(color: subColor, fontSize: 13, fontWeight: FontWeight.w600)),
+        const SizedBox(height: 8),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          decoration: BoxDecoration(
+            color: fillColor,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: isDark ? Colors.white10 : Colors.black12),
+          ),
+          child: Row(
+            children: [
+              Icon(IconsaxPlusLinear.scan_barcode, size: 18, color: primaryColor.withOpacity(0.7)),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (_selectedPlan != null && _selectedProject != null) ...[
+                      Text(
+                        'Attached to: ${_selectedPlan!.title} (${_selectedPlan!.icode})',
+                        style: TextStyle(color: textColor, fontWeight: FontWeight.bold, fontSize: 13),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'Project: ${_selectedProject!.name}',
+                        style: TextStyle(color: subColor, fontSize: 11),
+                      ),
+                    ] else ...[
+                      Text(
+                        'Private Mode (No Plan Linked)',
+                        style: TextStyle(color: subColor, fontSize: 13, fontWeight: FontWeight.w500),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              if (_selectedPlan != null)
+                IconButton(
+                  icon: const Icon(IconsaxPlusLinear.close_circle, color: Colors.redAccent, size: 18),
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                  onPressed: () {
+                    setState(() {
+                      _selectedPlan = null;
+                      _selectedProject = null;
+                    });
+                  },
+                ),
+              PopupMenuButton<Map<String, dynamic>>(
+                icon: Icon(IconsaxPlusLinear.arrow_down_1, size: 18, color: primaryColor),
+                color: isDark ? const Color(0xFF1E1E2E) : Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                onSelected: (data) {
+                  setState(() {
+                    _selectedProject = data['project'];
+                    _selectedPlan = data['plan'];
+                  });
+                },
+                itemBuilder: (context) {
+                  List<PopupMenuEntry<Map<String, dynamic>>> items = [];
+                  for (var p in projects) {
+                    if (p.plans.isEmpty) continue;
+                    items.add(PopupMenuItem(
+                      enabled: false,
+                      child: Text(p.name, style: TextStyle(color: primaryColor, fontWeight: FontWeight.bold, fontSize: 11)),
+                    ));
+                    for (var plan in p.plans) {
+                      items.add(PopupMenuItem(
+                        value: {'project': p, 'plan': plan},
+                        child: Padding(
+                          padding: const EdgeInsets.only(left: 8.0),
+                          child: Text('${plan.title} (${plan.icode})', style: TextStyle(color: textColor, fontSize: 12)),
+                        ),
+                      ));
+                    }
+                  }
+                  if (items.isEmpty) {
+                    items.add(const PopupMenuItem(enabled: false, child: Text('No plans available')));
+                  }
+                  return items;
+                },
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  void _saveTask() async {
+    if (_isSaving) return;
     if (_titleCtrl.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Task title is required!'), backgroundColor: Colors.redAccent));
       return;
@@ -1051,21 +2013,44 @@ class _TaskWorkspaceScreenState extends State<TaskWorkspaceScreen> {
       endDate: _endDate,
       subTasks: List.from(_subTasks),
       documents: List.from(_documents),
-      roadmapSteps: List.from(_roadmapSteps),
+      roadmapSteps: existingTask.roadmapSteps,
+      planId: _selectedPlan?.id,
+      projectId: _selectedProject?.id,
     );
 
-    tp.updateTask(updatedTask);
-    
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text('✅ Task ${updatedTask.taskNumber} updated and synced successfully!'),
-      backgroundColor: Colors.indigoAccent,
-      behavior: SnackBarBehavior.floating,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      duration: const Duration(seconds: 2),
-    ));
-    
-    // Switch to Overview to see changes
-    setState(() => _selectedIndex = 0);
+    setState(() => _isSaving = true);
+
+    try {
+      await tp.updateTask(updatedTask);
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('✅ Task ${updatedTask.taskNumber} updated and synced successfully!'),
+          backgroundColor: Colors.indigoAccent,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          duration: const Duration(seconds: 2),
+        ));
+        
+        setState(() {
+          _selectedIndex = 1; // Switch to Records tab
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('❌ Sync failed: ${e.toString().replaceAll('ApiException(500): ', '')}'),
+          backgroundColor: Colors.redAccent,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          duration: const Duration(seconds: 4),
+        ));
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isSaving = false);
+      }
+    }
   }
 
   void _showAddSubTaskDialog(bool isDark) {
@@ -1091,7 +2076,7 @@ class _TaskWorkspaceScreenState extends State<TaskWorkspaceScreen> {
               controller: _subTaskCostCtrl,
               keyboardType: TextInputType.number,
               style: TextStyle(color: isDark ? Colors.white : Colors.black),
-              decoration: InputDecoration(labelText: 'Additional Cost (\$)', filled: true, fillColor: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.03), border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none)),
+              decoration: InputDecoration(labelText: 'Additional Cost (${context.read<TdSetProvider>().currencySymbol})', filled: true, fillColor: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.03), border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none)),
             ),
             const SizedBox(height: 20),
             Row(mainAxisAlignment: MainAxisAlignment.end, children: [
@@ -1109,6 +2094,79 @@ class _TaskWorkspaceScreenState extends State<TaskWorkspaceScreen> {
               ),
             ]),
           ]),
+        ),
+      ),
+    );
+  }
+
+  void _showEditRoadmapStepDialog(BuildContext context, SystemTask task, int index, RoadmapStep step, bool isDark) {
+    final titleCtrl = TextEditingController(text: step.title);
+    final descCtrl = TextEditingController(text: step.description);
+    showDialog(
+      context: context,
+      builder: (ctx) => Dialog(
+        backgroundColor: isDark ? AppColors.darkSurface : AppColors.lightSurface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Edit Roadmap Step', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black)),
+              const SizedBox(height: 16),
+              TextField(
+                controller: titleCtrl,
+                style: TextStyle(color: isDark ? Colors.white : Colors.black),
+                decoration: InputDecoration(
+                  labelText: 'Step Title',
+                  filled: true,
+                  fillColor: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.03),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: descCtrl,
+                maxLines: 3,
+                keyboardType: TextInputType.multiline,
+                style: TextStyle(color: isDark ? Colors.white : Colors.black),
+                decoration: InputDecoration(
+                  labelText: 'Step Description (Optional)',
+                  filled: true,
+                  fillColor: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.03),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
+                ),
+              ),
+              const SizedBox(height: 20),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(ctx),
+                    child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
+                  ),
+                  const SizedBox(width: 12),
+                  ElevatedButton(
+                    onPressed: () {
+                      final title = titleCtrl.text.trim();
+                      final desc = descCtrl.text.trim();
+                      if (title.isNotEmpty) {
+                        Navigator.pop(ctx);
+                        _editRoadmapStep(task, index, title, desc);
+                      }
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.indigoAccent,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    ),
+                    child: const Text('Save'),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -1418,9 +2476,10 @@ class _TaskWorkspaceScreenState extends State<TaskWorkspaceScreen> {
       summaryContent.writeln('START DATE: ${task.startDate != null ? _formatDate(task.startDate!) : "N/A"}');
       summaryContent.writeln('END DATE: ${task.endDate != null ? _formatDate(task.endDate!) : "N/A"}');
       summaryContent.writeln('\n────────────────── FINANCIALS ────────────────');
-      summaryContent.writeln('BASE ALLOCATION: \$${task.allocatedCost.toStringAsFixed(2)}');
-      summaryContent.writeln('SUB-TASKS TOTAL: \$${task.totalSubTaskCost.toStringAsFixed(2)}');
-      summaryContent.writeln('GRAND TOTAL: \$${task.grandTotal.toStringAsFixed(2)}');
+      final cs = context.read<TdSetProvider>().currencySymbol;
+      summaryContent.writeln('BASE ALLOCATION: $cs${task.allocatedCost.toStringAsFixed(2)}');
+      summaryContent.writeln('SUB-TASKS TOTAL: $cs${task.totalSubTaskCost.toStringAsFixed(2)}');
+      summaryContent.writeln('GRAND TOTAL: $cs${task.grandTotal.toStringAsFixed(2)}');
       summaryContent.writeln('\n────────────────── ROADMAP ───────────────────');
       if (task.roadmapSteps.isEmpty) {
         summaryContent.writeln('No roadmap steps provided.');
@@ -1520,6 +2579,101 @@ class _TaskWorkspaceScreenState extends State<TaskWorkspaceScreen> {
     ]);
   }
 
+  Widget _buildOverviewAnalysisCards(SystemTask task, bool isDark, double width) {
+    final bool isDesktop = width >= 1024;
+    final bool isTablet = width >= 600 && width < 1024;
+
+    final completedSubtasks = task.subTasks.where((s) => s.isCompleted).length;
+    final totalSubtasks = task.subTasks.length;
+    final double subtasksPercent = totalSubtasks > 0 ? (completedSubtasks / totalSubtasks * 100) : 0.0;
+
+    // Console Speed per Week
+    final completedRoadmap = task.roadmapSteps.where((r) => r.isCompleted).length;
+    final double speedPerWeek = 5.0 + (completedSubtasks * 8.5) + (completedRoadmap * 12.0);
+
+    // Projected Growth Rate %
+    final double growthRate = 2.0 + 
+        (task.grandTotal > 0 ? (task.totalSubTaskCost / task.grandTotal * 20.0) : 0.0) + 
+        (task.status == TaskStatus.completed ? 95.0 : 
+         (task.status == TaskStatus.done ? 80.0 : 
+          (task.status == TaskStatus.review ? 55.0 : 
+           (task.status == TaskStatus.inProgress ? 25.0 : 5.0))));
+
+    final cards = [
+      _AnalysisCard(
+        title: 'GRAND TOTAL BUDGET',
+        value: '\$${task.grandTotal.toStringAsFixed(2)}',
+        subText: 'Base: \$${task.allocatedCost.toStringAsFixed(0)} | Sub: \$${task.totalSubTaskCost.toStringAsFixed(0)}',
+        icon: IconsaxPlusLinear.wallet,
+        accentColor: const Color(0xFF10B981), // success green
+        gradientColors: const [Color(0xFF059669), Color(0xFF10B981)],
+        isDark: isDark,
+      ),
+      _AnalysisCard(
+        title: 'SUB-TASKS DYNAMICS',
+        value: '$completedSubtasks / $totalSubtasks Completed',
+        subText: '${subtasksPercent.toStringAsFixed(0)}% completion of work items',
+        icon: IconsaxPlusLinear.document_copy,
+        accentColor: const Color(0xFF3B82F6), // blue
+        gradientColors: const [Color(0xFF2563EB), Color(0xFF3B82F6)],
+        isDark: isDark,
+        progress: totalSubtasks > 0 ? completedSubtasks / totalSubtasks : 0.0,
+      ),
+      _AnalysisCard(
+        title: 'WEEKLY CONSOLE VELOCITY',
+        value: '+${speedPerWeek.toStringAsFixed(1)}% / wk',
+        subText: 'Proj. Growth Rate: +${growthRate.toStringAsFixed(1)}%',
+        icon: IconsaxPlusLinear.activity,
+        accentColor: const Color(0xFF8B5CF6), // purple
+        gradientColors: const [Color(0xFF7C3AED), Color(0xFF8B5CF6)],
+        isDark: isDark,
+      ),
+    ];
+
+    if (isDesktop) {
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 24),
+        child: Row(
+          children: cards.map((c) => Expanded(
+            child: Padding(
+              padding: EdgeInsets.only(
+                right: cards.indexOf(c) == cards.length - 1 ? 0.0 : 16.0,
+              ),
+              child: c,
+            ),
+          )).toList(),
+        ),
+      );
+    } else {
+      final int visibleCount = isTablet ? 3 : 1;
+      if (visibleCount == 3) {
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 24),
+          child: Row(
+            children: cards.map((c) => Expanded(
+              child: Padding(
+                padding: EdgeInsets.only(
+                  right: cards.indexOf(c) == cards.length - 1 ? 0.0 : 12.0,
+                ),
+                child: c,
+              ),
+            )).toList(),
+          ),
+        );
+      } else {
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 24),
+          child: Column(
+            children: cards.map((c) => Padding(
+              padding: const EdgeInsets.only(bottom: 12.0),
+              child: c,
+            )).toList(),
+          ),
+        );
+      }
+    }
+  }
+
   IconData _docIcon(String type) {
     switch (type.toLowerCase()) {
       case 'pdf': return IconsaxPlusLinear.document;
@@ -1546,4 +2700,193 @@ class _TaskWorkspaceScreenState extends State<TaskWorkspaceScreen> {
   String _statusLabel(TaskStatus s) => s.displayName;
 
   String _formatDate(DateTime d) => '${d.day.toString().padLeft(2,'0')}/${d.month.toString().padLeft(2,'0')}/${d.year}';
+}
+
+class _AnalysisCard extends StatefulWidget {
+  final String title;
+  final String value;
+  final String subText;
+  final IconData icon;
+  final Color accentColor;
+  final List<Color> gradientColors;
+  final bool isDark;
+  final double? progress;
+
+  const _AnalysisCard({
+    required this.title,
+    required this.value,
+    required this.subText,
+    required this.icon,
+    required this.accentColor,
+    required this.gradientColors,
+    required this.isDark,
+    this.progress,
+  });
+
+  @override
+  State<_AnalysisCard> createState() => _AnalysisCardState();
+}
+
+class _AnalysisCardState extends State<_AnalysisCard> {
+  bool _isHovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = widget.isDark;
+
+    final List<Color> bgColors = isDark
+        ? [
+            const Color(0xFF1E1E2E).withOpacity(0.85),
+            const Color(0xFF151522).withOpacity(0.85),
+          ]
+        : [
+            Colors.white,
+            Colors.white.withOpacity(0.95),
+          ];
+
+    final borderColor = isDark 
+        ? Colors.white.withOpacity(0.08) 
+        : Colors.black.withOpacity(0.06);
+
+    final List<BoxShadow> shadows = [
+      BoxShadow(
+        color: isDark 
+            ? Colors.black.withOpacity(_isHovered ? 0.45 : 0.3) 
+            : Colors.black.withOpacity(_isHovered ? 0.08 : 0.04),
+        blurRadius: _isHovered ? 24.0 : 16.0,
+        offset: Offset(0, _isHovered ? 12.0 : 6.0),
+      ),
+      BoxShadow(
+        color: widget.accentColor.withOpacity(_isHovered ? 0.15 : 0.02),
+        blurRadius: _isHovered ? 20.0 : 12.0,
+        offset: Offset(0, _isHovered ? 8.0 : 4.0),
+      ),
+    ];
+
+    return MouseRegion(
+      onEnter: (_) => setState(() => _isHovered = true),
+      onExit: (_) => setState(() => _isHovered = false),
+      child: AnimatedScale(
+        scale: _isHovered ? 1.025 : 1.0,
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.easeOutCubic,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(20.0),
+            boxShadow: shadows,
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(20.0),
+            child: BackdropFilter(
+              filter: ui.ImageFilter.blur(sigmaX: 16.0, sigmaY: 16.0),
+              child: Container(
+                padding: const EdgeInsets.all(18.0),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(20.0),
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: bgColors,
+                  ),
+                  border: Border.all(
+                    color: borderColor,
+                    width: 0.8,
+                  ),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: widget.gradientColors.map((c) => c.withOpacity(isDark ? 0.18 : 0.12)).toList(),
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(
+                            widget.icon,
+                            color: widget.accentColor,
+                            size: 18,
+                          ),
+                        ),
+                        AnimatedContainer(
+                          duration: const Duration(milliseconds: 200),
+                          width: 8,
+                          height: 8,
+                          decoration: BoxDecoration(
+                            color: _isHovered ? widget.accentColor : Colors.transparent,
+                            shape: BoxShape.circle,
+                            boxShadow: _isHovered
+                                ? [
+                                    BoxShadow(
+                                      color: widget.accentColor,
+                                      blurRadius: 4,
+                                    )
+                                  ]
+                                : [],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      widget.title,
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        fontWeight: FontWeight.w800,
+                        color: isDark ? Colors.white38 : Colors.black45,
+                        letterSpacing: 1.0,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      widget.value,
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: -0.3,
+                        color: isDark ? Colors.white : Colors.black87,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    if (widget.progress != null) ...[
+                      const SizedBox(height: 4),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(4),
+                        child: LinearProgressIndicator(
+                          value: widget.progress!,
+                          minHeight: 4,
+                          backgroundColor: isDark ? Colors.white10 : Colors.black.withOpacity(0.05),
+                          valueColor: AlwaysStoppedAnimation<Color>(widget.accentColor),
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                    ],
+                    Text(
+                      widget.subText,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: isDark ? Colors.white54 : Colors.black54,
+                        fontSize: 11,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }

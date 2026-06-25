@@ -29,6 +29,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
 import 'package:ebficbm/core/providers/team_provider.dart';
+import 'package:ebficbm/core/providers/td_set_provider.dart';
 
 class BizOSApp extends StatelessWidget {
   const BizOSApp({super.key});
@@ -38,6 +39,7 @@ class BizOSApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => ThemeProvider()),
+        ChangeNotifierProvider(create: (_) => TdSetProvider()),
         ChangeNotifierProxyProvider<AuthProvider, CompanyProvider>(
           create: (_) => CompanyProvider(),
           update: (_, auth, company) => company!..update(auth.api),

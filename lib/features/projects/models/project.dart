@@ -223,6 +223,7 @@ class Project {
   final List<CostLog> financialLogs;
   final List<HistoryLog> syncLogs; // New: Activity logs for attachment/sync
   final bool isApproved;
+  final double allocatedFundsSum;
 
 
   Project({
@@ -257,6 +258,7 @@ class Project {
     this.financialLogs = const [],
     this.syncLogs = const [],
     this.isApproved = true,
+    this.allocatedFundsSum = 0.0,
   });
 
   Map<String, dynamic> toMap() {
@@ -309,6 +311,7 @@ class Project {
       'syncLogs': syncLogs.map((l) => l.toMap()).toList(),
       'isApproved': isApproved,
       'is_approved': isApproved,
+      'allocated_funds_sum': allocatedFundsSum,
     };
   }
 
@@ -348,6 +351,7 @@ class Project {
       financialLogs: List<CostLog>.from(((map['financialLogs'] ?? map['cost_logs'] ?? map['costLogs']) as List? ?? []).map((l) => CostLog.fromMap(l))),
       syncLogs: List<HistoryLog>.from(((map['syncLogs'] ?? map['history_logs']) as List? ?? []).map((l) => HistoryLog.fromMap(l))),
       isApproved: _parseBool(map['isApproved'] ?? map['is_approved'] ?? true),
+      allocatedFundsSum: (map['allocated_funds_sum'] ?? map['allocatedFundsSum'] ?? 0.0).toDouble(),
     );
   }
 
@@ -384,6 +388,7 @@ class Project {
     String? founderSignature, DateTime? founderSignatureTimestamp, double? confirmedBudget,
     List<String>? additionalLinks, List<String>? taskIds, List<Plan>? plans,
     List<CostLog>? financialLogs, List<HistoryLog>? syncLogs, bool? isApproved,
+    double? allocatedFundsSum,
   }) {
     return Project(
       id: id ?? this.id, pid: pid ?? this.pid, name: name ?? this.name,
@@ -408,6 +413,7 @@ class Project {
       financialLogs: financialLogs ?? this.financialLogs,
       syncLogs: syncLogs ?? this.syncLogs,
       isApproved: isApproved ?? this.isApproved,
+      allocatedFundsSum: allocatedFundsSum ?? this.allocatedFundsSum,
     );
   }
 }

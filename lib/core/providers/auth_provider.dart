@@ -31,6 +31,8 @@ class AuthProvider extends ChangeNotifier {
   String? _chatAbout;
 
   bool get isLoggedIn => _isLoggedIn;
+  bool get isAuthenticated => _isLoggedIn;
+  String? get token => _api.token;
   bool get isInitializing => _isInitializing;
   String? get userName => _userName;
   String? get userEmail => _userEmail;

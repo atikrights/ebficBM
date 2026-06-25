@@ -38,6 +38,7 @@ import 'package:ebficbm/features/companies/screens/widgets/stock_manage_dialog.d
 import 'package:ebficbm/features/companies/screens/widgets/attach_project_dialog.dart';
 import 'package:ebficbm/features/companies/screens/quota_edit_screen.dart';
 import 'package:ebficbm/features/companies/screens/stock_edit_screen.dart';
+import 'package:ebficbm/core/providers/td_set_provider.dart';
 
 class WordLimitFormatter extends TextInputFormatter {
   final int maxWords;
@@ -421,6 +422,7 @@ class _CompanyManageScreenState extends State<CompanyManageScreen> {
   // ── Overview Tab (Glassmorphic Interface) ───────────────────────────────────
 
   Widget _buildOverviewTab(Company company, bool isDark) {
+    final cs = context.watch<TdSetProvider>().currencySymbol;
     final w = MediaQuery.of(context).size.width;
     final isMobile = w < 600;
     final isTablet = w >= 600 && w < 1000;
@@ -512,9 +514,9 @@ class _CompanyManageScreenState extends State<CompanyManageScreen> {
             childAspectRatio: isMobile ? 3.0 : 1.7,
             children: [
               _buildStatCard('Active Employees', company.activeEmployees.toString(), IconsaxPlusLinear.people, Colors.blue, isDark),
-              _buildStatCard('Annual Revenue', '\$${(company.annualRevenue / 1000000).toStringAsFixed(1)}M', IconsaxPlusLinear.money_send, Colors.green, isDark),
+              _buildStatCard('Annual Revenue', '$cs${(company.annualRevenue / 1000000).toStringAsFixed(1)}M', IconsaxPlusLinear.money_send, Colors.green, isDark),
               _buildStatCard('Health Score', '${(company.healthScore * 100).toInt()}%', IconsaxPlusLinear.heart, Colors.red, isDark),
-              _buildStatCard('Live Assets Valuation', hasAssets ? '\$${(totalMinAssetPrice / 1000).toStringAsFixed(1)}K - \$${(totalMaxAssetPrice / 1000).toStringAsFixed(1)}K' : '\$0', IconsaxPlusLinear.wallet_3, Colors.orange, isDark),
+              _buildStatCard('Live Assets Valuation', hasAssets ? '$cs${(totalMinAssetPrice / 1000).toStringAsFixed(1)}K - $cs${(totalMaxAssetPrice / 1000).toStringAsFixed(1)}K' : '${cs}0', IconsaxPlusLinear.wallet_3, Colors.orange, isDark),
             ],
           ),
           const SizedBox(height: 24),
@@ -580,6 +582,7 @@ class _CompanyManageScreenState extends State<CompanyManageScreen> {
   }
 
   Widget _buildValuationSection(List<CompanyStock> stocks, bool isDark) {
+    final cs = context.watch<TdSetProvider>().currencySymbol;
     final activeStocks = stocks.where((s) => s.assets.isNotEmpty).toList();
     double grandTotalMax = activeStocks.fold(0.0, (sum, s) => sum + s.assets.fold(0.0, (sumA, a) => sumA + a.maxPrice));
 
@@ -679,7 +682,7 @@ class _CompanyManageScreenState extends State<CompanyManageScreen> {
                             ],
                           ),
                           Text(
-                            '\$${minVal.toStringAsFixed(0)} - \$${maxVal.toStringAsFixed(0)}',
+                            '$cs${minVal.toStringAsFixed(0)} - $cs${maxVal.toStringAsFixed(0)}',
                             style: TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.bold,
@@ -723,6 +726,7 @@ class _CompanyManageScreenState extends State<CompanyManageScreen> {
   }
 
   Widget _buildQuotaLedgerSection(double totalEarn, double totalExpense, double netBalance, bool isDark) {
+    final cs = context.watch<TdSetProvider>().currencySymbol;
     final double totalCombined = totalEarn + totalExpense;
     final double earnPercent = totalCombined > 0 ? (totalEarn / totalCombined) : 0.5;
     final isPositive = netBalance >= 0;
@@ -769,7 +773,7 @@ class _CompanyManageScreenState extends State<CompanyManageScreen> {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      '\$${totalEarn.toStringAsFixed(2)}',
+                      '$cs${totalEarn.toStringAsFixed(2)}',
                       style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: AppColors.success, fontFamily: 'Manrope'),
                     ),
                   ],
@@ -785,7 +789,7 @@ class _CompanyManageScreenState extends State<CompanyManageScreen> {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      '\$${totalExpense.toStringAsFixed(2)}',
+                      '$cs${totalExpense.toStringAsFixed(2)}',
                       style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: AppColors.error, fontFamily: 'Manrope'),
                     ),
                   ],
@@ -809,7 +813,7 @@ class _CompanyManageScreenState extends State<CompanyManageScreen> {
                   style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: isDark ? Colors.white70 : Colors.black.withOpacity(0.7)),
                 ),
                 Text(
-                  (isPositive ? '+' : '') + '\$${netBalance.toStringAsFixed(2)}',
+                  (isPositive ? '+' : '') + '$cs${netBalance.toStringAsFixed(2)}',
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w900,
@@ -2142,7 +2146,7 @@ class _CompanyManageScreenState extends State<CompanyManageScreen> {
             ),
           ),
           
-          const SizedBox(height: 24),
+
 
           _buildRecordCard('Strategy & Roadmaps', IconsaxPlusLinear.routing, isDark, [
             _buildRecordRow('Current Execution', company.roadmapExecution ?? 'Pending execution deployment', isDark, isMultiLine: true),
@@ -2419,6 +2423,8 @@ class _CompanyManageScreenState extends State<CompanyManageScreen> {
       ),
     );
   }
+
+
 
   Widget _buildRecordCard(String title, IconData icon, bool isDark, List<Widget> rows) {
     return Column(

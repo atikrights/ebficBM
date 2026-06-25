@@ -10,6 +10,7 @@ import 'package:ebficbm/core/providers/auth_provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:ebficbm/features/chat/presentation/chat_settings_screen.dart';
 import 'package:ebficbm/features/chat/providers/chat_provider.dart';
+import 'package:ebficbm/core/providers/td_set_provider.dart';
 
 class ResponsiveLayout extends StatelessWidget {
   final Widget body;
@@ -897,6 +898,33 @@ class _AppBar extends StatelessWidget {
                           child: InkWell(
                             onTap: () {
                               Navigator.pop(context);
+                              _showPreferencesDialog(context, isDark, textColor);
+                            },
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                              child: Row(
+                                children: [
+                                  Icon(IconsaxPlusLinear.setting_2, size: 20, color: textColor.withOpacity(0.8)),
+                                  const SizedBox(width: 16),
+                                  Text(
+                                    "Preferences (Language & Currency)",
+                                    style: GoogleFonts.outfit(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w500,
+                                      color: textColor,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                        Container(height: 1, color: isDark ? Colors.white.withOpacity(0.08) : Colors.black.withOpacity(0.05)),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 8),
+                          child: InkWell(
+                            onTap: () {
+                              Navigator.pop(context);
                               authState.logout();
                             },
                             child: Padding(
@@ -939,6 +967,70 @@ class _AppBar extends StatelessWidget {
               ),
             ),
           ),
+        );
+      },
+    );
+  }
+
+  void _showPreferencesDialog(BuildContext context, bool isDark, Color textColor) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return Consumer<TdSetProvider>(
+          builder: (context, tdSet, child) {
+            return AlertDialog(
+              backgroundColor: isDark ? AppColors.darkSurface : AppColors.lightSurface,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              title: Text("Preferences", style: GoogleFonts.outfit(color: textColor, fontWeight: FontWeight.bold)),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text("Language", style: GoogleFonts.outfit(color: textColor.withOpacity(0.5), fontSize: 12)),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 10,
+                    children: tdSet.availableLanguages.map((lang) {
+                      final selected = tdSet.language == lang;
+                      return ChoiceChip(
+                        label: Text(lang == 'en' ? 'English' : 'বাংলা'),
+                        selected: selected,
+                        onSelected: (val) {
+                          if (val) tdSet.updateUserPreference(lang, tdSet.currency, context.read<AuthProvider>());
+                        },
+                        selectedColor: AppColors.primary.withOpacity(0.2),
+                        labelStyle: TextStyle(color: selected ? AppColors.primary : textColor),
+                      );
+                    }).toList(),
+                  ),
+                  const SizedBox(height: 20),
+                  Text("Currency", style: GoogleFonts.outfit(color: textColor.withOpacity(0.5), fontSize: 12)),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 10,
+                    children: tdSet.exchangeRates.keys.map((curr) {
+                      final selected = tdSet.currency == curr;
+                      return ChoiceChip(
+                        label: Text(curr),
+                        selected: selected,
+                        onSelected: (val) {
+                          if (val) tdSet.updateUserPreference(tdSet.language, curr, context.read<AuthProvider>());
+                        },
+                        selectedColor: AppColors.primary.withOpacity(0.2),
+                        labelStyle: TextStyle(color: selected ? AppColors.primary : textColor),
+                      );
+                    }).toList(),
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: Text("Done", style: TextStyle(color: AppColors.primary)),
+                ),
+              ],
+            );
+          },
         );
       },
     );

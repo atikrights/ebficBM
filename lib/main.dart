@@ -18,7 +18,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  GoogleFonts.config.allowRuntimeFetching = false;
+  GoogleFonts.config.allowRuntimeFetching = true;
 
   // Enable immersive edge-to-edge system UI styling
   SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);

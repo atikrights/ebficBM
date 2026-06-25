@@ -25,6 +25,7 @@ import 'package:ebficbm/core/services/refresh_service.dart';
 import 'package:ebficbm/features/settings/screens/settings_screen.dart';
 import 'package:ebficbm/core/providers/auth_provider.dart';
 import 'package:flutter/foundation.dart';
+import 'package:ebficbm/core/providers/td_set_provider.dart';
 
 class ProjectWorkspaceScreen extends StatefulWidget {
   final String projectId;
@@ -447,6 +448,7 @@ class _ProjectWorkspaceScreenState extends State<ProjectWorkspaceScreen> {
   }
 
   Widget _buildOverviewTab(Project project, bool isDark) {
+    final cs = context.watch<TdSetProvider>().currencySymbol;
     final color = project.brandColor;
     final isDesktop = ResponsiveBreakpoints.of(context).largerThan(TABLET);
     final isTablet = ResponsiveBreakpoints.of(context).largerThan(MOBILE);
@@ -592,7 +594,7 @@ class _ProjectWorkspaceScreenState extends State<ProjectWorkspaceScreen> {
                     children: [
                       _overviewInfo('CATEGORY', project.category, IconsaxPlusLinear.category, color, isDark),
                       _overviewInfo('START DATE', project.startDate.toString().substring(0, 10), IconsaxPlusLinear.calendar, color, isDark),
-                      _overviewInfo('BUDGET LIMIT', '\$${project.totalBudget.toStringAsFixed(0)}', IconsaxPlusLinear.wallet, color, isDark),
+                      _overviewInfo('BUDGET LIMIT', '$cs${project.totalBudget.toStringAsFixed(0)}', IconsaxPlusLinear.wallet, color, isDark),
                       _overviewInfo('STATUS', project.status.name.toUpperCase(), IconsaxPlusLinear.status, color, isDark),
                       _overviewInfo('WEBSITE', project.website.isEmpty ? 'N/A' : project.website, IconsaxPlusLinear.global, color, isDark),
                       _overviewInfo('CONTACT', project.phoneNumber.isEmpty ? 'N/A' : project.phoneNumber, IconsaxPlusLinear.call, color, isDark),
@@ -987,6 +989,7 @@ class _ProjectWorkspaceScreenState extends State<ProjectWorkspaceScreen> {
   }
 
   Widget _buildFinancialLedger(Project project, bool isDark) {
+    final cs = context.watch<TdSetProvider>().currencySymbol;
     return SingleChildScrollView(
       physics: const BouncingScrollPhysics(),
       child: Column(
@@ -1008,11 +1011,11 @@ class _ProjectWorkspaceScreenState extends State<ProjectWorkspaceScreen> {
           // 3 Stat Cards
           Row(
             children: [
-              _buildFinanceMetricCard('Total Budget', '\$${project.totalBudget.toStringAsFixed(0)}', IconsaxPlusLinear.bank, Colors.blueAccent, isDark),
+              _buildFinanceMetricCard('Total Budget', '$cs${project.totalBudget.toStringAsFixed(0)}', IconsaxPlusLinear.bank, Colors.blueAccent, isDark),
               const SizedBox(width: 16),
-              _buildFinanceMetricCard('Consumed Liability', '\$${project.consumedBudget.toStringAsFixed(0)}', IconsaxPlusLinear.wallet_minus, AppColors.error, isDark),
+              _buildFinanceMetricCard('Consumed Liability', '$cs${project.consumedBudget.toStringAsFixed(0)}', IconsaxPlusLinear.wallet_minus, AppColors.error, isDark),
               const SizedBox(width: 16),
-              _buildFinanceMetricCard('Generated Revenue', '\$${(project.generatedRevenue).toStringAsFixed(0)}', IconsaxPlusLinear.wallet_add_1, AppColors.success, isDark),
+              _buildFinanceMetricCard('Generated Revenue', '$cs${(project.generatedRevenue).toStringAsFixed(0)}', IconsaxPlusLinear.wallet_add_1, AppColors.success, isDark),
             ],
           ),
           const SizedBox(height: 32),
@@ -1050,7 +1053,7 @@ class _ProjectWorkspaceScreenState extends State<ProjectWorkspaceScreen> {
                            const SizedBox(height: 4),
                            Text('${log.category}  •  ${log.date.toString().substring(0, 10)}', style: TextStyle(color: isDark ? Colors.white54 : Colors.black54, fontSize: 12)),
                         ])),
-                        Text(isIncome ? '+\$${log.amount}' : '-\$${log.amount}', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: isIncome ? AppColors.success : AppColors.error)),
+                        Text(isIncome ? '+$cs${log.amount}' : '-$cs${log.amount}', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: isIncome ? AppColors.success : AppColors.error)),
                       ],
                     ),
                   );
@@ -2407,18 +2410,20 @@ class _PlanConsoleBoardState extends State<_PlanConsoleBoard> {
   void _executeQuickAdd(String title, BuildContext ctx) {
     if (title.trim().isEmpty) return;
     final tp = context.read<TaskProvider>();
+    final auth = context.read<AuthProvider>();
     final newTask = SystemTask(
       id: 'tsk_${DateTime.now().millisecondsSinceEpoch}',
       taskNumber: 'T-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}',
       title: title.trim(),
       status: TaskStatus.todo,
+      author: auth.userName ?? 'Admin',
       planId: widget.plan.id,
       projectId: widget.project.id,
     );
     tp.addTask(newTask, companyId: widget.project.companyId ?? '1');
     
     // Log the creation in ProjectProvider Traceability log
-    context.read<ProjectProvider>().linkTaskToPlan(widget.project.id, widget.plan.id, newTask.id, newTask.title, 'Admin');
+    context.read<ProjectProvider>().linkTaskToPlan(widget.project.id, widget.plan.id, newTask.id, newTask.title, auth.userName ?? 'Admin');
     
     Navigator.pop(ctx);
   }

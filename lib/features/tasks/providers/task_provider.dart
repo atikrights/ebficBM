@@ -156,6 +156,7 @@ class TaskProvider extends ChangeNotifier {
       }
     } catch (e) {
       debugPrint('❌ Update Task Error: $e');
+      rethrow;
     }
   }
 

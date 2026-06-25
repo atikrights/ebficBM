@@ -12,6 +12,7 @@ import 'package:ebficbm/features/projects/models/project.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:ebficbm/features/tasks/screens/task_workspace_screen.dart';
 import 'package:ebficbm/features/companies/providers/company_provider.dart';
+import 'package:ebficbm/core/providers/auth_provider.dart';
 
 class TaskListScreen extends StatefulWidget {
   const TaskListScreen({super.key});
@@ -26,10 +27,12 @@ class _TaskListScreenState extends State<TaskListScreen> with SingleTickerProvid
   final Set<String> _selectedTaskIds = {};
   String _searchQuery = "";
 
+  bool hasPlan(SystemTask t) => t.planId != null && t.planId!.isNotEmpty && t.planId != 'null' && t.planId != 'undefined';
+
   @override
   void initState() {
     super.initState();
-    _tabCtrl = TabController(length: 2, vsync: this);
+    _tabCtrl = TabController(length: 5, vsync: this);
     _tabCtrl.addListener(() => setState(() {}));
   }
 
@@ -50,15 +53,16 @@ class _TaskListScreenState extends State<TaskListScreen> with SingleTickerProvid
     final isDesktop = ResponsiveBreakpoints.of(context).largerThan(TABLET);
     final provider = context.watch<TaskProvider>();
 
-    final activeTasks = provider.allTasks.where((t) {
+    final allPlanTasks = provider.allTasks.where((t) {
       final matchesSearch = t.title.toLowerCase().contains(_searchQuery.toLowerCase()) || t.taskNumber.toLowerCase().contains(_searchQuery.toLowerCase());
       return matchesSearch;
     }).toList();
 
-    final draftTasks = provider.draftTasks.where((t) {
-      final matchesSearch = t.title.toLowerCase().contains(_searchQuery.toLowerCase()) || t.taskNumber.toLowerCase().contains(_searchQuery.toLowerCase());
-      return matchesSearch;
-    }).toList();
+    final allTasks = allPlanTasks.where((t) => !t.isArchived).toList();
+    final activeTasks = allPlanTasks.where((t) => hasPlan(t) && !t.isArchived && t.status != TaskStatus.completed).toList();
+    final completeTasks = allPlanTasks.where((t) => hasPlan(t) && !t.isArchived && t.status == TaskStatus.completed).toList();
+    final draftTasks = allPlanTasks.where((t) => !hasPlan(t) && !t.isArchived).toList();
+    final archivedTasks = allPlanTasks.where((t) => t.isArchived).toList();
 
     return Scaffold(
       backgroundColor: Colors.transparent,
@@ -129,8 +133,11 @@ class _TaskListScreenState extends State<TaskListScreen> with SingleTickerProvid
                     scrollDirection: Axis.horizontal,
                     child: Row(
                       children: [
-                        _buildFilterTab('Active', 0, isDark, AppColors.primary, activeTasks.length),
-                        _buildFilterTab('Archived', 1, isDark, AppColors.primary, draftTasks.length),
+                        _buildFilterTab('All', 0, isDark, AppColors.primary, allTasks.length),
+                        _buildFilterTab('Active', 1, isDark, AppColors.primary, activeTasks.length),
+                        _buildFilterTab('Complete', 2, isDark, AppColors.primary, completeTasks.length),
+                        _buildFilterTab('Draft', 3, isDark, AppColors.primary, draftTasks.length),
+                        _buildFilterTab('Archive', 4, isDark, AppColors.primary, archivedTasks.length),
                       ],
                     ),
                   ),
@@ -174,8 +181,11 @@ class _TaskListScreenState extends State<TaskListScreen> with SingleTickerProvid
             child: IndexedStack(
               index: _tabCtrl.index,
               children: [
+                allTasks.isEmpty ? _buildEmpty(isDark, false) : _buildTaskList(allTasks, isDark, provider, isDraft: false),
                 activeTasks.isEmpty ? _buildEmpty(isDark, false) : _buildTaskList(activeTasks, isDark, provider, isDraft: false),
-                draftTasks.isEmpty ? _buildEmpty(isDark, true) : _buildTaskList(draftTasks, isDark, provider, isDraft: true),
+                completeTasks.isEmpty ? _buildEmpty(isDark, false) : _buildTaskList(completeTasks, isDark, provider, isDraft: false),
+                draftTasks.isEmpty ? _buildEmpty(isDark, false) : _buildTaskList(draftTasks, isDark, provider, isDraft: false),
+                archivedTasks.isEmpty ? _buildEmpty(isDark, false) : _buildTaskList(archivedTasks, isDark, provider, isDraft: false),
               ],
             ),
           ),
@@ -404,6 +414,36 @@ class _TaskListScreenState extends State<TaskListScreen> with SingleTickerProvid
                     ),
                     child: Text(task.status.name.toUpperCase(), style: TextStyle(fontSize: 9, color: _getStatusColor(task.status), fontWeight: FontWeight.bold, letterSpacing: 0.5)),
                   ),
+                  const SizedBox(height: 4),
+                  // Category classification badge
+                  () {
+                    final isArchived = task.isArchived;
+                    final draft = !hasPlan(task);
+                    final complete = task.status == TaskStatus.completed;
+                    
+                    String label = 'Active';
+                    Color badgeColor = const Color(0xFF0D7A57);
+                    
+                    if (isArchived) {
+                      label = 'Archive';
+                      badgeColor = Colors.grey;
+                    } else if (draft) {
+                      label = 'Draft';
+                      badgeColor = Colors.orange;
+                    } else if (complete) {
+                      label = 'Complete';
+                      badgeColor = Colors.blue;
+                    }
+                    
+                    return Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: badgeColor.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(label.toUpperCase(), style: TextStyle(fontSize: 9, color: badgeColor, fontWeight: FontWeight.bold, letterSpacing: 0.5)),
+                    );
+                  }(),
                 ],
               ),
             ]
@@ -521,11 +561,12 @@ class _CreateTaskDialogState extends State<_CreateTaskDialog> with SingleTickerP
     final randomSuffix = (DateTime.now().millisecondsSinceEpoch % 10000).toRadixString(16).toUpperCase().padLeft(4, '0');
     final newNumber = 'TSK-${(tp.allTasks.length + 1).toString().padLeft(3, '0')}-$randomSuffix';
 
+    final auth = Provider.of<AuthProvider>(context, listen: false);
     final newTask = SystemTask(
       id: newId,
       taskNumber: newNumber,
       title: title,
-      author: 'Super Admin',
+      author: auth.userName ?? 'Admin',
       status: TaskStatus.todo,
       priority: TaskPriority.medium,
       planId: _selectedPlan?.id,
@@ -539,11 +580,11 @@ class _CreateTaskDialogState extends State<_CreateTaskDialog> with SingleTickerP
     await Future.delayed(const Duration(milliseconds: 150));
     if (!mounted) return;
     
-    Navigator.pop(context);
+    final navigator = Navigator.of(context);
+    navigator.pop();
     
     final finalTaskId = createdTask?.id ?? newId;
-    Navigator.push(
-      context,
+    navigator.push(
       MaterialPageRoute(builder: (_) => TaskWorkspaceScreen(taskId: finalTaskId)),
     );
   }
